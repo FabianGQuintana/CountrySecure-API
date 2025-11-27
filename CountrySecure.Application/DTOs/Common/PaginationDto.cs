@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace CountrySecure.Application.DTOs.Common
 {
     public class PaginationDto

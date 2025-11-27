@@ -1,3 +1,5 @@
+using CountrySecure.Domain.Entities;
+
 namespace CountrySecure.Infrastructure.Persistence.Repositories
 {
     public class UserRepository : IUserRepository
