@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: countrysecure_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: CountrySecureDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - countrysecure
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: countrysecure_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - countrysecure
+
+networks:
+  countrysecure:
+
+volumes:
+  postgres_data:
