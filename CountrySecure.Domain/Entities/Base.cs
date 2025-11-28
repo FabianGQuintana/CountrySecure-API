@@ -1,4 +1,4 @@
-namespace CountrySecure.Domain.Common
+namespace CountrySecure.Domain.Entities
 {
     public abstract class BaseEntity
     {

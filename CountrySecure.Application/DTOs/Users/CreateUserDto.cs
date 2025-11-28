@@ -1,4 +1,3 @@
-using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Application.DTOs.Users
 {
@@ -13,6 +12,6 @@ namespace CountrySecure.Application.DTOs.Users
         public required string Email { get; set; }
         public required string Password { get; set; }
 
-        public RoleEnum Role { get; set; }
+        public required string Role { get; set; }
     }
 }

@@ -1,5 +1,5 @@
-using CountrySecure.Domain.Common;
-using CountrySecure.Domain.Enums;
+
+using CountrySecure.Domain.Constants;
 
 
 namespace CountrySecure.Domain.Entities
@@ -17,8 +17,7 @@ namespace CountrySecure.Domain.Entities
         public bool Active { get; set; } = true;
 
 
-        public RoleEnum Role { get; set; }
-
+        public required string Role { get; set; }
 
         // Opcional: info del admin que crea o modifica
         // public Guid? CreatedBy { get; set; }

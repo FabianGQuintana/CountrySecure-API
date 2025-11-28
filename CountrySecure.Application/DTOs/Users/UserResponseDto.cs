@@ -1,4 +1,3 @@
-using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Application.DTOs.Users
 {
@@ -14,7 +13,7 @@ namespace CountrySecure.Application.DTOs.Users
 
         public bool Active { get; set; }
 
-        public RoleEnum Role { get; set; }
+        public string Role { get; set; } = null!;
 
         // Auditoría básica (útil para admins)
         // public DateTime CreatedAt { get; set; }

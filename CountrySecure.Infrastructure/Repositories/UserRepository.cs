@@ -1,39 +1,42 @@
+using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Domain.Entities;
+using CountrySecure.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
-namespace CountrySecure.Infrastructure.Persistence.Repositories
+namespace CountrySecure.Infrastructure.Repositories
 {
     public class UserRepository : IUserRepository
     {
-        private readonly ApplicationDbContext _context;
+        private readonly CountrySecureDbContext _context;
 
-        public UserRepository(ApplicationDbContext context)
+        public UserRepository(CountrySecureDbContext context)
         {
             _context = context;
         }
 
         public async Task<User?> GetByIdAsync(Guid id)
         {
-            return await _context.Users.FindAsync(id);
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
         }
 
         public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize)
         {
             return await _context.Users
+                .Where(u => !u.IsDeleted)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
         }
 
-        public async Task<User> AddAsync(User user)
+        public async Task AddAsync(User user)
         {
             await _context.Users.AddAsync(user);
-            return user;
         }
 
-        public async Task<User> UpdateAsync(User user)
+        public async Task UpdateAsync(User user)
         {
+            user.UpdatedAt = DateTime.UtcNow;
             _context.Users.Update(user);
-            return user;
         }
 
         public async Task<bool> DeleteAsync(Guid id)
@@ -41,7 +44,7 @@ namespace CountrySecure.Infrastructure.Persistence.Repositories
             var user = await GetByIdAsync(id);
             if (user == null) return false;
 
-            user.IsDeleted = true; // soft delete
+            user.DeletedAt = DateTime.UtcNow; // soft delete
             _context.Users.Update(user);
 
             return true;
