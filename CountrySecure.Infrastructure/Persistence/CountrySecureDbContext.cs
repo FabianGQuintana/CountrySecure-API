@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-// using CountrySecure.Domain.Entities;
+using System.Reflection;
+ using CountrySecure.Domain.Entities;
 
 namespace CountrySecure.Infrastructure.Persistence
 {
@@ -9,16 +10,14 @@ namespace CountrySecure.Infrastructure.Persistence
             : base(options)
         {
         }
-
-        // Ejemplo de DbSet (después agregás todos)
-        // public DbSet<User> Users { get; set; }
+        public DbSet<Property> Properties { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
 
-            // Aplicará TODAS las configuraciones (cuando empieces a crearlas)
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(CountrySecureDbContext).Assembly);
+            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }
