@@ -1,5 +1,5 @@
+using CountrySecure.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-// using CountrySecure.Domain.Entities;
 
 namespace CountrySecure.Infrastructure.Persistence
 {
@@ -10,8 +10,8 @@ namespace CountrySecure.Infrastructure.Persistence
         {
         }
 
-        // Ejemplo de DbSet (después agregás todos)
-        // public DbSet<User> Users { get; set; }
+        // Acá van todos los DBSet
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
