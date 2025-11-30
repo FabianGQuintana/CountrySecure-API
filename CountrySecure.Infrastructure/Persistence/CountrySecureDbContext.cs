@@ -15,10 +15,10 @@ namespace CountrySecure.Infrastructure.Persistence
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
 
-            // Aplicará TODAS las configuraciones (cuando empieces a crearlas)
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(CountrySecureDbContext).Assembly);
+            modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

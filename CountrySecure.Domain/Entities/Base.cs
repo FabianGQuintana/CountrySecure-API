@@ -1,6 +1,6 @@
 namespace CountrySecure.Domain.Entities
 {
-    public abstract class BaseEntity
+    public abstract class Base
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 

@@ -4,7 +4,7 @@ using CountrySecure.Domain.Constants;
 
 namespace CountrySecure.Domain.Entities
 {
-    public class User : BaseEntity
+    public class User : Base
     {
         public required string Name { get; set; }
         public required string Lastname { get; set; }

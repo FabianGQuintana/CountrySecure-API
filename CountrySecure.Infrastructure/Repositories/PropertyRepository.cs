@@ -1,0 +1,51 @@
+﻿using System;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using CountrySecure.Domain.Enums;
+
+namespace CountrySecure.Infrastructure.Repositories;
+
+public class PropertyRepository : GenericRepository<Property>, IPropertyRepository
+{
+	private readonly CountrySecureDbContext _dbContext;
+
+	public PropertyRepository(CountrySecureDbContext dbContext) : base(dbContext)
+	{
+		_dbContext = dbContext;
+	}
+
+	public async Task<Property?> GetPropertyByAdressAsync(string street, int numberProperty)
+	{
+		return await _dbContext.Properties
+			.FirstOrDefaultAsync(p => p.Street == street && p.NumberProperty == numberProperty);
+	}
+
+	public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(int idUser)
+	{
+		return await _dbContext.Properties
+			.Where(p => p.IdUser == idUser)
+			.ToListAsync();
+	}
+
+	public async Task<IEnumerable<Property>> GetPropertyByIdLotAsync(int idLot)
+	{
+		return await _dbContext.Properties
+			.Where(p => p.IdLot == idLot)
+			.ToListAsync();
+	}
+
+
+	public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status,int numberPage,int pageSize)
+	{
+		return await _dbContext.Properties
+			.Where(p => p.Status == status)
+			.OrderBy(p => p.IdProperty)
+			.Skip((numberPage - 1) * pageSize)
+			.Take(pageSize)
+            .ToListAsync();
+    }
+
+
+}
