@@ -9,19 +9,19 @@ namespace CountrySecure.Application.Interfaces.Services
     {
 
 
-        Task<PropertyDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto);
+        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto);
 
-        Task<PropertyDto?> GetPropertyByIdAsync(int propertyId);
+        Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId);
 
-        Task<IEnumerable<PropertyDto>> GetPropertiesByOwnerId(int ownerId);
+        Task<IEnumerable<PropertyResponseDto>> GetPropertiesByOwnerId(Guid ownerId);
 
-        Task UpdatePropertyAsync(Property updateProperty);
+        Task UpdatePropertyAsync(UpdatePropertyDto updateProperty,Guid currentId);
 
-        Task<bool> SoftDeletePropertyAsync(int propertyId);
+        Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId);
 
-        Task<IEnumerable<PropertyDto>> GetAllPropertiesAsync(int pageNumber, int pageSize);
+        Task<IEnumerable<PropertyResponseDto>> GetAllPropertiesAsync(int pageNumber, int pageSize);
 
-        Task <IEnumerable<PropertyDto>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize);
-
+        Task <IEnumerable<PropertyResponseDto>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize);
+        
     }
 }

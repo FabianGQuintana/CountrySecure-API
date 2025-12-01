@@ -33,13 +33,13 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
         // Relación User a Property
         builder.HasOne(p => p.User)
                .WithMany(u => u.Properties)
-               .HasForeignKey(p => p.IdUser)
+               .HasForeignKey(p => p.UserId)
                .OnDelete(DeleteBehavior.Restrict); // Previene que al borrar un User se borren sus Properties
 
         // Relación Lot a Property
         builder.HasOne(p => p.Lot)
                .WithMany(l => l.Properties)
-               .HasForeignKey(p => p.IdLot)
+               .HasForeignKey(p => p.LotId)
                .OnDelete(DeleteBehavior.Restrict);
     }
 }

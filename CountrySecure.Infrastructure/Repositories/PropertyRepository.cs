@@ -25,14 +25,14 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
 	public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(int idUser)
 	{
 		return await _dbContext.Properties
-			.Where(p => p.IdUser == idUser)
+			.Where(p => p.UserId == idUser)
 			.ToListAsync();
 	}
 
 	public async Task<IEnumerable<Property>> GetPropertyByIdLotAsync(int idLot)
 	{
 		return await _dbContext.Properties
-			.Where(p => p.IdLot == idLot)
+			.Where(p => p.LotId == idLot)
 			.ToListAsync();
 	}
 
@@ -41,7 +41,7 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
 	{
 		return await _dbContext.Properties
 			.Where(p => p.Status == status)
-			.OrderBy(p => p.IdProperty)
+			.OrderBy(p => p.Id)
 			.Skip((numberPage - 1) * pageSize)
 			.Take(pageSize)
             .ToListAsync();
