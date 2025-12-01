@@ -51,7 +51,8 @@ builder.Services.AddDbContext<CountrySecureDbContext>(options =>
 // FluentValidation
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
-builder.Services.AddValidatorsFromAssemblyContaining<CreateUserValidator>();
+
+builder.Services.AddValidatorsFromAssembly(typeof(CreateUserValidator).Assembly);
 
 // OpenAPI
 builder.Services.AddOpenApi();

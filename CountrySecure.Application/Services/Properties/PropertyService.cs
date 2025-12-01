@@ -1,12 +1,12 @@
 ﻿using AutoMapper;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Application.Interfaces.UnitOfWork;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
 using CountrySecure.Application.DTOs.Properties;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using CountrySecure.Application.Interfaces.Persistence;
 
 namespace CountrySecure.Application.Services.Properties
 {
@@ -14,9 +14,9 @@ namespace CountrySecure.Application.Services.Properties
     {
         private readonly IPropertyRepository _propertyRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper; 
+        private readonly IMapper _mapper;
 
-        
+
         public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork, IMapper mapper)
         {
             _propertyRepository = propertyRepository;
@@ -24,24 +24,24 @@ namespace CountrySecure.Application.Services.Properties
             _mapper = mapper;
         }
 
-       
+
         public async Task<PropertyDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto)
         {
-            
+
             var newPropertyEntity = _mapper.Map<Property>(newPropertyDto);
 
-            
+
             var addedEntity = await _propertyRepository.AddAsync(newPropertyEntity);
 
-            
+
             await _unitOfWork.SaveChangesAsync();
 
-            
+
             return _mapper.Map<PropertyDto>(addedEntity);
         }
 
-       
-        public async Task<PropertyDto?> GetPropertyByIdAsync(int propertyId)
+
+        public async Task<PropertyDto?> GetPropertyByIdAsync(Guid propertyId)
         {
             var propertyEntity = await _propertyRepository.GetByIdAsync(propertyId);
 
@@ -50,13 +50,13 @@ namespace CountrySecure.Application.Services.Properties
                 return null;
             }
 
-            
+
             return _mapper.Map<PropertyDto>(propertyEntity);
         }
 
-        
 
-        
+
+
         public async Task<IEnumerable<PropertyDto>> GetAllPropertiesAsync(int pageNumber, int pageSize)
         {
             var entities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
@@ -75,10 +75,10 @@ namespace CountrySecure.Application.Services.Properties
 
         //  Este método aún recibe y devuelve Entidades, lo cual es inconsistente.
         // Se recomienda que en el futuro trabaje con DTOs si se usa en la API.
-        public async Task<IEnumerable<PropertyDto>> GetPropertiesByOwnerId(int ownerId)
+        public async Task<IEnumerable<PropertyDto>> GetPropertiesByOwnerId(Guid ownerId)
         {
             // 1. Obtener la lista de Entidades del Repositorio (CORRECTO)
-            var propertyEntities = await _propertyRepository.GetPropertyByIdUserAsync(ownerId); // <-- USAR await AQUÍ
+            var propertyEntities = await _propertyRepository.GetPropertyByUserIdAsync(ownerId); // <-- USAR await AQUÍ
 
             // 2. Mapear la colección de Entidades a la colección de DTOs (CORRECTO)
             return _mapper.Map<IEnumerable<PropertyDto>>(propertyEntities);
@@ -92,7 +92,7 @@ namespace CountrySecure.Application.Services.Properties
             await _unitOfWork.SaveChangesAsync();
         }
 
-        public async Task<bool> SoftDeletePropertyAsync(int propertyId)
+        public async Task<bool> SoftDeletePropertyAsync(Guid propertyId)
         {
             bool marked = await _propertyRepository.DeleteAsync(propertyId);
 

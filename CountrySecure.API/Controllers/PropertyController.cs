@@ -44,7 +44,7 @@ namespace CountrySecure.API.Controllers
         }
 
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(int id)
+        public async Task<IActionResult> GetById(Guid id)
         {
             var propertyDto = await _propertyService.GetPropertyByIdAsync(id);
 
@@ -68,12 +68,12 @@ namespace CountrySecure.API.Controllers
             var propertyDto = await _propertyService.AddNewPropertyAsync(dto);
 
             // 201 Created
-            return CreatedAtAction(nameof(GetById), new { id = propertyDto.IdProperty }, propertyDto);
+            return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
         }
 
         // 5. Método: DELETE /api/Property/{id} (Baja Lógica)
         [HttpDelete("{id}")]
-        public async Task<IActionResult> SoftDelete(int id)
+        public async Task<IActionResult> SoftDelete(Guid id)
         {
             bool deleted = await _propertyService.SoftDeletePropertyAsync(id);
 

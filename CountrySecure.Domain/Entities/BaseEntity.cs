@@ -2,10 +2,17 @@
 
 namespace CountrySecure.Domain.Entities
 {
-    public abstract class BaseEntity 
+    public abstract class BaseEntity
     {
-        public int Id { get; set; }
-        public PropertyStatus Status { get; set; }
-        // Aquí también podrías poner DateTime CreatedAt, string CreatedBy, etc.
+
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
+        public DateTime? DeletedAt { get; set; }
+
+        // Si IsDeleted tiene un valor (significa que fue dado de baja), entonces IsDeleted es true
+        public bool IsDeleted => DeletedAt.HasValue;
+        
     }
 }

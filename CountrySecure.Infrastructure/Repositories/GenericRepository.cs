@@ -17,7 +17,7 @@ namespace CountrySecure.Infrastructure.Repositories
         }
 
         // 1. Implementación de GetByIdAsync
-        public virtual async Task<T?> GetByIdAsync(int id)
+        public virtual async Task<T?> GetByIdAsync(Guid id)
         {
             // Busca la entidad por su clave primaria
             return await _dbContext.Set<T>().FindAsync(id);
@@ -47,7 +47,7 @@ namespace CountrySecure.Infrastructure.Repositories
             return Task.FromResult(entity);
         }
 
-        public virtual async Task<bool> DeleteAsync(int id)
+        public virtual async Task<bool> DeleteAsync(Guid id)
         {
             // 1. Encontrar la entidad (usando T)
             var entityToDelete = await _dbContext.Set<T>().FindAsync(id);

@@ -4,15 +4,16 @@ namespace CountrySecure.Domain.Entities;
 
 public class Property : BaseEntity
 {
-	public int IdProperty { get; set; }
-	public  string Street { get; set; }
-	public int NumberProperty { get; set; }
+	public required string Street { get; set; }
+	public int PropertyNumber { get; set; }
+
+	public PropertyStatus Status { get; set; }
 
     //Relationships FK
-    public int IdUser { get; set; }
-	public int IdLot { get; set; }
+    public Guid UserId { get; set; }
+	public Guid LotId { get; set; }
 
     //Navigation Properties
-    public User User { get; set; }
-	public Lot Lot { get; set; }
+    public required User User { get; set; }
+	public required Lot Lot { get; set; }
 }

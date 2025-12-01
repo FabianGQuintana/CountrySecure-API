@@ -13,8 +13,8 @@ namespace CountrySecure.Application.MappingProfiles
             // 1. DTO de ENTRADA (Creación)
             // Mapea del DTO (lo que entra por la API) a la Entidad (lo que se guarda en la BD)
             CreateMap<CreatePropertyDto, Property>()
-                // Ignora el IdProperty para la creación, ya que es autogenerado.
-                .ForMember(dest => dest.IdProperty, opt => opt.Ignore())
+                // Ignora el PropertyId para la creación, ya que es autogenerado.
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
                 // Puedes establecer valores por defecto aquí
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => Domain.Enums.PropertyStatus.Available));
 

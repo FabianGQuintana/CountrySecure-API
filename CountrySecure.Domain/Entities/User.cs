@@ -1,10 +1,6 @@
-
-using CountrySecure.Domain.Constants;
-
-
 namespace CountrySecure.Domain.Entities
 {
-    public class User : Base
+    public class User : BaseEntity
     {
         public required string Name { get; set; }
         public required string Lastname { get; set; }
@@ -19,9 +15,8 @@ namespace CountrySecure.Domain.Entities
 
         public required string Role { get; set; }
 
-        // Opcional: info del admin que crea o modifica
-        // public Guid? CreatedBy { get; set; }
-        // public Guid? UpdatedBy { get; set; }
+        // FK
+        public ICollection<Property> Properties { get; set; } = new List<Property>();
 
     }
 }

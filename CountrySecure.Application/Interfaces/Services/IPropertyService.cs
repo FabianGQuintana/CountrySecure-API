@@ -11,13 +11,13 @@ namespace CountrySecure.Application.Interfaces.Services
 
         Task<PropertyDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto);
 
-        Task<PropertyDto?> GetPropertyByIdAsync(int propertyId);
+        Task<PropertyDto?> GetPropertyByIdAsync(Guid propertyId);
 
-        Task<IEnumerable<PropertyDto>> GetPropertiesByOwnerId(int ownerId);
+        Task<IEnumerable<PropertyDto>> GetPropertiesByOwnerId(Guid ownerId);
 
         Task UpdatePropertyAsync(Property updateProperty);
 
-        Task<bool> SoftDeletePropertyAsync(int propertyId);
+        Task<bool> SoftDeletePropertyAsync(Guid propertyId);
 
         Task<IEnumerable<PropertyDto>> GetAllPropertiesAsync(int pageNumber, int pageSize);
 
