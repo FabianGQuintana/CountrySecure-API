@@ -4,6 +4,7 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
 using CountrySecure.Application.DTOs.Properties;
+using CountrySecure.Application.Interfaces.Persistence;
 
 namespace CountrySecure.Application.Services.Properties
 {
