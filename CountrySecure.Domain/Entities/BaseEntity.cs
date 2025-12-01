@@ -1,18 +1,22 @@
-﻿using CountrySecure.Domain.Enums;
+﻿using System;
+using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Domain.Entities
 {
     public abstract class BaseEntity
+    // Clase Base para todas las entidades
+    public abstract class BaseEntity 
     {
+        // 1. Clave Primaria (Identificador Único)
+        public Guid Id { get; set; } = new Guid();
 
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public required string Status { get; set; } = "Active";
 
+        // 2. Auditoría (Fecha de Creación/Modificación)
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime? UpdatedAt { get; set; }
-        public DateTime? DeletedAt { get; set; }
+        public required string CreatedBy { get; set; }
 
-        // Si IsDeleted tiene un valor (significa que fue dado de baja), entonces IsDeleted es true
-        public bool IsDeleted => DeletedAt.HasValue;
-        
+        public DateTime? LastModifiedAt { get; set; } = DateTime.UtcNow;
+        public string? LastModifiedBy { get; set; } 
     }
 }

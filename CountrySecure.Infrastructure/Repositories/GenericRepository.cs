@@ -1,13 +1,14 @@
 ﻿using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
+using CountrySecure.Domain.Interfaces;
 using CountrySecure.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CountrySecure.Infrastructure.Repositories
 {
     // Esta clase implementa la interfaz IGenericRepository para cualquier entidad T
-    public class GenericRepository<T> : IGenericRepository<T> where T : class
+    public class GenericRepository<T> : IGenericRepository<T> where T : class , IStatusEntity
     {
         private readonly CountrySecureDbContext _dbContext;
 
@@ -60,7 +61,7 @@ namespace CountrySecure.Infrastructure.Repositories
             
             if (entityToDelete is BaseEntity baseEntity)
             {
-                baseEntity.Status = PropertyStatus.Inactive; 
+                baseEntity.Status = "Inactive";
 
                 // Marcar el estado de la entidad en el DbContext para que EF Core la rastree como UPDATE
                 _dbContext.Entry(baseEntity).State = EntityState.Modified;

@@ -13,7 +13,7 @@ namespace CountrySecure.Application.MappingProfiles
             // 1. DTO de ENTRADA (Creación)
             // Mapea del DTO (lo que entra por la API) a la Entidad (lo que se guarda en la BD)
             CreateMap<CreatePropertyDto, Property>()
-                // Ignora el PropertyId para la creación, ya que es autogenerado.
+                // Ignora el IdProperty para la creación, ya que es autogenerado.
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 // Puedes establecer valores por defecto aquí
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => Domain.Enums.PropertyStatus.Available));
@@ -21,7 +21,7 @@ namespace CountrySecure.Application.MappingProfiles
 
             // 2. DTO de SALIDA (Consulta)
             // Mapea de la Entidad (lo que viene de la BD) al DTO (lo que se expone por la API)
-            CreateMap<Property, PropertyDto>();
+            CreateMap<Property, PropertyResponseDto>();
             // Si PropertyDto tiene 'OwnerFullName', puedes hacer un mapeo más complejo:
             // .ForMember(dest => dest.OwnerFullName, opt => opt.MapFrom(src => $"{src.User.FirstName} {src.User.LastName}")); 
             // (Esto requiere que cargues la Entidad User en la consulta, pero es el concepto)

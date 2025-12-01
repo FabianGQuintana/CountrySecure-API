@@ -2,7 +2,7 @@
 
 namespace CountrySecure.Application.DTOs.Properties
 {
-    public class PropertyDto
+    public class PropertyResponseDto
     {
         public Guid PropertyId { get; set; }
         public required string Street { get; set; }
