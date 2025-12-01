@@ -1,5 +1,4 @@
-﻿using System;
-using CountrySecure.Domain.Entities;
+﻿using CountrySecure.Domain.Entities;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -16,36 +15,36 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
 		_dbContext = dbContext;
 	}
 
-	public async Task<Property?> GetPropertyByAdressAsync(string street, int numberProperty)
+	public async Task<Property?> GetPropertyByAdressAsync(string street, int PropertyNumber)
 	{
 		return await _dbContext.Properties
-			.FirstOrDefaultAsync(p => p.Street == street && p.NumberProperty == numberProperty);
+			.FirstOrDefaultAsync(p => p.Street == street && p.PropertyNumber == PropertyNumber);
 	}
 
-	public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(int idUser)
+	public async Task<IEnumerable<Property>> GetPropertyByUserIdAsync(Guid UserId)
 	{
 		return await _dbContext.Properties
-			.Where(p => p.UserId == idUser)
+			.Where(p => p.UserId == UserId)
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<Property>> GetPropertyByIdLotAsync(int idLot)
+	public async Task<IEnumerable<Property>> GetPropertyByLotIdAsync(Guid LotId)
 	{
 		return await _dbContext.Properties
-			.Where(p => p.LotId == idLot)
+			.Where(p => p.LotId == LotId)
 			.ToListAsync();
 	}
 
 
-	public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status,int numberPage,int pageSize)
+	public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status, int numberPage, int pageSize)
 	{
 		return await _dbContext.Properties
 			.Where(p => p.Status == status)
 			.OrderBy(p => p.Id)
 			.Skip((numberPage - 1) * pageSize)
 			.Take(pageSize)
-            .ToListAsync();
-    }
+			.ToListAsync();
+	}
 
 
 }

@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
- using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Entities;
 
 namespace CountrySecure.Infrastructure.Persistence
 {
@@ -10,6 +10,8 @@ namespace CountrySecure.Infrastructure.Persistence
             : base(options)
         {
         }
+
+        public DbSet<User> Users {get; set;}
         public DbSet<Property> Properties { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

@@ -12,9 +12,9 @@ namespace CountrySecure.Application.DTOs.Properties
         public int HouseNumber { get; set; }
 
         [Required]
-        public int IdUser { get; set; }
+        public Guid UserId { get; set; }
 
         [Required]
-        public int IdLot { get; set; } 
+        public Guid LotId { get; set; }
     }
 }

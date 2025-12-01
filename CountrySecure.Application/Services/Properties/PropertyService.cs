@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Application.Interfaces.UnitOfWork;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
 using CountrySecure.Application.DTOs.Properties;
+using CountrySecure.Application.Interfaces.Persistence;
 
 namespace CountrySecure.Application.Services.Properties
 {
@@ -12,9 +12,9 @@ namespace CountrySecure.Application.Services.Properties
     {
         private readonly IPropertyRepository _propertyRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper; 
+        private readonly IMapper _mapper;
 
-        
+
         public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork, IMapper mapper)
         {
             _propertyRepository = propertyRepository;
@@ -25,13 +25,13 @@ namespace CountrySecure.Application.Services.Properties
        
         public async Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto)
         {
-            
+
             var newPropertyEntity = _mapper.Map<Property>(newPropertyDto);
 
-            
+
             var addedEntity = await _propertyRepository.AddAsync(newPropertyEntity);
 
-            
+
             await _unitOfWork.SaveChangesAsync();
 
             
