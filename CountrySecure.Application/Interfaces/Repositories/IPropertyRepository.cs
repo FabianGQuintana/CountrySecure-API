@@ -9,9 +9,9 @@ public interface IPropertyRepository : IGenericRepository<Property>
 	
 	Task<Property?> GetPropertyByAdressAsync(string street, int numberProperty);
 
-	Task<IEnumerable<Property>> GetPropertyByIdUserAsync(int idUser);
+	Task<IEnumerable<Property>> GetPropertyByIdUserAsync(Guid userId);
 
-	Task<IEnumerable<Property>> GetPropertyByIdLotAsync(int idLot);
+	Task<IEnumerable<Property>> GetPropertyByIdLotAsync(Guid lotId);
 
     Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status,int pageNumber,int pageSize);
 

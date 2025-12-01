@@ -6,7 +6,7 @@ namespace CountrySecure.Application.DTOs.Properties
     {
         [Required]
         [StringLength(150)]
-        public string Street { get; set; }
+        public required string Street { get; set; }
 
         [Required]
         public int HouseNumber { get; set; }
