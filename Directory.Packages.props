@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <!-- Forzar una única versión de AutoMapper para toda la solución -->
+    <PackageVersion Include="AutoMapper" Version="15.1.0" />
+  </ItemGroup>
+</Project>

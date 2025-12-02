@@ -31,7 +31,9 @@ namespace CountrySecure.Application.Services.Users
                 Phone = dto.Phone,
                 Email = dto.Email,
                 Password = dto.Password,
-                Role = dto.Role
+                Role = dto.Role,
+                Status = "Active"
+                
             };
 
             await _userRepository.AddAsync(user);

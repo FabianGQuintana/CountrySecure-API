@@ -15,6 +15,8 @@ namespace CountrySecure.Application.Interfaces.Services
 
         Task<IEnumerable<PropertyResponseDto>> GetPropertiesByOwnerId(Guid ownerId);
 
+        Task<IEnumerable<PropertyResponseDto>> GetPropertiesByLotIdAsync(Guid lotId);
+
         Task UpdatePropertyAsync(UpdatePropertyDto updateProperty,Guid currentId);
 
         Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId);

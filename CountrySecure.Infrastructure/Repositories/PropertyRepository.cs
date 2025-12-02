@@ -21,25 +21,25 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
 			.FirstOrDefaultAsync(p => p.Street == street && p.PropertyNumber == PropertyNumber);
 	}
 
-	public async Task<IEnumerable<Property>> GetPropertyByUserIdAsync(Guid UserId)
+	public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(Guid UserId)
 	{
 		return await _dbContext.Properties
 			.Where(p => p.UserId == UserId)
 			.ToListAsync();
 	}
 
-	public async Task<IEnumerable<Property>> GetPropertyByLotIdAsync(Guid LotId)
-	{
-		return await _dbContext.Properties
-			.Where(p => p.LotId == LotId)
-			.ToListAsync();
-	}
+    public async Task<IEnumerable<Property>> GetPropertiesByLotIdAsync(Guid lotId)
+    {
+        return await _dbContext.Properties
+                               .Where(p => p.LotId == lotId)
+                               .ToListAsync();
+    }
 
 
-	public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status, int numberPage, int pageSize)
+    public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status, int numberPage, int pageSize)
 	{
 		return await _dbContext.Properties
-			.Where(p => p.Status == status)
+			.Where(p => p.Status == status.ToString())
 			.OrderBy(p => p.Id)
 			.Skip((numberPage - 1) * pageSize)
 			.Take(pageSize)
