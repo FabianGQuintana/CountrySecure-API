@@ -22,7 +22,6 @@ namespace CountrySecure.Application.Services.Users
 
         public async Task<UserResponseDto> CreateUserAsync(CreateUserDto dto)
         {
-
             var user = new User
             {
                 Name = dto.Name,
@@ -31,7 +30,12 @@ namespace CountrySecure.Application.Services.Users
                 Phone = dto.Phone,
                 Email = dto.Email,
                 Password = dto.Password,
-                Role = dto.Role
+                Role = dto.Role,
+
+                //  Inicializacion de BaseEntity para el primer Admin no autenticado
+                CreatedBy = "SYSTEM", // Asignamos un valor fijo para el primer Admin no autenticado
+                CreatedAt = DateTime.UtcNow,
+                Status = "Active"
             };
 
             await _userRepository.AddAsync(user);

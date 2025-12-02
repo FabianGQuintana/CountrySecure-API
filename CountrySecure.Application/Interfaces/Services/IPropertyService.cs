@@ -9,11 +9,13 @@ namespace CountrySecure.Application.Interfaces.Services
     {
 
 
-        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto);
+        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto,Guid currentUserId);
 
         Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId);
 
         Task<IEnumerable<PropertyResponseDto>> GetPropertiesByOwnerId(Guid ownerId);
+
+        Task<IEnumerable<PropertyResponseDto>> GetPropertiesByLotIdAsync(Guid lotId);
 
         Task UpdatePropertyAsync(UpdatePropertyDto updateProperty,Guid currentId);
 

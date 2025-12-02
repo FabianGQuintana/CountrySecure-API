@@ -42,6 +42,9 @@ namespace CountrySecure.API.Controllers
             return Ok(availablePropertiesDto); // 200 OK
         }
 
+      
+
+
         // 3. Método: GET /api/Property/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
@@ -68,9 +71,22 @@ namespace CountrySecure.API.Controllers
             return Ok(propertiesDto);
         }
 
+        // 5. Método: GET /api/Property/lot/{lotId}
+        [HttpGet("lot/{lotId}")]
+        public async Task<IActionResult> GetByLot(Guid lotId)
+        {
+            var propertiesDto = await _propertyService.GetPropertiesByLotIdAsync(lotId);
+
+            if (propertiesDto == null || !propertiesDto.Any()) // Verifica si la lista está vacía o es nula
+            {
+                return NotFound();
+            }
+            return Ok(propertiesDto);
+        }
+
         // --- MÉTODOS DE ESCRITURA ---
 
-        // 5. Método: POST /api/Property (Creación)
+        // 6. Método: POST /api/Property (Creación)
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] CreatePropertyDto dto)
         {
@@ -80,12 +96,20 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState); // 400 Bad Request
             }
 
-            var propertyDto = await _propertyService.AddNewPropertyAsync(dto);
+            // Extraer el ID del usuario desde el token
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var propertyDto = await _propertyService.AddNewPropertyAsync(dto, currentUserId);
 
             // 201 Created. propertyDto.IdProperty debe ser el ID generado.
             return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
         }
 
+        // 7. Método: PUT /api/Property/{id} (Actualización SEGURA)
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(Guid id, [FromBody] UpdatePropertyDto updateDto)
         {
@@ -129,7 +153,7 @@ namespace CountrySecure.API.Controllers
             
         }
 
-        // 7. Método: DELETE /api/Property/{id} (Baja Lógica SEGURA)
+        // 8. Método: DELETE /api/Property/{id} (Baja Lógica SEGURA)
         [HttpDelete("{id}")]
         public async Task<IActionResult> SoftDelete(Guid id)
         {

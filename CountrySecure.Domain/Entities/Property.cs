@@ -5,7 +5,7 @@ namespace CountrySecure.Domain.Entities;
 public class Property : BaseEntity
 {
 	public required string Street { get; set; }
-	public int NumberProperty { get; set; }
+	public int PropertyNumber { get; set; }
 
     public PropertyStatus PropertyType { get; set; }
 

@@ -1,6 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Infrastructure.Persistence;
+using CountrySecure.Infrastructure.Persistence.Specifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace CountrySecure.Infrastructure.Repositories
@@ -16,13 +21,15 @@ namespace CountrySecure.Infrastructure.Repositories
 
         public async Task<User?> GetByIdAsync(Guid id)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.IsDeleted);
+            return await _context.Users
+                .Where(UserPredicates.NotDeleted)
+                .FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize)
         {
             return await _context.Users
-                .Where(u => !u.IsDeleted)
+                .Where(UserPredicates.NotDeleted)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -50,5 +57,4 @@ namespace CountrySecure.Infrastructure.Repositories
             return true;
         }
     }
-
 }

@@ -1,77 +1,104 @@
-using AutoMapper;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Npgsql;
+// Usings para la Inyección de Dependencias (mantener referencias a tus proyectos)
+using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Application.MappingProfiles;
+using CountrySecure.Application.Services.Lots;
 using CountrySecure.Application.Services.Properties;
+using CountrySecure.Application.Services.Users;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
-using CountrySecure.Application.Interfaces.Persistence;
-using CountrySecure.Application.Services.Users;
-using FluentValidation;
-using CountrySecure.Application.Validators;
-using FluentValidation.AspNetCore;
-using Microsoft.EntityFrameworkCore;
-
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers
+// API básica (mínima) sin dependencias externas opcionales
 builder.Services.AddControllers();
 
-
-builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
-
-
-
-// 3. REGISTRO DE DEPENDENCIAS DE PROPERTY Y DE INFRAESTRUCTURA
-
-// Registrar el Repositorio de Property (Contrato <-> Implementaci�n)
+// Registro de repositorios y servicios (como estaba)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
+builder.Services.AddScoped<ILotRepository, LotRepository>();
 
-// Registrar la Clase Base del Repositorio Gen�rico (Si la usas, aunque la anterior es suficiente)
-// builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>)); 
-
-// Registrar el Servicio de Property (L�gica de Negocio)
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
+builder.Services.AddScoped<ILotService, LotService>();
 
-// Registrar la Unidad de Trabajo (DEBES HACER ESTO)
-// Asumo que tienes una interfaz IUnitOfWork y una implementaci�n UnitOfWork en Infrastructure/Persistence.
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+// Obtener la cadena de conexión (puede venir de appsettings o variable de entorno)
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
+              ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 
-// PostgreSQL DbContext
+if (string.IsNullOrWhiteSpace(connStr))
+{
+    throw new InvalidOperationException("Cadena de conexión 'DefaultConnection' no encontrada en appsettings ni en la variable de entorno ConnectionStrings__DefaultConnection.");
+}
+
+// Configuración mínima de la BD (requiere paquete Npgsql.EntityFrameworkCore.PostgreSQL)
+// Habilita reintentos automáticos para fallos transitorios
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(connStr, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure())
 );
-
-
-// FluentValidation
-builder.Services.AddFluentValidationAutoValidation();
-builder.Services.AddFluentValidationClientsideAdapters();
-
-builder.Services.AddValidatorsFromAssembly(typeof(CreateUserValidator).Assembly);
-
-// OpenAPI
-builder.Services.AddOpenApi();
-
-
-
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
+// Loguear si la cadena de conexión viene de variable de entorno (útil para debugging)
+var fromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") != null;
+logger.LogInformation("Connection string 'DefaultConnection' loaded. Override from environment: {FromEnv}", fromEnv);
+
+// Espera proactiva a que la base de datos esté disponible antes de aceptar tráfico
+try
+{
+    await WaitForDatabaseAsync(connStr, logger, timeoutSeconds: 30);
+}
+catch (Exception ex)
+{
+    logger.LogCritical(ex, "No se pudo conectar a la base de datos en el tiempo de espera configurado.");
+    throw;
+}
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    // Página de excepción en desarrollo
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
+
+static async Task WaitForDatabaseAsync(string connectionString, ILogger logger, int timeoutSeconds = 30, CancellationToken ct = default)
+{
+    var builder = new NpgsqlConnectionStringBuilder(connectionString);
+    logger.LogInformation("Esperando BD en {Host}:{Port} (no se mostrará la contraseña)", builder.Host, builder.Port);
+
+    var sw = Stopwatch.StartNew();
+    int attempt = 0;
+    while (sw.Elapsed.TotalSeconds < timeoutSeconds)
+    {
+        ct.ThrowIfCancellationRequested();
+        attempt++;
+        try
+        {
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync(ct);
+            logger.LogInformation("Base de datos disponible. Host: {Host}, Port: {Port}", conn.Host, conn.Port);
+            return;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Intento {Attempt}: BD no disponible; reintentando en {Delay}ms...", attempt, Math.Min(1000 * attempt, 5000));
+            await Task.Delay(Math.Min(1000 * attempt, 5000), ct);
+        }
+    }
+
+    throw new TimeoutException($"Tiempo de espera ({timeoutSeconds}s) agotado esperando a la base de datos.");
+}
