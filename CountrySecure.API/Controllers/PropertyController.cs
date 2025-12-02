@@ -96,7 +96,14 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState); // 400 Bad Request
             }
 
-            var propertyDto = await _propertyService.AddNewPropertyAsync(dto);
+            // Extraer el ID del usuario desde el token
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            var propertyDto = await _propertyService.AddNewPropertyAsync(dto, currentUserId);
 
             // 201 Created. propertyDto.IdProperty debe ser el ID generado.
             return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);

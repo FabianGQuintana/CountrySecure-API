@@ -1,10 +1,14 @@
-﻿using AutoMapper;
+﻿using CountrySecure.Application.Mappers;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
 using CountrySecure.Application.DTOs.Properties;
 using CountrySecure.Application.Interfaces.Persistence;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace CountrySecure.Application.Services.Properties
 {
@@ -12,133 +16,118 @@ namespace CountrySecure.Application.Services.Properties
     {
         private readonly IPropertyRepository _propertyRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper;
 
-
-        public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork, IMapper mapper)
+        public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork)
         {
             _propertyRepository = propertyRepository;
             _unitOfWork = unitOfWork;
-            _mapper = mapper;
         }
 
-       
-        public async Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto)
+        // --- MÉTODOS DE ESCRITURA ---
+
+        public async Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto, Guid currentUserId)
         {
+            // 1. Convertir DTO a Entidad
+            var newPropertyEntity = newPropertyDto.ToEntity();
 
-            var newPropertyEntity = _mapper.Map<Property>(newPropertyDto);
+            // 2. ASIGNACIÓN DE CAMPOS REQUIRED
+            newPropertyEntity.CreatedBy = currentUserId.ToString();
+            newPropertyEntity.Status = "Active"; // Estado inicial
+            newPropertyEntity.CreatedAt = DateTime.UtcNow;
 
-
-            var addedEntity = await _propertyRepository.AddAsync(newPropertyEntity);
-
-
+            var addedProperty = await _propertyRepository.AddAsync(newPropertyEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            
-            return _mapper.Map<PropertyResponseDto>(addedEntity);
+            // 3. Mapeo de Entidad a DTO de Respuesta
+            return addedProperty.ToResponseDto();
         }
 
-       
-        public async Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId)
+        public async Task UpdatePropertyAsync(UpdatePropertyDto updateProperty, Guid currentId)
         {
-            var propertyEntity = await _propertyRepository.GetByIdAsync(propertyId);
+            // Asumimos que updateProperty.PropertyId es la propiedad correcta para la ID
+            var existingEntity = await _propertyRepository.GetByIdAsync(updateProperty.PropertyId);
 
-            if (propertyEntity == null)
+            if (existingEntity == null)
             {
-                return null;
-            }
-
-            
-            return _mapper.Map<PropertyResponseDto>(propertyEntity);
-        }
-
-
-        public async Task<IEnumerable<PropertyResponseDto>> GetAllPropertiesAsync(int pageNumber, int pageSize)
-        {
-            var entities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
-
-            return _mapper.Map<IEnumerable<PropertyResponseDto>>(entities);
-        }
-
-        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
-        {
-            var entities = await _propertyRepository.GetPropertiesByStatusAsync(status, pageNumber, pageSize);
-
-            return _mapper.Map<IEnumerable<PropertyResponseDto>>(entities);
-        }
-
-        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByOwnerId(Guid ownerId)
-        {
-            
-            var propertyEntities = await _propertyRepository.GetPropertyByIdUserAsync(ownerId);
-
-            
-            return _mapper.Map<IEnumerable<PropertyResponseDto>>(propertyEntities);
-        }
-
-        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByLotIdAsync(Guid lotId)
-        {
-            // 1. Obtener la lista de Entidades (Property) del Repositorio
-            var propertyEntities = await _propertyRepository.GetPropertiesByLotIdAsync(lotId);
-
-            // 2. Mapear la colección de Entidades a la colección de DTOs
-            return _mapper.Map<IEnumerable<PropertyResponseDto>>(propertyEntities);
-        }
-
-        public async Task UpdatePropertyAsync(UpdatePropertyDto updateProperty, Guid currentUser)
-        {
-            // 1. Recuperar la entidad existente
-            var existingProperty = await _propertyRepository.GetByIdAsync(updateProperty.PropertyId);
-
-            // Validación de existencia (aunque el controlador ya maneja la NotFound para el PUT)
-            if (existingProperty == null)
-            {
-                // Lanzamos una excepción que el Controller captura y convierte en 404
                 throw new KeyNotFoundException($"Property with ID {updateProperty.PropertyId} not found.");
             }
 
-            // 2. VALIDACIÓN DE SEGURIDAD (Regla de negocio: ¿El usuario es el dueño?)
-            if (existingProperty.Id != currentUser) 
+            // REGLA DE NEGOCIO: Solo el creador o un Admin pueden actualizar
+            if (existingEntity.CreatedBy != currentId.ToString())
             {
-                throw new UnauthorizedAccessException("You are not authorized to update this property.");
+                throw new UnauthorizedAccessException("User is not authorized to update this property.");
             }
 
-            // 3. MAPEO (Actualización parcial de campos no nulos)
-            // Aplica los cambios del DTO al objeto existente.
-            _mapper.Map(updateProperty, existingProperty);
+            // Mapeo de actualización (DRY)
+            updateProperty.MapToEntity(existingEntity);
 
-            // 4. Marcar para actualización y guardar la transacción
-            await _propertyRepository.UpdateAsync(existingProperty);
+            // Actualizar Auditoría
+            existingEntity.LastModifiedAt = DateTime.UtcNow;
+            existingEntity.LastModifiedBy = currentId.ToString();
+
+            await _propertyRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
         }
+
         public async Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId)
         {
             var existingProperty = await _propertyRepository.GetByIdAsync(propertyId);
-
             if (existingProperty == null)
             {
-                return false; 
+                return false;
             }
 
-            if (existingProperty.UserId != currentUserId)
+            // REGLA DE NEGOCIO: Solo el creador o un Admin pueden eliminar
+            if (existingProperty.CreatedBy != currentUserId.ToString())
             {
-                // El servicio lanza la excepción, que el Controller capturará y devolverá un 403 Forbidden.
-                throw new UnauthorizedAccessException("You are not authorized to delete this property.");
+                throw new UnauthorizedAccessException("User is not authorized to delete this property.");
             }
 
-            // El repositorio marcará el estado como "Inactive".
             bool marked = await _propertyRepository.DeleteAsync(propertyId);
 
             if (marked)
             {
-                // PERSISTIR CAMBIOS (Transacción)
                 await _unitOfWork.SaveChangesAsync();
                 return true;
             }
 
-            // Esto solo ocurriría si el repositorio no logró encontrar o marcar la entidad.
             return false;
         }
 
+        // --- MÉTODOS DE CONSULTA ---
+
+        public async Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId)
+        {
+            var propertyEntity = await _propertyRepository.GetByIdAsync(propertyId);
+            if (propertyEntity == null) return null;
+
+            return propertyEntity.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<PropertyResponseDto>> GetAllPropertiesAsync(int pageNumber, int pageSize)
+        {
+            var propertyEntities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
+
+            return propertyEntities.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
+        {
+            var propertyEntities = await _propertyRepository.GetPropertiesByStatusAsync(status, pageNumber, pageSize);
+
+            return propertyEntities.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByOwnerId(Guid ownerId)
+        {
+            var propertyEntities = await _propertyRepository.GetPropertyByIdUserAsync(ownerId);
+            return propertyEntities.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByLotIdAsync(Guid lotId)
+        {
+            var propertyEntities = await _propertyRepository.GetPropertiesByLotIdAsync(lotId);
+            return propertyEntities.ToResponseDto();
+        }
     }
 }

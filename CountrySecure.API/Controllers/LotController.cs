@@ -1,5 +1,4 @@
-﻿
-using CountrySecure.Application.Interfaces.Services;
+﻿using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using CountrySecure.Application.DTOs.Lots;
 using System.Threading.Tasks;
@@ -10,86 +9,79 @@ using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.API.Controllers
 {
-
-
     [ApiController]
     [Route("api/[Controller]")]
     public class LotController : ControllerBase
     {
-
         private readonly ILotService _lotService;
 
         public LotController(ILotService lotService)
         {
-                       _lotService = lotService;
+            _lotService = lotService;
         }
 
         // --- MÉTODOS DE CONSULTA (GET) ---
-        // 1. Método: GET /api/Lot?pageNumber=1&pageSize=10
+
         [HttpGet]
-        public async Task<IActionResult>  GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var lotsDto = await _lotService.GetAllLotsAsync(pageNumber, pageSize);
-            return Ok(lotsDto); // 200 OK
+            return Ok(lotsDto);
         }
 
-
-        // 2. Método: GET /api/Lot/block-names
         [HttpGet("block-names")]
         public async Task<IActionResult> GetAllBlockNames()
         {
             var blockNames = await _lotService.GetAllBlockNamesAsync();
-            return Ok(blockNames); // 200 OK
+            return Ok(blockNames);
         }
 
-
-        // 3. Método: GET /api/Lot/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var lotDto = await _lotService.GetLotByIdAsync(id);
             if (lotDto == null)
             {
-                return NotFound(); // 404 Not Found
+                return NotFound();
             }
-            return Ok(lotDto); // 200 OK
+            return Ok(lotDto);
         }
 
-
-
-        // 4. Método: GET /api/Lot/status?status=Available&pageNumber=1&pageSize=10
         [HttpGet("status")]
-        
         public async Task<IActionResult> GetLotsByStatus([FromQuery] LotStatus status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var lotsDto = await _lotService.GetLotsByStatusAsync(status, pageNumber, pageSize);
-            if(lotsDto == null)
+            // La verificación de null es innecesaria si el servicio devuelve una lista vacía, pero la mantendremos si la interfaz lo requiere.
+            if (lotsDto == null)
             {
-                return NotFound(); // 404 Not Found
+                return NotFound();
             }
-            return Ok(lotsDto); // 200 OK
+            return Ok(lotsDto);
         }
 
-        // --- MÉTODOS DE ESCRITURA (POST, PUT, DELETE) ---
+        // --- MÉTODOS DE ESCRITURA ---
 
-        // 5. Método: POST /api/Lot (Creación)
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] CreateLotDto dto)
         {
-            // Validar el DTO de entrada
             if (!ModelState.IsValid)
             {
-                return BadRequest(ModelState); // 400 Bad Request
+                return BadRequest(ModelState);
             }
 
-            var lotDto = await _lotService.AddNewLotAsync(dto);
+            // 1. Extracción del ID del usuario creador (del token)
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
 
-            // 201 Created
-            // Asumimos que LotResponseDto tiene la propiedad Id
+            // 2. Llamada al servicio con el ID del creador
+            var lotDto = await _lotService.AddNewLotAsync(dto, currentUserId);
+
             return CreatedAtAction(nameof(GetById), new { id = lotDto.LotId }, lotDto);
         }
 
-        // 6. Método: PUT /api/Lot/{id} (Actualización Segura)
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(Guid id, [FromBody] UpdateLotDto updateDto)
         {
@@ -98,36 +90,13 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState);
             }
 
-            // VALIDACIÓN DE COHERENCIA: ID de la URL vs ID del DTO
+            // CORRECCIÓN DE LA COHERENCIA DEL ID (Asumo que el DTO usa LotId)
             if (id != updateDto.Id)
             {
                 return BadRequest(new { message = "ID mismatch between URL and body." });
             }
 
-            try
-            {
-                // currentUserId extraído del token
-                Guid currentUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-                await _lotService.UpdateLotAsync(updateDto, currentUserId);
-
-                return NoContent(); // 204 No Content (Actualización exitosa)
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound(); // 404 Not Found si el Lote no existe
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid(); // 403 Forbidden
-            }
-        }
-
-        // 7. Método: DELETE /api/Lot/{id} (Baja Lógica Segura)
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> SoftDelete(Guid id)
-        {
-            // 1. EXTRACCIÓN DEL ID SEGURO DEL TOKEN
+            // 1. Extracción del ID del token para auditoría/permisos
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
             {
@@ -136,22 +105,44 @@ namespace CountrySecure.API.Controllers
 
             try
             {
-                // 2. Llama al servicio, pasando el ID del recurso y el ID del usuario logueado (para verificación de permisos en el servicio)
+                await _lotService.UpdateLotAsync(updateDto, currentUserId);
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> SoftDelete(Guid id)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
+
+            try
+            {
                 bool deleted = await _lotService.SoftDeleteLotAsync(id, currentUserId);
 
                 if (!deleted)
                 {
-                    return NotFound(); // 404 Not Found si el Lote no existe
+                    return NotFound();
                 }
-                return NoContent(); // 204 No Content
+                return NoContent();
             }
             catch (UnauthorizedAccessException)
             {
-                return Forbid(); // 403 Forbidden
+                return Forbid();
             }
             catch (Exception)
             {
-                // Capturar errores generales, ej. error de base de datos
                 return StatusCode(500, "An error occurred during deletion.");
             }
         }

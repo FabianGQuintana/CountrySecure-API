@@ -19,7 +19,7 @@ namespace CountrySecure.Domain.Entities
             public bool IsDeleted => DeletedAt.HasValue;
 
         // 2. Auditoría (Fecha de Creación/Modificación)
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+            public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
             public  string CreatedBy { get; set; }
 
             public DateTime? LastModifiedAt { get; set; } = DateTime.UtcNow;

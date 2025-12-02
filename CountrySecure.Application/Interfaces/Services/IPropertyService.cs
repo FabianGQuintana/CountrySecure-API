@@ -9,7 +9,7 @@ namespace CountrySecure.Application.Interfaces.Services
     {
 
 
-        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto);
+        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto,Guid currentUserId);
 
         Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId);
 

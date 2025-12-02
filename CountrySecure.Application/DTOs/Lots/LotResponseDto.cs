@@ -12,5 +12,6 @@ namespace CountrySecure.Application.DTOs.Lots
         public required string BlockName { get; set; }
 
         public LotStatus Status { get; set; }
+        public DateTime CreatedAt { get; internal set; }
     }
 }

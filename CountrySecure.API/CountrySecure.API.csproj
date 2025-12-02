@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <!-- Version gestionada centralmente -->
-    <PackageReference Include="AutoMapper" />
     <PackageReference Include="FluentValidation" Version="12.1.0" />
   </ItemGroup>
 

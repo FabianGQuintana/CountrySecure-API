@@ -1,0 +1,96 @@
+﻿using CountrySecure.Domain.Entities;
+using CountrySecure.Application.DTOs.Properties;
+using System.Collections.Generic;
+using System.Linq;
+using System;
+using CountrySecure.Domain.Enums;
+
+namespace CountrySecure.Application.Mappers
+{
+    public static class PropertyMapper
+    {
+        // 1. Entidad -> DTO de Respuesta (Lectura/Consulta)
+        public static PropertyResponseDto ToResponseDto(this Property property)
+        {
+            // Convertir el Status string (de BaseEntity) al enum PropertyStatus
+            var statusEnum = PropertyStatus.Inactive;
+            if (!string.IsNullOrWhiteSpace(property.Status) && Enum.TryParse<PropertyStatus>(property.Status, out var parsed))
+            {
+                statusEnum = parsed;
+            }
+
+            return new PropertyResponseDto
+            {
+                PropertyId = property.Id,
+                Street = property.Street,
+                HouseNumber = property.PropertyNumber,
+                Status = statusEnum
+            };
+        }
+
+        // 2. Colección de Entidades -> Colección de DTOs
+        public static IEnumerable<PropertyResponseDto> ToResponseDto(this IEnumerable<Property> properties)
+        {
+            return properties.Select(p => p.ToResponseDto());
+        }
+
+        // 3. DTO de Creación -> Entidad (Escritura POST)
+        public static Property ToEntity(this CreatePropertyDto dto)
+        {
+            return new Property
+            {
+                Street = dto.Street,
+                PropertyNumber = dto.HouseNumber,
+                UserId = dto.UserId,
+                LotId = dto.LotId,
+                // Inicialización de miembros requeridos con valores predeterminados
+                User = new User
+                {
+                    Id = dto.UserId,
+                    Name = string.Empty,
+                    Lastname = string.Empty,
+                    Dni = 0,
+                    Phone = string.Empty,
+                    Email = string.Empty,
+                    Password = string.Empty,
+                    Role = string.Empty,
+                    Active = false,
+                    Properties = new List<Property>()
+                },
+                Lot = new Lot
+                { 
+                    Id = dto.LotId,
+                    LotName = string.Empty,
+                    BlockName = string.Empty,
+                    Properties = new List<Property>()
+                }
+                // Status y CreatedBy se asignarán en el servicio o por la entidad base
+            };
+        }
+
+        // 4. Mapeo de Actualización (Actualización Parcial PUT/PATCH)
+        public static void MapToEntity(this UpdatePropertyDto dto, Property existingEntity)
+        {
+            // Solo sobrescribe si el valor del DTO NO es nulo
+            existingEntity.Street = dto.Street ?? existingEntity.Street;
+
+            // Tipo de valor (int?) requiere una comprobación HasValue
+            if (dto.NumberProperty.HasValue)
+            {
+                existingEntity.PropertyNumber = dto.NumberProperty.Value;
+            }
+
+            // Si quieres permitir cambiar el usuario/lote:
+            if (dto.UserId.HasValue)
+            {
+                existingEntity.UserId = dto.UserId.Value;
+            }
+            if (dto.LotId.HasValue)
+            {
+                existingEntity.LotId = dto.LotId.Value;
+            }
+
+            // Nota: La actualización del Status se manejará con métodos específicos (ej. SoftDelete)
+        }
+    }
+}

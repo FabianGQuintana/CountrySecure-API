@@ -12,7 +12,7 @@ namespace CountrySecure.Domain.Entities
 
         public required string BlockName { get; set; }
 
-        public required ICollection<Property> Properties { get; set; } = new List<Property>();
+        public  ICollection<Property> Properties { get; set; } = new List<Property>();
 
     }
 }

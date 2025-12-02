@@ -5,7 +5,7 @@ namespace CountrySecure.Application.Interfaces.Services
 {
     public interface ILotService
     {
-        Task<LotResponseDto> AddNewLotAsync(CreateLotDto newLotDto);
+        Task<LotResponseDto> AddNewLotAsync(CreateLotDto newLotDto,Guid currentUserId);
 
         Task<LotResponseDto?> GetLotByIdAsync(Guid lotId);
 
@@ -18,6 +18,5 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<bool> SoftDeleteLotAsync(Guid lotId, Guid currentUserId);
 
         Task<IEnumerable<LotResponseDto>> GetLotsByStatusAsync(LotStatus status, int pageNumber, int pageSize);
-
     }
 }
