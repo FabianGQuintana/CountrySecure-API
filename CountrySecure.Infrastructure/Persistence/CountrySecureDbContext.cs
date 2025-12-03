@@ -13,6 +13,7 @@ namespace CountrySecure.Infrastructure.Persistence
 
         public DbSet<User> Users {get; set;}
         public DbSet<Property> Properties { get; set; }
+        public DbSet<Visit> Visits { get; set; }
 
         public DbSet<Lot> Lots { get; set; }
 
