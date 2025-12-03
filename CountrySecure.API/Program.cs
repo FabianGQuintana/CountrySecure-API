@@ -1,9 +1,3 @@
-using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Npgsql;
 // Usings para la Inyección de Dependencias (mantener referencias a tus proyectos)
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
@@ -13,6 +7,15 @@ using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Npgsql;
+using System;
+using System.Diagnostics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+           
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +48,19 @@ builder.Services.AddDbContext<CountrySecureDbContext>(options =>
     options.UseNpgsql(connStr, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure())
 );
 
+
+// Configuración de JSON para usar enums como strings
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+        // Opcional: Para usar nombres de propiedades en minúscula (camelCase)
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+
+
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -68,6 +84,13 @@ if (app.Environment.IsDevelopment())
 {
     // Página de excepción en desarrollo
     app.UseDeveloperExceptionPage();
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
+    // Esto aplicará cualquier migración pendiente a la base de datos.
+    dbContext.Database.Migrate();
 }
 
 app.UseHttpsRedirection();

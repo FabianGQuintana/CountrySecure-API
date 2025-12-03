@@ -1,5 +1,6 @@
 using CountrySecure.Application.Interfaces.Repositories;
 
+
 namespace CountrySecure.Application.Interfaces.Persistence
 {
     public interface IUnitOfWork
