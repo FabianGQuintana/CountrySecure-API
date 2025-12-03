@@ -28,7 +28,7 @@ public class VisitConfiguration : IEntityTypeConfiguration<Visit>
         // Relación Visit a EntryPermit
         builder.HasMany(v => v.EntryPermits)
                .WithOne(ep => ep.Visit)
-               .HasForeignKey(ep => ep.IdVisit)
+               .HasForeignKey(ep => ep.VisitId)
                .OnDelete(DeleteBehavior.Cascade); // Al borrar un Visit, se borran sus EntryPermits
     }
 }

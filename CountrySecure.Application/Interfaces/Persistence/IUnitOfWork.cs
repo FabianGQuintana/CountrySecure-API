@@ -1,10 +1,7 @@
 using CountrySecure.Application.Interfaces.Repositories;
 
-<<<<<<< Updated upstream
+
 namespace CountrySecure.Application.Interfaces.Persistence
-=======
-namespace CountrySecure.Application.Interfaces.UnitOfWork
->>>>>>> Stashed changes
 {
     public interface IUnitOfWork
     {

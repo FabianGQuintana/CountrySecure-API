@@ -1,122 +1,136 @@
-﻿using AutoMapper;
+﻿using CountrySecure.Application.Mappers;
+using CountrySecure.Application.DTOs.EntryPermit;
+using CountrySecure.Application.DTOs.Visits;
+using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Application.Interfaces.UnitOfWork;
 using CountrySecure.Domain.Entities;
-using CountrySecure.Domain.Enums;
-using CountrySecure.Application.DTOs.Visits;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CountrySecure.Application.Services.Visits
 {
     public class VisitService : IVisitService
     {
-        
         private readonly IVisitRepository _visitRepository;
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IMapper _mapper; 
 
-        public VisitService(IVisitRepository visitRepository, IUnitOfWork unitOfWork, IMapper mapper)
+        public VisitService(IVisitRepository visitRepository, IUnitOfWork unitOfWork)
         {
             _visitRepository = visitRepository;
             _unitOfWork = unitOfWork;
-            _mapper = mapper;
         }
 
+        // ============================================================
+        // MÉTODOS DE ESCRITURA
+        // ============================================================
 
-        // ============================================================
-        // 1. Crear una nueva visita
-        // ============================================================
-        public async Task<VisitDto> AddNewVisitAsync(CreateVisitDto newVisitDto)
+        public async Task<VisitResponseDto> AddNewVisitAsync(CreateVisitDto newVisitDto, Guid currentUserId)
         {
-            var visit = _mapper.Map<Visit>(newVisitDto);
+            // Mapear DTO → Entidad
+            var newVisitEntity = newVisitDto.ToEntity();
 
-            await _visitRepository.AddAsync(visit);
+            // Auditoría
+            newVisitEntity.CreatedBy = currentUserId.ToString();
+            newVisitEntity.CreatedAt = DateTime.UtcNow;
+            newVisitEntity.Status = "Active";
+
+            var addedVisit = await _visitRepository.AddAsync(newVisitEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            return _mapper.Map<VisitDto>(visit);
+            return addedVisit.ToResponseDto();
         }
 
-        // ============================================================
-        // 2. Obtener visita por ID
-        // ============================================================
-        public async Task<VisitDto?> GetVisitByIdAsync(Guid visitId)
-        {
-            var visit = await _visitRepository.GetByIdAsync(visitId);
-
-            if (visit == null)
-                return null;
-
-            return _mapper.Map<VisitDto>(visit);
-        }
-
-        // ============================================================
-        // 3. Obtener visitas por DNI
-        // ============================================================
-        public async Task<IEnumerable<VisitDto>> GetVisitsByDniAsync(int dniVisit)
-        {
-            var visits = await _visitRepository.GetVisitsByDniAsync(dniVisit);
-
-            return _mapper.Map<IEnumerable<VisitDto>>(visits);
-        }
-
-        // ============================================================
-        // 4. Obtener visita con todos sus permisos (1:N)
-        // ============================================================
-        public async Task<VisitDto?> GetVisitWithPermitsAsync(Guid visitId)
-        {
-            var visit = await _visitRepository.GetVisitWithPermitsAsync(visitId);
-
-            if (visit == null)
-                return null;
-
-            return _mapper.Map<VisitDto>(visit);
-        }
-
-        // ============================================================
-        // 5. Actualizar visita
-        // ============================================================
         public async Task UpdateVisitAsync(UpdateVisitDto updateVisitDto)
         {
-            var visit = await _visitRepository.GetByIdAsync(updateVisitDto.Id);
+            var existingEntity = await _visitRepository.GetByIdAsync(updateVisitDto.VisitId);
 
-            if (visit == null)
-                throw new Exception("Visit not found.");
+            if (existingEntity == null || existingEntity.DeletedAt != null)
+            {
+                throw new KeyNotFoundException($"Visit with ID {updateVisitDto.VisitId} not found.");
+            }
 
-            _mapper.Map(updateVisitDto, visit);
+            // Aplicar cambios utilizando el mapper
+            updateVisitDto.MapToEntity(existingEntity);
 
-            await _visitRepository.UpdateAsync(visit);
+            // Auditoría
+            existingEntity.LastModifiedAt = DateTime.UtcNow;
+            existingEntity.LastModifiedBy = "system"; // o userId si lo querés pasar
+
+            await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
         }
 
-        // ============================================================
-        // 6. Soft Delete REVISAR
-        // ============================================================
         public async Task<bool> SoftDeleteVisitAsync(Guid visitId)
         {
-            var visit = await _visitRepository.GetByIdAsync(visitId);
+            var existingEntity = await _visitRepository.GetByIdAsync(visitId);
 
-            if (visit == null)
+            if (existingEntity == null || existingEntity.DeletedAt != null)
                 return false;
 
-            visit.Status = EntityState.Inactive;
+            existingEntity.DeletedAt = DateTime.UtcNow;
+            existingEntity.Status = "Inactive";
 
-            await _visitRepository.UpdateAsync(visit);
+            await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
 
             return true;
         }
 
-        public async Task<IEnumerable<EntryPermitDto>> GetPermitsByVisitIdAsync(Guid visitId)
+        // ============================================================
+        // MÉTODOS DE CONSULTA
+        // ============================================================
+
+        public async Task<VisitResponseDto?> GetVisitByIdAsync(Guid visitId)
+        {
+            var visitEntity = await _visitRepository.GetByIdAsync(visitId);
+
+            if (visitEntity == null || visitEntity.DeletedAt != null)
+                return null;
+
+            return visitEntity.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<VisitResponseDto>> GetVisitsByDniAsync(int dniVisit)
+        {
+            var visits = await _visitRepository.GetVisitsByDniAsync(dniVisit);
+
+            var filtered = visits.Where(v => v.DeletedAt == null);
+
+            return filtered.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<VisitResponseDto>> GetAllVisitsAsync(int pageNumber, int pageSize)
+        {
+            var visits = await _visitRepository.GetAllAsync(pageNumber, pageSize);
+
+            var filtered = visits.Where(v => v.DeletedAt == null);
+
+            return filtered.ToResponseDto();
+        }
+
+        public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
+        {
+            var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
+
+            if (visitEntity == null || visitEntity.DeletedAt != null)
+                return null;
+
+            return visitEntity.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<EntryPermitResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
         {
             var permits = await _visitRepository.GetPermitsByVisitIdAsync(visitId);
-            return _mapper.Map<IEnumerable<EntryPermitDto>>(permits);
+            return permits.ToPermitDto();
         }
 
-        public async Task<EntryPermitDto?> GetValidPermitByVisitIdAsync(Guid visitId)
+        public async Task<EntryPermitResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
         {
             var permit = await _visitRepository.GetValidPermitByVisitIdAsync(visitId);
-            return _mapper.Map<EntryPermitDto?>(permit);
+            return permit?.ToPermitDto();
         }
-
     }
 }

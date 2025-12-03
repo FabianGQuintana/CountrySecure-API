@@ -70,6 +70,13 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
+    // Esto aplicará cualquier migración pendiente a la base de datos.
+    dbContext.Database.Migrate();
+}
+
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
