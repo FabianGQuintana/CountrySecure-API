@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <!-- Version gestionada centralmente en Directory.Packages.props -->
-    <PackageReference Include="AutoMapper" />
     <PackageReference Include="FluentValidation" Version="12.1.0" />
   </ItemGroup>
 
