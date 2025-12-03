@@ -22,14 +22,23 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<User?> GetByIdAsync(Guid id)
         {
             return await _context.Users
-                .Where(UserPredicates.NotDeleted)
+                .AsNoTracking()
+                // .Where(UserPredicates.NotDeleted)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
-
-        public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize)
+        public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize, string? role = null)
         {
-            return await _context.Users
+
+            var query = _context.Users
                 .Where(UserPredicates.NotDeleted)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(role))
+            {
+                query = query.Where(u => u.Role == role);
+            }
+
+            return await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -55,6 +64,17 @@ namespace CountrySecure.Infrastructure.Repositories
             _context.Users.Update(user);
 
             return true;
+        }
+
+        public async Task<User?> ToggleActiveAsync(Guid id)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return null;
+
+            user.Active = !user.Active;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            return user; // EF ya trackea esta entidad
         }
     }
 }

@@ -7,6 +7,8 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<UserResponseDto> UpdateUserAsync(Guid id, UpdateUserDto dto);
         Task<bool> DeleteUserAsync(Guid id);
         Task<UserResponseDto> GetByIdAsync(Guid id);
-        Task<IEnumerable<UserResponseDto>> GetAllAsync(int page, int size);
+        Task<IEnumerable<UserResponseDto>> GetAllAsync(int page, int size, string? role = null);
+
+        Task<UserResponseDto?> ToggleActiveAsync(Guid id);
     }
 }

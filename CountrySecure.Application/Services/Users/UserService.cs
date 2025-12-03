@@ -44,9 +44,9 @@ namespace CountrySecure.Application.Services.Users
             return user.ToDto();
         }
 
-        public async Task<IEnumerable<UserResponseDto>> GetAllAsync(int page, int size)
+        public async Task<IEnumerable<UserResponseDto>> GetAllAsync(int page, int size, string? role = null)
         {
-            var users = await _userRepository.GetAllAsync(page, size);
+            var users = await _userRepository.GetAllAsync(page, size, role);
 
             return users.Select(u => u.ToDto());
         }
@@ -89,6 +89,17 @@ namespace CountrySecure.Application.Services.Users
             await _unitOfWork.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<UserResponseDto?> ToggleActiveAsync(Guid id)
+        {
+            var user = await _userRepository.ToggleActiveAsync(id);
+            if (user == null) return null;
+
+            await _unitOfWork.SaveChangesAsync();
+
+            // Simplemente devolver el DTO
+            return user.ToDto();
         }
     }
 }
