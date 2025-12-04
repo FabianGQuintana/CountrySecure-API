@@ -48,12 +48,14 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ILotRepository, LotRepository>();
 builder.Services.AddScoped<IVisitRepository, VisitRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
 // Servicios de dominio
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
 builder.Services.AddScoped<IVisitService, VisitService>();
+builder.Services.AddScoped<IOrderService, OrderRepository>();
 
 // Servicios agregados del segundo Program
 builder.Services.AddScoped<ITokenService, TokenService>();

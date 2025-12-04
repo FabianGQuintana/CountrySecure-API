@@ -57,7 +57,7 @@ namespace CountrySecure.Application.Services.Visits
 
             // Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = "system"; // o userId si lo querés pasar
+          
 
             await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
