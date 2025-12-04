@@ -20,7 +20,7 @@ namespace CountrySecure.Domain.Entities
 
         // 2. Auditoría (Fecha de Creación/Modificación)
             public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-            public  string CreatedBy { get; set; }
+            public string CreatedBy { get; set; } = "system";
 
             public DateTime? LastModifiedAt { get; set; } = DateTime.UtcNow;
             public string? LastModifiedBy { get; set; }

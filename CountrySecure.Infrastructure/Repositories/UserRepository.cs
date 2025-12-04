@@ -26,6 +26,13 @@ namespace CountrySecure.Infrastructure.Repositories
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _context.Users
+                .Where(UserPredicates.NotDeleted)
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
+
         public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize)
         {
             return await _context.Users

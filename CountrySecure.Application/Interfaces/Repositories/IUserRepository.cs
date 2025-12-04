@@ -5,6 +5,8 @@ namespace CountrySecure.Application.Interfaces.Repositories
     public interface IUserRepository
     {
         Task<User?> GetByIdAsync(Guid id);
+
+        Task<User?> GetByEmailAsync(string email);
         Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize);
         
         Task AddAsync(User user);

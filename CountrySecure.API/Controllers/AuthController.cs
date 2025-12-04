@@ -17,17 +17,38 @@ namespace CountrySecure.API.Controllers
             _authService = authService;
         }
 
+
+
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterUserDto dto)
         {
             var result = await _authService.RegisterAsync(dto);
+
+            if (!result.Success)
+            {
+                return BadRequest(new {message = result.Message});
+            }
+
             return Ok(result);
         }
+
+
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginUserDto dto)
         {
             var result = await _authService.LoginAsync(dto);
+
+            if (!result.Success)
+            {
+                if (result.Message == "User not found")
+                {
+                    return NotFound(new { message = result.Message });
+                }
+
+                return Unauthorized(new { message = result.Message });
+            }
+
             return Ok(result);
         }
 
