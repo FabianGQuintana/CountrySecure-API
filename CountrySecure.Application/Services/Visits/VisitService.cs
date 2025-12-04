@@ -1,5 +1,5 @@
 ﻿using CountrySecure.Application.Mappers;
-using CountrySecure.Application.DTOs.EntryPermit;
+// using CountrySecure.Application.DTOs.EntryPermit;
 using CountrySecure.Application.DTOs.Visits;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
@@ -120,26 +120,26 @@ namespace CountrySecure.Application.Services.Visits
         }
 
 
-        public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
-        {
-            var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
+        // public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
+        // {
+        //     var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
 
-            if (visitEntity == null || visitEntity.DeletedAt != null)
-                return null;
+        //     if (visitEntity == null || visitEntity.DeletedAt != null)
+        //         return null;
 
-            return visitEntity.ToResponseDto();
-        }
+        //     return visitEntity.ToResponseDto();
+        // }
 
-        public async Task<IEnumerable<EntryPermitResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
-        {
-            var permits = await _visitRepository.GetPermitsByVisitIdAsync(visitId);
-            return permits.ToPermitDto();
-        }
+        // public async Task<IEnumerable<EntryPermitResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
+        // {
+        //     var permits = await _visitRepository.GetPermitsByVisitIdAsync(visitId);
+        //     return permits.ToPermitDto();
+        // }
 
-        public async Task<EntryPermitResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
-        {
-            var permit = await _visitRepository.GetValidPermitByVisitIdAsync(visitId);
-            return permit?.ToPermitDto();
-        }
+        // public async Task<EntryPermitResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
+        // {
+        //     var permit = await _visitRepository.GetValidPermitByVisitIdAsync(visitId);
+        //     return permit?.ToPermitDto();
+        // }
     }
 }

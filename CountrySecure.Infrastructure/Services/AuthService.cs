@@ -1,5 +1,3 @@
-
-
 using CountrySecure.Application.DTOs.Auth;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
@@ -63,6 +61,7 @@ namespace CountrySecure.Infrastructure.Services
                 UserId = user.Id,
                 Email = user.Email,
                 Name = user.Name,
+                Lastname = user.Lastname,
                 Role = user.Role
             };
 
@@ -98,6 +97,7 @@ namespace CountrySecure.Infrastructure.Services
                 Expiration = DateTime.UtcNow.AddHours(8),
                 UserId = user.Id,
                 Email = user.Email,
+                Lastname = user.Lastname,
                 Name = user.Name,
                 Role = user.Role
             };

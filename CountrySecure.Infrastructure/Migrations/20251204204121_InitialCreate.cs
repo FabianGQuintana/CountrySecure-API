@@ -41,7 +41,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     Dni = table.Column<int>(type: "integer", nullable: false),
                     Phone = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     Email = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    Password = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Password = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Active = table.Column<bool>(type: "boolean", nullable: false),
                     Role = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
@@ -55,6 +55,27 @@ namespace CountrySecure.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Visits",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    NameVisit = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    LastNameVisit = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    DniVisit = table.Column<int>(type: "integer", nullable: false),
+                    Status = table.Column<string>(type: "text", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    CreatedBy = table.Column<string>(type: "text", nullable: false),
+                    LastModifiedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    LastModifiedBy = table.Column<string>(type: "text", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Visits", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -126,6 +147,12 @@ namespace CountrySecure.Infrastructure.Migrations
                 table: "Users",
                 column: "Email",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Visits_DniVisit",
+                table: "Visits",
+                column: "DniVisit",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -133,6 +160,9 @@ namespace CountrySecure.Infrastructure.Migrations
         {
             migrationBuilder.DropTable(
                 name: "Properties");
+
+            migrationBuilder.DropTable(
+                name: "Visits");
 
             migrationBuilder.DropTable(
                 name: "Lots");

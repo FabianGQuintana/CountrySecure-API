@@ -9,6 +9,6 @@ public class Visit : BaseEntity
     public int DniVisit { get; set; }
 
     //relationships
-    public ICollection<EntryPermit> EntryPermits { get; set; }
+    // public ICollection<EntryPermit> EntryPermits { get; set; }
 }
 
