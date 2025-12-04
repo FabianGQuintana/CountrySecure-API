@@ -20,6 +20,12 @@ namespace CountrySecure.API.Controllers
             _visitService = visitService;
         }
 
+        [HttpGet("ping")]
+        public IActionResult Ping()
+        {
+            return Ok("OrderController is working! 🏓");
+        }
+
         //  CREATE
 
         /*
