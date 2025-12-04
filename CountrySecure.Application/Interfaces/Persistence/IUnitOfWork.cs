@@ -9,5 +9,6 @@ namespace CountrySecure.Application.Interfaces.Persistence
         IUserRepository Users { get; }
 
         Task<int> SaveChangesAsync(); // EF devulve la cantidad de entidades afectadas/modificadas
+        
     }
 }

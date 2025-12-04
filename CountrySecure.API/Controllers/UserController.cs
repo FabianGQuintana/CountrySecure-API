@@ -17,9 +17,9 @@ namespace CountrySecure.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] string? role = null)
         {
-            var users = await _userService.GetAllAsync(page, size);
+            var users = await _userService.GetAllAsync(page, size, role);
             return Ok(users);
         }
 
@@ -34,7 +34,7 @@ namespace CountrySecure.API.Controllers
         public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
         {
             var createdUser = await _userService.CreateUserAsync(dto);
-            return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser); // ver mejor
+            return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser); 
         }
 
         [HttpPut("{id}")] 
@@ -50,6 +50,21 @@ namespace CountrySecure.API.Controllers
                 return NotFound(e.Message);
             }
         }
+
+
+        [HttpPatch("{id}/toggle-active")]
+        public async Task<IActionResult> ToggleActive(Guid id)
+        {
+            var updatedUser = await _userService.ToggleActiveAsync(id);
+
+            if (updatedUser == null)
+            {
+                return NotFound(new {message = $"User with id {id} not found"});
+            }
+
+            return Ok(updatedUser);
+        }
+
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(Guid id)
