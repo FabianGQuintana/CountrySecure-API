@@ -9,6 +9,7 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Services.Lots;
 using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
+using CountrySecure.Application.Services.Visits;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
@@ -24,6 +25,7 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ILotRepository, LotRepository>();
+builder.Services.AddScoped<IVisitRepository, VisitRepository>();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
@@ -96,6 +98,14 @@ if (app.Environment.IsDevelopment())
     // Página de excepción en desarrollo
     app.UseDeveloperExceptionPage();
 }
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
+    // Esto aplicará cualquier migración pendiente a la base de datos.
+    dbContext.Database.Migrate();
+}
+
 
 app.UseHttpsRedirection();
 app.UseAuthentication();

@@ -5,16 +5,16 @@ namespace CountrySecure.Domain.Constants
         public const string Admin = "Admin";
         public const string Security = "Security";
         public const string Resident = "Resident";
-        public const string Guest = "Guest";
-        public const string Provider = "Provider";
+        // public const string Guest = "Guest";
+        // public const string Provider = "Provider";
 
         public static readonly string[] All =
         [
             Admin,
             Security,
             Resident,
-            Guest,
-            Provider
+            // Guest,
+            // Provider
         ];
     }
 }

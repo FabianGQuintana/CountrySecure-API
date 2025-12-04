@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace CountrySecure.Infrastructure.Repositories
 {
     // Esta clase implementa la interfaz IGenericRepository para cualquier entidad T
-    public class GenericRepository<T> : IGenericRepository<T> where T : class , IStatusEntity
+    public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
         private readonly CountrySecureDbContext _dbContext;
 
