@@ -10,6 +10,7 @@ public interface IVisitRepository : IGenericRepository<Visit>
     Task<IReadOnlyList<Visit>> GetVisitsByDniAsync(int dniVisit);
     Task<Visit?> GetVisitWithPermitsAsync(Guid visitId);
     Task<IEnumerable<EntryPermit>> GetPermitsByVisitIdAsync(Guid visitId);
+    Task<IEnumerable<Visit>> GetAllWithoutPaginationAsync();
     Task<EntryPermit?> GetValidPermitByVisitIdAsync(Guid visitId);
 }
 

@@ -5,6 +5,7 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Services.Lots;
 using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
+using CountrySecure.Application.Services.Visits;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -26,10 +27,12 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ILotRepository, LotRepository>();
+builder.Services.AddScoped<IVisitRepository, VisitRepository>();
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
+builder.Services.AddScoped<IVisitService, VisitService>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 

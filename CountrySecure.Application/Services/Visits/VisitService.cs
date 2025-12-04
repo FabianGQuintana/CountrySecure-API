@@ -111,6 +111,15 @@ namespace CountrySecure.Application.Services.Visits
             return filtered.ToResponseDto();
         }
 
+        public async Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync()
+        {
+            var visits = await _visitRepository.GetAllWithoutPaginationAsync();
+
+            // No filtramos nada → devolvemos TODO, incluso los soft deleted
+            return visits.ToResponseDto();
+        }
+
+
         public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
         {
             var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);

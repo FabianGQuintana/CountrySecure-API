@@ -1,6 +1,7 @@
-﻿using CountrySecure.Domain.Entities;
-using CountrySecure.Domain.Enums;
+﻿using CountrySecure.Application.DTOs.Visits;
 using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
 using CountrySecure.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -44,4 +45,14 @@ public class VisitRepository : GenericRepository<Visit>, IVisitRepository
                          ep.FechaVisita.Date >= DateTime.UtcNow.Date)
             .FirstOrDefaultAsync();
     }
+
+    public async Task<IEnumerable<Visit>> GetAllWithoutPaginationAsync()
+    {
+        return await _dbContext.Visits
+            .OrderBy(v => v.CreatedAt)
+            .ToListAsync();
+    }
+
+
+
 }

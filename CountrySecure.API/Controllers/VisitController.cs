@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using System.Security.Claims;
 using System;
 using System.Collections.Generic;
-using CountrySecure.Application.DTOs.EntryPermit;
+
 
 namespace CountrySecure.API.Controllers
 {
@@ -20,21 +20,34 @@ namespace CountrySecure.API.Controllers
             _visitService = visitService;
         }
 
-        // ==========================================================
         //  CREATE
-        // ==========================================================
-        [HttpPost("Create")]
-        public async Task<IActionResult> CreateVisit([FromBody] CreateVisitDto newVisitDto)
+
+        /*
+        [HttpPost]
+        public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
         {
             var userId = GetCurrentUserId();
 
             var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, userId);
-            return CreatedAtAction(nameof(GetVisitById), new { visitId = createdVisit.VisitId }, createdVisit);
+
+            return CreatedAtAction(nameof(GetVisitById),
+                new { visitId = createdVisit.VisitId },
+                createdVisit);
+        }
+        */
+
+        [HttpPost]
+        public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
+        {
+            var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, Guid.Empty);
+
+            return CreatedAtAction(nameof(GetVisitById),
+                new { visitId = createdVisit.VisitId },
+                createdVisit);
         }
 
-        // ==========================================================
+        
         //  GET BY ID
-        // ==========================================================
         [HttpGet("{visitId:guid}")]
         public async Task<IActionResult> GetVisitById(Guid visitId)
         {
@@ -45,9 +58,7 @@ namespace CountrySecure.API.Controllers
             return Ok(visit);
         }
 
-        // ==========================================================
         //  GET BY DNI
-        // ==========================================================
         [HttpGet("dni/{dniVisit:int}")]
         public async Task<IActionResult> GetVisitsByDni(int dniVisit)
         {
@@ -55,9 +66,7 @@ namespace CountrySecure.API.Controllers
             return Ok(visits);
         }
 
-        // ==========================================================
         //  GET ALL (PAGINATED)
-        // ==========================================================
         [HttpGet]
         public async Task<IActionResult> GetAllVisits([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
@@ -65,9 +74,8 @@ namespace CountrySecure.API.Controllers
             return Ok(visits);
         }
 
-        // ==========================================================
         //  GET VISIT + PERMITS
-        // ==========================================================
+        // Obtiene la visita completa (sus datos) junto con todos sus permisos asociados.
         [HttpGet("{visitId:guid}/with-permits")]
         public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
         {
@@ -78,9 +86,8 @@ namespace CountrySecure.API.Controllers
             return Ok(visit);
         }
 
-        // ==========================================================
         //  GET PERMITS BY VISIT ID
-        // ==========================================================
+        // Cuando necesitás ver toda la información de la visita y sus permisos en una sola llamada.
         [HttpGet("{visitId:guid}/permits")]
         public async Task<IActionResult> GetPermitsByVisitId(Guid visitId)
         {
@@ -88,9 +95,9 @@ namespace CountrySecure.API.Controllers
             return Ok(permits);
         }
 
-        // ==========================================================
+
         //  GET VALID PERMIT
-        // ==========================================================
+        // Devuelve todos los permisos asociados a esa visita, solo los permisos, sin los datos de la visita.
         [HttpGet("{visitId:guid}/permits/valid")]
         public async Task<IActionResult> GetValidPermit(Guid visitId)
         {
@@ -101,9 +108,8 @@ namespace CountrySecure.API.Controllers
             return Ok(permit);
         }
 
-        // ==========================================================
+
         //  UPDATE
-        // ==========================================================
         [HttpPut]
         public async Task<IActionResult> UpdateVisit([FromBody] UpdateVisitDto updateVisitDto)
         {
@@ -111,9 +117,8 @@ namespace CountrySecure.API.Controllers
             return NoContent();
         }
 
-        // ==========================================================
         //  SOFT DELETE
-        // ==========================================================
+        // eliminacion logica
         [HttpDelete("{visitId:guid}")]
         public async Task<IActionResult> SoftDeleteVisit(Guid visitId)
         {
@@ -124,9 +129,15 @@ namespace CountrySecure.API.Controllers
             return NoContent();
         }
 
-        // ==========================================================
+        // VIEW ALL
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllVisitsWithoutFilter()
+        {
+            var visits = await _visitService.GetAllVisitsWithoutFilterAsync();
+            return Ok(visits);
+        }
+
         //  UTILITY: Obtener UserId autenticado
-        // ==========================================================
         private Guid GetCurrentUserId()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);

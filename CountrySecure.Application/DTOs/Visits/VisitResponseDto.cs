@@ -8,5 +8,6 @@ namespace CountrySecure.Application.DTOs.Visits
         public required string NameVisit { get; set; }
         public required string LastNameVisit { get; set; }
         public int DniVisit { get; set; }
+        public string VisitStatus { get; set; }
     }
 }
