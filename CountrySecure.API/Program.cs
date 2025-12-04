@@ -37,6 +37,7 @@ using CountrySecure.Application.Services.EntryPermission;
 >>>>>>> Stashed changes
 
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 //
@@ -74,7 +75,6 @@ builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
-<<<<<<< HEAD
 builder.Services.AddScoped<IVisitService, VisitService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<ITurnService, TurnService>();
