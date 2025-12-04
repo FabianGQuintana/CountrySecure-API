@@ -1,8 +1,6 @@
-using System;
+
 using System.Diagnostics;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Npgsql;
 // Usings para la Inyección de Dependencias (mantener referencias a tus proyectos)
 using CountrySecure.Application.Interfaces.Persistence;
@@ -13,6 +11,9 @@ using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
+using CountrySecure.Infrastructure.Services;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,9 +28,33 @@ builder.Services.AddScoped<ILotRepository, LotRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+// JWT Authentication
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
+            )
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+//DB
 // Obtener la cadena de conexión (puede venir de appsettings o variable de entorno)
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
               ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
@@ -44,6 +69,7 @@ if (string.IsNullOrWhiteSpace(connStr))
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
     options.UseNpgsql(connStr, npgsqlOptions => npgsqlOptions.EnableRetryOnFailure())
 );
+
 
 var app = builder.Build();
 
@@ -71,6 +97,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
