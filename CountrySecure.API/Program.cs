@@ -74,6 +74,7 @@ builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
+<<<<<<< HEAD
 builder.Services.AddScoped<IVisitService, VisitService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<ITurnService, TurnService>();
@@ -172,6 +173,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 // ======================================
 //
 
+=======
+>>>>>>> 7f36f1b (Avances en Auth: login, register, JWT)
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
