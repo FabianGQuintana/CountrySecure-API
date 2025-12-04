@@ -1,4 +1,3 @@
-
 using CountrySecure.Domain.Entities;
 
 namespace CountrySecure.Application.Interfaces.Services

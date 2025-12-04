@@ -1,5 +1,4 @@
 using CountrySecure.Application.DTOs.Auth;
-using CountrySecure.Application.DTOs.Users;
 
 namespace CountrySecure.Application.Interfaces.Services
 {

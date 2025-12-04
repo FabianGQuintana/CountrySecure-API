@@ -6,6 +6,7 @@ namespace CountrySecure.Application.Interfaces.Repositories
     {
         Task<User?> GetByIdAsync(Guid id);
 
+        Task<User?> GetByEmailAsync(string email);
         Task<User?> ToggleActiveAsync(Guid id);
         Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize, string? role = null);
         

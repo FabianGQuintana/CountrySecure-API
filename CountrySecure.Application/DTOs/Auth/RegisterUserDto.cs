@@ -1,5 +1,5 @@
 
-namespace CountrySecure.Application.DTOs.Users
+namespace CountrySecure.Application.DTOs.Auth
 {
     public class RegisterUserDto
     {

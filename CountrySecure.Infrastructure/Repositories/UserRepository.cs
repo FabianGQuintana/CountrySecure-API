@@ -76,5 +76,14 @@ namespace CountrySecure.Infrastructure.Repositories
 
             return user; // EF ya trackea esta entidad
         }
+
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _context.Users
+                .AsNoTracking()
+                .Where(UserPredicates.NotDeleted)
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
+
     }
 }
