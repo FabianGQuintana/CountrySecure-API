@@ -4,11 +4,15 @@ using System;
 
 public class Visit : BaseEntity
 {       
-    public string NameVisit { get; set; }
-    public string LastNameVisit { get; set; }
-    public int DniVisit { get; set; }
+    public required string NameVisit { get; set; }
+    public required string LastNameVisit { get; set; }
+    public required int DniVisit { get; set; }
 
     //relationships
+<<<<<<< Updated upstream
     // public ICollection<EntryPermit> EntryPermits { get; set; }
+=======
+    public ICollection<EntryPermission>? EntryPermissions { get; set; }
+>>>>>>> Stashed changes
 }
 

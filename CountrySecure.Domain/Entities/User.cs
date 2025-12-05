@@ -17,6 +17,7 @@ namespace CountrySecure.Domain.Entities
 
         // FK
         public ICollection<Property> Properties { get; set; } = new List<Property>();
+        public ICollection<EntryPermission> EntryPermissions { get; set; } = new List<EntryPermission>();
 
     }
 }

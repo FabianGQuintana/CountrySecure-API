@@ -24,7 +24,7 @@ namespace CountrySecure.API.Controllers
 
         // 1. Método: GET /api/Property?pageNumber=1&pageSize=10
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var propertiesDto = await _propertyService.GetAllPropertiesAsync(pageNumber, pageSize);
             return Ok(propertiesDto); // 200 OK
@@ -32,7 +32,7 @@ namespace CountrySecure.API.Controllers
 
         // 2. Método: GET /api/Property/available?pageNumber=1&pageSize=10
         [HttpGet("available")]
-        public async Task<IActionResult> GetAvailable([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAvailable([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var availablePropertiesDto = await _propertyService.GetPropertiesByStatusAsync(
                 Domain.Enums.PropertyStatus.Available,
@@ -64,10 +64,6 @@ namespace CountrySecure.API.Controllers
         {
             var propertiesDto = await _propertyService.GetPropertiesByOwnerId(ownerId);
 
-            if (propertiesDto == null)
-            {
-                return NotFound();
-            }
             return Ok(propertiesDto);
         }
 
@@ -77,10 +73,6 @@ namespace CountrySecure.API.Controllers
         {
             var propertiesDto = await _propertyService.GetPropertiesByLotIdAsync(lotId);
 
-            if (propertiesDto == null || !propertiesDto.Any()) // Verifica si la lista está vacía o es nula
-            {
-                return NotFound();
-            }
             return Ok(propertiesDto);
         }
 
@@ -118,39 +110,42 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState); // 400 Bad Request
             }
 
-            // VALIDACIÓN CRÍTICA: La ID de la URL debe coincidir con la ID del DTO.
-            if (id != updateDto.PropertyId)
-            {
-                return BadRequest(new { message = "ID mismatch between URL and body." });
-            }
 
             // 1. EXTRAER EL ID DEL USUARIO DESDE EL TOKEN
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-            // Verificar si el Claim existe y si es convertible a Guid
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out Guid currentUserId))
             {
-                // Devuelve 401 si no hay token o el ID es inválido (aunque el middleware debería manejarlo primero)
                 return Unauthorized();
             }
 
             try
             {
-                // 2. LLAMAR AL SERVICIO con el argumento faltante
-                await _propertyService.UpdatePropertyAsync(updateDto, currentUserId);
+               
+                var updatedProperty = await _propertyService.UpdatePropertyAsync(id, updateDto, currentUserId);
 
-                return NoContent(); // 204 No Content
+                if (updatedProperty == null)
+                {
+                    return NotFound(); // 404 Not Found si el recurso no existe
+                }
+
+                // Si el servicio devuelve el objeto actualizado, usamos 200 OK
+                return Ok(updatedProperty);
+
             }
+            // ... (Resto del manejo de excepciones)
             catch (KeyNotFoundException)
             {
-                return NotFound(); // 404 Not Found si el servicio no encuentra el recurso
+                return NotFound(); // 404 Not Found 
             }
             catch (UnauthorizedAccessException)
             {
-                // Captura si el servicio verifica que el usuario no es el dueño (403 Forbidden)
-                return Forbid();
+                return Forbid(); // 403 Forbidden
             }
-            
+            catch (Exception)
+            {
+                // Considera devolver 500 para otros errores no manejados
+                return StatusCode(500, "Internal Server Error during update.");
+            }
         }
 
         // 8. Método: DELETE /api/Property/{id} (Baja Lógica SEGURA)

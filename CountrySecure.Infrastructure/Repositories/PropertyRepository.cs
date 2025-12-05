@@ -39,7 +39,7 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
     public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status, int numberPage, int pageSize)
 	{
 		return await _dbContext.Properties
-			.Where(p => p.Status == status.ToString())
+			.Where(p => (int)p.PropertyType == (int)status)
 			.OrderBy(p => p.Id)
 			.Skip((numberPage - 1) * pageSize)
 			.Take(pageSize)

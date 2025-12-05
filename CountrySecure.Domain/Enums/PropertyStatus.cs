@@ -2,7 +2,7 @@
 {
     public enum PropertyStatus
     {
-        // 0. El valor por defecto (unassigned, o el primer estado)
+        // 0. El valor por defecto Inactivo/Baja logica
         Inactive = 0,
 
         // 1. Estados funcionales
