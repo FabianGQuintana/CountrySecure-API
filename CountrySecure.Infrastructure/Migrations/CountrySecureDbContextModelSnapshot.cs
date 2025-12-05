@@ -22,6 +22,63 @@ namespace CountrySecure.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("CountrySecure.Domain.Entities.EntryPermission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<int>("PermissionType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("QrCodeValue")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ServiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("VisitId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("VisitId");
+
+                    b.ToTable("EntryPermissions");
+                });
+
             modelBuilder.Entity("CountrySecure.Domain.Entities.Lot", b =>
                 {
                     b.Property<Guid>("Id")
@@ -255,6 +312,25 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.ToTable("Visits");
                 });
 
+            modelBuilder.Entity("CountrySecure.Domain.Entities.EntryPermission", b =>
+                {
+                    b.HasOne("CountrySecure.Domain.Entities.User", "User")
+                        .WithMany("EntryPermissions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Visit", "Visit")
+                        .WithMany("EntryPermissions")
+                        .HasForeignKey("VisitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("Visit");
+                });
+
             modelBuilder.Entity("CountrySecure.Domain.Entities.Property", b =>
                 {
                     b.HasOne("CountrySecure.Domain.Entities.Lot", "Lot")
@@ -281,7 +357,14 @@ namespace CountrySecure.Infrastructure.Migrations
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.User", b =>
                 {
+                    b.Navigation("EntryPermissions");
+
                     b.Navigation("Properties");
+                });
+
+            modelBuilder.Entity("Visit", b =>
+                {
+                    b.Navigation("EntryPermissions");
                 });
 #pragma warning restore 612, 618
         }

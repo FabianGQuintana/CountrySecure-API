@@ -22,7 +22,7 @@ namespace CountrySecure.Domain.Entities
         public  Visit? Visit { get; set; }
         public  User? User { get; set; }
 
-        public  Service? Service { get; set; }
+        // public  Service? Service { get; set; }
 
     }
 }

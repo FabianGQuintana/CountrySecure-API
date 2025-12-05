@@ -41,9 +41,9 @@ namespace CountrySecure.Application.Mappers
 
                 Visitor = permission.Visit.ToEntryPermissionVisitDto(), // Llama a VisitMapper.ToEntryPermissionVisitDto
 
-                Service = permission.Service != null
-                            ? permission.Service.ToEntryPermissionServiceDto()
-                            : null // Retorna null si Service no fue cargado o ServiceId es null
+                // Service = permission.Service != null
+                //             ? permission.Service.ToEntryPermissionServiceDto()
+                //             : null // Retorna null si Service no fue cargado o ServiceId es null
             };
         }
 
