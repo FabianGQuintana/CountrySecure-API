@@ -14,8 +14,12 @@ namespace CountrySecure.Infrastructure.Persistence
         public DbSet<User> Users {get; set;}
         public DbSet<Property> Properties { get; set; }
         public DbSet<Visit> Visits { get; set; }
+<<<<<<< Updated upstream
         // public DbSet<EntryPermit> EntryPermit { get; set; }
+=======
+>>>>>>> Stashed changes
         public DbSet<Lot> Lots { get; set; }
+        public DbSet<EntryPermission> EntryPermissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

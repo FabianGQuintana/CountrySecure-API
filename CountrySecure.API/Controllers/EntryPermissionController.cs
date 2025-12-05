@@ -1,0 +1,224 @@
+﻿using CountrySecure.Application.DTOs.EntryPermission;
+using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Security.Claims; // Necesario para FindFirstValue
+using System.Threading.Tasks;
+
+namespace CountrySecure.API.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class EntryPermissionsController : ControllerBase
+    {
+        private readonly IEntryPermissionService _entryPermissionService;
+
+        public EntryPermissionsController(IEntryPermissionService entryPermissionService)
+        {
+            _entryPermissionService = entryPermissionService;
+        }
+
+        // --- Método Auxiliar para Seguridad (Usando Claims) ---
+        private Guid GetCurrentUserId()
+        {
+            // Busca el ClaimTypes.NameIdentifier (sub) o el claim que uses para almacenar el ID
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Si el claim existe y es convertible a Guid, lo devuelve. Si no, devuelve Guid.Empty
+            if (userIdClaim != null && Guid.TryParse(userIdClaim, out Guid userId))
+            {
+                return userId;
+            }
+            return Guid.Empty; // Guid.Empty indica que el ID no pudo ser recuperado
+        }
+
+        // -------------------------------------------------------------------
+        // POST: Creación de un nuevo permiso (201 Created)
+        // -------------------------------------------------------------------
+
+        [HttpPost]
+        public async Task<IActionResult> Create([FromBody] CreateEntryPermissionDto createDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                // Validar que el usuario fue autenticado
+                if (currentUserId == Guid.Empty) return Unauthorized();
+
+                var result = await _entryPermissionService.AddNewEntryPermissionAsync(createDto, currentUserId);
+
+                return CreatedAtAction(nameof(GetById), new { entryPermissionId = result.Id }, result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // GET: Obtener por ID (200 OK / 404 Not Found)
+        // -------------------------------------------------------------------
+
+        [HttpGet("{entryPermissionId}")]
+        public async Task<IActionResult> GetById(Guid entryPermissionId)
+        {
+            var result = await _entryPermissionService.GetEntryPermissionByIdAsync(entryPermissionId);
+
+            if (result == null)
+            {
+                return NotFound($"EntryPermission with ID {entryPermissionId} not found.");
+            }
+
+            return Ok(result);
+        }
+
+        // -------------------------------------------------------------------
+        // PUT: Actualización total o parcial (200 OK / 404 Not Found)
+        // -------------------------------------------------------------------
+
+        [HttpPut("{entryPermissionId}")]
+        public async Task<IActionResult> Update(Guid entryPermissionId, [FromBody] UpdateEntryPermissionDto updateDto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                if (currentUserId == Guid.Empty) return Unauthorized(); // Seguridad
+
+                // CORREGIDO: Pasamos el currentUserId para la lógica de auditoría/autorización en el servicio
+                var result = await _entryPermissionService.UpdateEntryPermissionAsync(updateDto, entryPermissionId, currentUserId);
+
+                if (result == null)
+                {
+                    return NotFound($"EntryPermission with ID {entryPermissionId} not found.");
+                }
+
+                return Ok(result); // 200 OK
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, ex.Message); // 403 Forbidden
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // DELETE: Eliminación Lógica (204 No Content / 404 Not Found)
+        // -------------------------------------------------------------------
+
+        [HttpDelete("{entryPermissionId}")]
+        public async Task<IActionResult> Delete(Guid entryPermissionId)
+        {
+            try
+            {
+                // NOTA: Para implementar la lógica de "Solo el creador puede borrar",
+                // la firma del servicio SoftDeleteEntryPermissionAsync también debería recibir el currentUserId.
+                var deleted = await _entryPermissionService.SoftDeleteEntryPermissionAsync(entryPermissionId);
+
+                if (!deleted)
+                {
+                    return NotFound($"EntryPermission with ID {entryPermissionId} not found.");
+                }
+
+                return NoContent(); // 204 No Content
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, ex.Message); // 403 Forbidden
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // GET: Consultas de Colección (Paginated/Filtered)
+        // -------------------------------------------------------------------
+
+        [HttpGet] // GET /api/entrypermissions?pageNumber=1&pageSize=100
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
+        {
+            var results = await _entryPermissionService.GetAllEntryPermissionsAsync(pageNumber, pageSize);
+            return Ok(results);
+        }
+
+        [HttpGet("type/{permissionType}")] // GET /api/entrypermissions/type/Visitante
+        public async Task<IActionResult> GetByType(PermissionType permissionType, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
+        {
+            var results = await _entryPermissionService.GetEntryPermissionsByTypeAsync(permissionType, pageNumber, pageSize);
+            return Ok(results);
+        }
+
+        // -------------------------------------------------------------------
+        // FALTANTES: Consultas por FK (UserID, VisitID, ServiceID)
+        // -------------------------------------------------------------------
+
+        [HttpGet("user/{userId}")] // GET /api/entrypermissions/user/{userId}
+        public async Task<IActionResult> GetByUserId(Guid userId)
+        {
+            var results = await _entryPermissionService.GetEntryPermissionsByUserIdAsync(userId);
+            return Ok(results); // Devuelve 200 OK con lista vacía si no hay resultados
+        }
+
+        [HttpGet("visit/{visitId}")] // GET /api/entrypermissions/visit/{visitId}
+        public async Task<IActionResult> GetByVisitId(Guid visitId)
+        {
+            var results = await _entryPermissionService.GetEntryPermissionsByVisitIdAsync(visitId);
+            return Ok(results);
+        }
+
+        [HttpGet("service/{serviceId}")] // GET /api/entrypermissions/service/{serviceId}
+        public async Task<IActionResult> GetByServiceId(Guid serviceId)
+        {
+            var results = await _entryPermissionService.GetEntryPermissionsByServiceIdAsync(serviceId);
+            return Ok(results);
+        }
+
+        // -------------------------------------------------------------------
+        // VALIDACIÓN DE QR
+        // -------------------------------------------------------------------
+
+        [HttpGet("validate")]
+        public async Task<IActionResult> ValidateQrCode([FromQuery] string code)
+        {
+            if (string.IsNullOrWhiteSpace(code))
+            {
+                return BadRequest("QR code value is required.");
+            }
+
+            try
+            {
+                // Llama al servicio, que ahora devuelve GateCheckResponseDto
+                var validationData = await _entryPermissionService.ValidateQrCodeAsync(code);
+
+                // 200 OK: Devuelve los datos de corroboración (luz verde/roja en el CheckResultStatus)
+                return Ok(validationData);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // 404 Not Found (El código nunca existió)
+                return NotFound(new { Message = ex.Message, CheckResultStatus = "No Encontrado" });
+            }
+            catch (Exception ex)
+            {
+                // En caso de otros errores (ej. la base de datos falla)
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+    }
+}

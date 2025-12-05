@@ -4,8 +4,6 @@ namespace CountrySecure.Application.DTOs.Properties
 {
     public class UpdatePropertyDto
     {
-        public Guid PropertyId { get; set; }
-
         public  string? Street { get; set; }
 
         public int? NumberProperty { get; set; }

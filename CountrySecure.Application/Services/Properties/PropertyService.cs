@@ -42,31 +42,40 @@ namespace CountrySecure.Application.Services.Properties
             return addedProperty.ToResponseDto();
         }
 
-        public async Task UpdatePropertyAsync(UpdatePropertyDto updateProperty, Guid currentId)
+        public async Task<PropertyResponseDto?> UpdatePropertyAsync(Guid propertyId, UpdatePropertyDto updateProperty, Guid currentId)
         {
-            // Asumimos que updateProperty.PropertyId es la propiedad correcta para la ID
-            var existingEntity = await _propertyRepository.GetByIdAsync(updateProperty.PropertyId);
+            // 1. Validar la existencia: Usamos el ID de la propiedad que viene en el parámetro (de la URL)
+            var existingEntity = await _propertyRepository.GetByIdAsync(propertyId);
 
+            // Manejo de 404 Not Found (Devolver null al controlador)
             if (existingEntity == null)
             {
-                throw new KeyNotFoundException($"Property with ID {updateProperty.PropertyId} not found.");
+                return null;
             }
 
-            // REGLA DE NEGOCIO: Solo el creador o un Admin pueden actualizar
+            // 2. REGLA DE NEGOCIO: Validar Autorización
+            // Solo el creador (o un rol superior, si lo implementas) puede modificar.
             if (existingEntity.CreatedBy != currentId.ToString())
             {
-                throw new UnauthorizedAccessException("User is not authorized to update this property.");
+                // Lanza una excepción que será capturada por el controlador para devolver 403 Forbidden.
+                throw new UnauthorizedAccessException("User is not authorized to update this property. Only the creator may modify it.");
             }
 
-            // Mapeo de actualización (DRY)
+            // 3. Mapeo y Aplicación de Cambios
+            // Aplica solo los campos no nulos del DTO a la entidad existente.
             updateProperty.MapToEntity(existingEntity);
 
-            // Actualizar Auditoría
+            // 4. Actualizar Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = currentId.ToString();
+            existingEntity.LastModifiedBy = currentId.ToString(); // Registra quién realizó la modificación
 
-            await _propertyRepository.UpdateAsync(existingEntity);
-            await _unitOfWork.SaveChangesAsync();
+            // 5. Guardar Cambios
+            var updatedEntity = await _propertyRepository.UpdateAsync(existingEntity);
+            await _unitOfWork.SaveChangesAsync(); // Persiste la transacción
+
+            // 6. Mapeo de Salida y Retorno
+            // Devuelve el objeto actualizado al controlador.
+            return updatedEntity.ToResponseDto();
         }
 
         public async Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId)
@@ -104,27 +113,27 @@ namespace CountrySecure.Application.Services.Properties
             return propertyEntity.ToResponseDto();
         }
 
-        public async Task<IEnumerable<PropertyResponseDto>> GetAllPropertiesAsync(int pageNumber, int pageSize)
+        public async Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize)
         {
             var propertyEntities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
 
             return propertyEntities.ToResponseDto();
         }
 
-        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
+        public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
         {
             var propertyEntities = await _propertyRepository.GetPropertiesByStatusAsync(status, pageNumber, pageSize);
 
             return propertyEntities.ToResponseDto();
         }
 
-        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByOwnerId(Guid ownerId)
+        public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByOwnerId(Guid ownerId)
         {
             var propertyEntities = await _propertyRepository.GetPropertyByIdUserAsync(ownerId);
             return propertyEntities.ToResponseDto();
         }
 
-        public async Task<IEnumerable<PropertyResponseDto>> GetPropertiesByLotIdAsync(Guid lotId)
+        public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByLotIdAsync(Guid lotId)
         {
             var propertyEntities = await _propertyRepository.GetPropertiesByLotIdAsync(lotId);
             return propertyEntities.ToResponseDto();
