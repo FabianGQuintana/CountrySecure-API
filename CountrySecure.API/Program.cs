@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
+using FluentValidation;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -25,6 +27,7 @@ using CountrySecure.Application.Services.Visits;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
+using CountrySecure.Application.Validators;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -36,12 +39,15 @@ var builder = WebApplication.CreateBuilder(args);
 //
 
 // Controllers + JSON
-builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-    });
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ValidationFilter>();   
+})
+.AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+});
 
 // Repositorios
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -61,6 +67,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// Filter
+builder.Services.AddScoped<ValidationFilter>();
+
 
 
 // ---------------------------
@@ -128,6 +138,9 @@ if (string.IsNullOrWhiteSpace(connStr))
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
     options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure())
 );
+
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
+
 
 
 //
