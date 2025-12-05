@@ -9,10 +9,6 @@ public class Visit : BaseEntity
     public required int DniVisit { get; set; }
 
     //relationships
-<<<<<<< Updated upstream
-    // public ICollection<EntryPermit> EntryPermits { get; set; }
-=======
     public ICollection<EntryPermission>? EntryPermissions { get; set; }
->>>>>>> Stashed changes
 }
 
