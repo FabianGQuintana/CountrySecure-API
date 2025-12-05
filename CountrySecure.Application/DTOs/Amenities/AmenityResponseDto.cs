@@ -12,6 +12,8 @@ namespace CountrySecure.Application.DTOs.Amenity
         public required int Capacity { get; set; }
         public required string Status { get; set; } // De BaseEntity, útil para el cliente
 
-      
+        public DateTime CreatedAt { get; set; }
+        public DateTime? LastModifiedAt { get; set; }
+
     }
 }

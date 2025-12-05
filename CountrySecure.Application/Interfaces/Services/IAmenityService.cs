@@ -8,7 +8,7 @@ namespace CountrySecure.Application.Interfaces.Services
 {
     public interface IAmenityService
     {
-        Task<AmenityResponseDto> CreateAmenityAsync(AmenityCreateDto dto);
+        Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto);
         Task<AmenityResponseDto> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto);
         Task<bool> DeleteAmenityAsync(Guid id);
         Task<AmenityResponseDto> GetByIdAsync(Guid id);

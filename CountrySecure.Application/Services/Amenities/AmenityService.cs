@@ -26,16 +26,15 @@ namespace CountrySecure.Application.Services
         }
 
 
-        public async Task<AmenityResponseDto> CreateAmenityAsync(AmenityCreateDto dto)
+        public async Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto)
         {
-            // 1. Lógica de Negocio: Validación de Unicidad
             var existingAmenity = await _amenityRepository.GetAmenityByNameAsync(dto.AmenityName);
             if (existingAmenity != null)
             {
-                throw new InvalidOperationException($"Amenidad con nombre '{dto.AmenityName}' ya existe.");
+                throw new InvalidOperationException(/*...*/);
             }
 
-            // 2. Mapeo Manual (Usando el DTO y solo las propiedades que el cliente puede enviar)
+
             var amenity = new Amenity
             {
                 AmenityName = dto.AmenityName,
@@ -43,28 +42,92 @@ namespace CountrySecure.Application.Services
                 Schedules = dto.Schedules,
                 Capacity = dto.Capacity,
 
-                // Asignación de auditoría (se obtiene de un contexto de usuario)
-                // CreatedBy = _userContextAccessor.GetUserId(), 
-                CreatedBy = "SYSTEM", // Manteniendo el valor de tu ejemplo por ahora
-                                      // Id, CreatedAt, Status NO se tocan si BaseEntity los maneja por defecto.
+                CreatedBy = "SYSTEM"
             };
 
-            // 3. Persistir la Entidad (El ORM genera el Id, CreatedAt, etc.)
-            await _amenityRepository.AddAsync(amenity);
 
-            // 4. Confirmar la transacción
+            await _amenityRepository.AddAsync(amenity);
             await _unitOfWork.SaveChangesAsync();
 
-            // 5. Mapear la Entidad persistida (que ahora tiene el Id y la auditoría final) a DTO.
+
+            return AmenityMapper.ToAmenityResponseDto(amenity);
         }
 
+        public async Task<AmenityResponseDto> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto)
+        {
+            var amenity = await _amenityRepository.GetByIdAsync(id);
+
+            if (amenity == null || amenity.IsDeleted)
+            {
+                throw new KeyNotFoundException($"Amenidad con Id '{id}' no encontrada.");
+            }
+
+            // 1. Mapeo Manual:
+            amenity.AmenityName = dto.AmenityName;
+            amenity.Description = dto.Description;
+            amenity.Capacity = dto.Capacity;
+            amenity.Schedules = dto.Schedules;
+            amenity.Status = dto.Status;
+
+
+            amenity.LastModifiedBy = "SYSTEM";
+
+            // 2. Persistir y Guardar
+            await _amenityRepository.UpdateAsync(amenity);
+            await _unitOfWork.SaveChangesAsync();
+
+
+            return AmenityMapper.ToAmenityResponseDto(amenity);
+
+        }
+
+        public async Task<bool> DeleteAmenityAsync(Guid id)
+        {
+            var amenity = await _amenityRepository.GetByIdAsync(id);
+
+            if (amenity == null)
+            {
+                throw new KeyNotFoundException($"Amenidad con Id '{id}' no encontrada.");
+            }
+
+           
+            if (amenity.IsDeleted)
+            {
+                return true;
+            }
+
+            amenity.DeletedAt = DateTime.UtcNow;
+
+            amenity.Status = "Deleted";
+            amenity.LastModifiedBy = "SYSTEM"; 
+
+            amenity.LastModifiedAt = DateTime.UtcNow;
+
+            await _amenityRepository.UpdateAsync(amenity);
+            await _unitOfWork.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<AmenityResponseDto> GetByIdAsync(Guid id)
+        {
+            var amenity = await _amenityRepository.GetByIdAsync(id);
+            if (amenity == null || amenity.IsDeleted)
+            {
+                throw new KeyNotFoundException($"Amenidad con Id '{id}' no encontrada.");
+            }
+            return AmenityMapper.ToAmenityResponseDto(amenity);
+        }
+       
         public async Task<IEnumerable<AmenityResponseDto>> GetAllAsync(int page, int size)
         {
             var amenities = await _amenityRepository.GetAllAsync(page, size);
-            return amenities.Select(a => a.ToDto());
+            return amenities
+                .Where(a => !a.IsDeleted)
+                .Select(a => AmenityMapper.ToAmenityResponseDto(a));
         }
 
+    }      
 
 
-    }   
 }
