@@ -77,7 +77,7 @@ namespace CountrySecure.Infrastructure.Repositories
             return await _dbContext.EntryPermissions
                                  .Include(p => p.User)    // El Residente/Creador
                                  .Include(p => p.Visit)   // El Visitante
-                                 .Include(p => p.Service) // El Servicio (si aplica)
+                                //  .Include(p => p.Service) // El Servicio (si aplica)
                                  .FirstOrDefaultAsync(p => p.QrCodeValue == qrCodeValue);
         }
 
