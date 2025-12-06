@@ -1,12 +1,13 @@
+using CountrySecure.Application.DTOs.Auth;
 using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Domain.Constants;
 using FluentValidation;
 
 namespace CountrySecure.Application.Validators;
 
-public class CreateUserValidator : AbstractValidator<CreateUserDto>
+public class RegisterUserValidator : AbstractValidator<RegisterUserDto>
 {
-    public CreateUserValidator()
+    public RegisterUserValidator()
     {
         RuleFor(x => x.Name)
             .NotEmpty().WithMessage("Name is required")
