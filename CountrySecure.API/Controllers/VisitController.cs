@@ -82,37 +82,37 @@ namespace CountrySecure.API.Controllers
 
         //  GET VISIT + PERMITS
         // Obtiene la visita completa (sus datos) junto con todos sus permisos asociados.
-        // [HttpGet("{visitId:guid}/with-permits")]
-        // public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
-        // {
-        //     var visit = await _visitService.GetVisitWithPermitsAsync(visitId);
+         [HttpGet("{visitId:guid}/with-permits")]
+         public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
+         {
+             var visit = await _visitService.GetVisitWithPermitsAsync(visitId);
 
-        //     if (visit == null) return NotFound("Visit not found");
+            if (visit == null) return NotFound("Visit not found");
 
-        //     return Ok(visit);
-        // }
+            return Ok(visit);
+         }
 
         //  GET PERMITS BY VISIT ID
         // Cuando necesitás ver toda la información de la visita y sus permisos en una sola llamada.
-        // [HttpGet("{visitId:guid}/permits")]
-        // public async Task<IActionResult> GetPermitsByVisitId(Guid visitId)
-        // {
-        //     var permits = await _visitService.GetPermitsByVisitIdAsync(visitId);
-        //     return Ok(permits);
-        // }
+         [HttpGet("{visitId:guid}/permits")]
+         public async Task<IActionResult> GetPermitsByVisitId(Guid visitId)
+        {
+            var permits = await _visitService.GetPermitsByVisitIdAsync(visitId);
+            return Ok(permits);
+         }
 
 
         //  GET VALID PERMIT
         // Devuelve todos los permisos asociados a esa visita, solo los permisos, sin los datos de la visita.
-        // [HttpGet("{visitId:guid}/permits/valid")]
-        // public async Task<IActionResult> GetValidPermit(Guid visitId)
-        // {
-        //     var permit = await _visitService.GetValidPermitByVisitIdAsync(visitId);
+        [HttpGet("{visitId:guid}/permits/valid")]
+        public async Task<IActionResult> GetValidPermit(Guid visitId)
+        {
+            var permit = await _visitService.GetValidPermitByVisitIdAsync(visitId);
 
-        //     if (permit == null) return NotFound("No valid permit found");
+            if (permit == null) return NotFound("No valid permit found");
 
-        //     return Ok(permit);
-        // }
+            return Ok(permit);
+        }
 
 
         //  UPDATE

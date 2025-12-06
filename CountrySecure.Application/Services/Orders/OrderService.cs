@@ -127,9 +127,9 @@ namespace CountrySecure.Application.Services.Orders
         // ============================================================
         // 9. Actualizar Orden
         // ============================================================
-        public async Task UpdateOrderAsync(UpdateOrderDto updateOrderDto)
+        public async Task UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto)
         {
-            var existing = await _orderRepository.GetByIdAsync(updateOrderDto.Id);
+            var existing = await _orderRepository.GetByIdAsync(orderId);
 
             if (existing == null || existing.IsDeleted)
                 throw new Exception("Order not found.");
@@ -137,13 +137,12 @@ namespace CountrySecure.Application.Services.Orders
             // Mapear cambios
             updateOrderDto.MapToEntity(existing);
 
-            // Auditoría
             existing.LastModifiedAt = DateTime.UtcNow;
-
 
             _orderRepository.UpdateAsync(existing);
             await _unitOfWork.SaveChangesAsync();
         }
+
 
         // ============================================================
         // 10. Soft Delete

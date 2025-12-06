@@ -31,31 +31,24 @@ namespace CountrySecure.API.Controllers
         }
 
 
-        /*
+
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
         {
+            // Obtener el usuario autenticado desde el token (recomendado)
             var userId = GetCurrentUserId();
 
             var created = await _orderService.CreateOrderAsync(dto, userId);
 
-            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
-        }
-        */
-
-        [HttpPost]
-        public async Task<IActionResult> AddNewOrderAsync([FromBody] CreateOrderDto newOrderDto)
-        {    
-            var userId = Guid.Empty;
-
-            var createdOrder = await _orderService.CreateOrderAsync(newOrderDto, userId);
-
             return CreatedAtAction(
                 nameof(GetById),
-                new { id = createdOrder.Id },
-                createdOrder
+                new { orderId = created.Id },   // <-- debe coincidir con la ruta de GetById
+                created
             );
         }
+
+
+
 
 
         [HttpGet("{id:guid}")]
@@ -117,16 +110,13 @@ namespace CountrySecure.API.Controllers
             return Ok(results);
         }
 
-        [HttpPut("{id:guid}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrderDto dto)
+        [HttpPut("{Id:guid}")]
+        public async Task<IActionResult> UpdateOrder(Guid orderId, [FromBody] UpdateOrderDto dto)
         {
-            if (id != dto.Id)
-                return BadRequest("Id mismatch.");
-
-            await _orderService.UpdateOrderAsync(dto);
-
+            await _orderService.UpdateOrderAsync(orderId, dto);
             return NoContent();
         }
+
 
         private Guid GetCurrentUserId()
         {

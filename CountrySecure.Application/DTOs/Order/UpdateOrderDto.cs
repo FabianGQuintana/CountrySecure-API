@@ -6,7 +6,6 @@ namespace CountrySecure.Application.DTOs.Order
 {
     public class UpdateOrderDto
     {
-        public Guid Id { get; }
         public string? Description { get; set; }
         public string? SupplierName { get; set; }
         public OrderStatus? OrderType { get; set; }

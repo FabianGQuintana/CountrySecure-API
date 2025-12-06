@@ -15,7 +15,7 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<IEnumerable<OrderResponseDto>> GetByTypeAsync(OrderStatus orderType);
         Task<IEnumerable<OrderResponseDto>> GetBySupplierAsync(string supplierName);
         Task<IEnumerable<OrderResponseDto>> GetMostRequestedAsync();
-        Task UpdateOrderAsync(UpdateOrderDto updateOrderDto);
+        Task UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto);
         Task<bool> SoftDeleteOrderAsync(Guid orderId);
     }
 }
