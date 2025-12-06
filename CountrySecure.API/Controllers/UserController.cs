@@ -16,6 +16,7 @@ namespace CountrySecure.API.Controllers
             _userService = userService;
         }
 
+        // [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] string? role = null)
         {
@@ -23,6 +24,7 @@ namespace CountrySecure.API.Controllers
             return Ok(users);
         }
 
+        // [Authorize(Roles = "Admin")]
         [HttpGet("{id}")]      
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -51,7 +53,7 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-
+        // [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/toggle-active")]
         public async Task<IActionResult> ToggleActive(Guid id)
         {
@@ -65,16 +67,16 @@ namespace CountrySecure.API.Controllers
             return Ok(updatedUser);
         }
 
+        // [Authorize(Roles = "Admin")]
+        // [HttpDelete("{id}")]
+        // public async Task<IActionResult> Delete(Guid id)
+        // {
+        //     var deleted = await _userService.DeleteUserAsync(id);
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
-        {
-            var deleted = await _userService.DeleteUserAsync(id);
+        //     if (!deleted) return NotFound($"User with id: {id} not found");
 
-            if (!deleted) return NotFound($"User with id: {id} not found");
-
-            return NoContent();
-        }
+        //     return NoContent();
+        // }
 
     }
 }

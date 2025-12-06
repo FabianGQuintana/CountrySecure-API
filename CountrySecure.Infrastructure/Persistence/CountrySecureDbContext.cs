@@ -17,6 +17,8 @@ namespace CountrySecure.Infrastructure.Persistence
         public DbSet<Lot> Lots { get; set; }
         public DbSet<EntryPermission> EntryPermissions { get; set; }
 
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 

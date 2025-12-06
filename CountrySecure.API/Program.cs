@@ -25,6 +25,7 @@ using CountrySecure.Application.Services.Visits;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
+using CountrySecure.Infrastructure.Utils;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -61,6 +62,10 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Unit of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+// JwtUtils
+builder.Services.AddSingleton<JwtUtils>();
+
 
 
 // ---------------------------
