@@ -39,10 +39,10 @@ namespace CountrySecure.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByServiceIdAsync(Guid serviceId)
+        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByServiceIdAsync(Guid OrderId)
         {
             return await _dbContext.EntryPermissions
-                .Where(ep => ep.ServiceId == serviceId)
+                .Where(ep => ep.OrderId == OrderId)
                 .ToListAsync();
         }
 
@@ -59,15 +59,20 @@ namespace CountrySecure.Infrastructure.Repositories
         }
 
         //Obtener todos los permisos en base al estado (1-ALTA/0-BAJA).
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsStatusAsync(string status, int pageNumber, int pageSize)
+        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsStatusAsync( string status, int pageNumber, int pageSize)
         {
+            // Intentar convertir el string al enum PermissionStatus
+            if (!Enum.TryParse<PermissionStatus>(status, true, out var statusEnum))
+                throw new ArgumentException("Estado inválido", nameof(status));
+
             return await _dbContext.EntryPermissions
-                .Where(ep => ep.Status == status)
+                .Where(ep => ep.Status == statusEnum)
                 .OrderBy(ep => ep.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
         }
+
 
         // Obtener permiso de entrada por valor de código QR con entidades relacionadas.
         public async Task<EntryPermission?> GetByQrCodeValueAsync(string qrCodeValue)

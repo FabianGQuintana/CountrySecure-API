@@ -41,8 +41,8 @@ public class VisitRepository : GenericRepository<Visit>, IVisitRepository
      {
          return await _dbContext.EntryPermissions
              .Where(ep => ep.VisitId == visitId &&
-                          ep.Status == PermissionState.Valid &&
-                         ep.FechaVisita.Date >= DateTime.UtcNow.Date)
+                          ep.Status == PermissionStatus.Pending &&
+                         ep.ValidFrom.Date >= DateTime.UtcNow.Date)
              .FirstOrDefaultAsync();
      }
 

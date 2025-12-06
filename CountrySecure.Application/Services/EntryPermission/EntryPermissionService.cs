@@ -33,7 +33,7 @@ namespace CountrySecure.Application.Services.EntryPermission
 
             // 2. Asignación de Auditoría y Estado Inicial
             newPermissionEntity.CreatedBy = currentUserId.ToString();
-            newPermissionEntity.Status = "Active";
+            newPermissionEntity.Status = PermissionStatus.Pending;
             newPermissionEntity.CreatedAt = DateTime.UtcNow;
 
             // 3. Guardar en Repositorio
@@ -99,29 +99,38 @@ namespace CountrySecure.Application.Services.EntryPermission
 
             // --- Manejo de Not Found ---
             if (entity == null)
-            {
                 throw new KeyNotFoundException("QR Code not found in the system.");
-            }
 
             // --- Validaciones de Reglas de Negocio ---
-            if (entity.Status != "Active")
+            if (entity.Status != PermissionStatus.Pending)
             {
-                // Si el estado es "Used", "Expired", etc.
                 return new GateCheckResponseDto
                 {
                     PermissionId = entity.Id,
-                    VisitorFullName = entity.Visit != null ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}" : string.Empty,
-                    ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}" : string.Empty,
+                    VisitorFullName = entity.Visit != null
+                        ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}"
+                        : string.Empty,
+                    ResidentFullName = entity.User != null
+                        ? $"{entity.User.Name} {entity.User.Lastname}"
+                        : string.Empty,
                     VisitorDni = entity.Visit?.DniVisit ?? 0,
-                    CheckResultStatus = entity.Status == "Used" ? "Permiso Usado" : "Permiso Inactivo/Expirado",
-                    Message = $"El permiso ya fue consumido o está inactivo."
+
+                    // Mapeo correcto según tu enum
+                    CheckResultStatus = entity.Status switch
+                    {
+                        PermissionStatus.Completed => "Permiso Completado",
+                        PermissionStatus.Expirado => "Permiso Expirado",
+                        _ => "Permiso Inactivo"
+                    },
+
+                    Message = "El permiso ya fue consumido, utilizado o está inactivo."
                 };
             }
 
             // --- Lógica de Uso Único (Si la validación es exitosa) ---
 
-            // 2. Marcar como USADO (Consume el permiso)
-            entity.Status = "Used";
+            // 2. Cambiar el estado a ENTERED (o el que corresponda)
+            entity.Status = PermissionStatus.Completed;
             entity.LastModifiedAt = DateTime.UtcNow;
 
             // 3. Persistir el cambio de estado
@@ -132,13 +141,19 @@ namespace CountrySecure.Application.Services.EntryPermission
             return new GateCheckResponseDto
             {
                 PermissionId = entity.Id,
-                VisitorFullName = entity.Visit != null ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}" : string.Empty,
-                ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}" : string.Empty,
+                VisitorFullName = entity.Visit != null
+                    ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}"
+                    : string.Empty,
+                ResidentFullName = entity.User != null
+                    ? $"{entity.User.Name} {entity.User.Lastname}"
+                    : string.Empty,
                 VisitorDni = entity.Visit?.DniVisit ?? 0,
-                CheckResultStatus = "Válido y Consumido", // El estado final que ve el guardia
+
+                CheckResultStatus = "Válido y Consumido",
                 Message = "Acceso Autorizado. Datos corroborados."
             };
         }
+
 
 
         // -------------------------------------------------------------------

@@ -20,15 +20,8 @@ namespace CountrySecure.API.Controllers
             _visitService = visitService;
         }
 
-        [HttpGet("ping")]
-        public IActionResult Ping()
-        {
-            return Ok("OrderController is working! 🏓");
-        }
 
         //  CREATE
-
-        /*
         [HttpPost]
         public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
         {
@@ -40,18 +33,7 @@ namespace CountrySecure.API.Controllers
                 new { visitId = createdVisit.VisitId },
                 createdVisit);
         }
-        */
-
-        [HttpPost]
-        public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
-        {
-            var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, Guid.Empty);
-
-            return CreatedAtAction(nameof(GetVisitById),
-                new { visitId = createdVisit.VisitId },
-                createdVisit);
-        }
-
+        
         
         //  GET BY ID
         [HttpGet("{visitId:guid}")]
@@ -117,7 +99,7 @@ namespace CountrySecure.API.Controllers
 
         //  UPDATE
         [HttpPut]
-        public async Task<IActionResult> UpdateVisit([FromBody] UpdateVisitDto updateVisitDto)
+        public async Task<IActionResult> UpdateVisit(UpdateVisitDto updateVisitDto)
         {
             await _visitService.UpdateVisitAsync(updateVisitDto);
             return NoContent();

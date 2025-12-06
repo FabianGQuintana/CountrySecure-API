@@ -9,8 +9,8 @@ namespace CountrySecure.Application.DTOs.Request;
 
 public class RequestResponseDto
 {
-    public string Details { get; set; }
-    public string Location { get; set; }  
+    public  required string Details { get; set; }
+    public  required string Location { get; set; }  
     public RequestStatus Status { get; set; }  
     public int IdUser { get; set; }  
     public int IdOrder { get; set; }  

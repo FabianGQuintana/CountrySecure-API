@@ -18,7 +18,7 @@ public class RequestRepository : GenericRepository<Request>, IRequestRepository
     public async Task<int> CountByStatusAsync(RequestStatus status)
     {
         return await _dbContext.Requests
-                               .Where(r => (int)r.Status == (int)status)  
+                               .Where(r => (int)r.RequestStatus == (int)status)  
                                .CountAsync();
     }
 
@@ -26,7 +26,7 @@ public class RequestRepository : GenericRepository<Request>, IRequestRepository
     public async Task<IEnumerable<Request>> GetByStatusAsync(RequestStatus status, int numberPage, int pageSize)
     {
         return await _dbContext.Requests
-                               .Where(r => (int)r.Status == (int)status)  
+                               .Where(r => (int)r.RequestStatus == (int)status)  
                                .OrderBy(r => r.Id)
                                .Skip((numberPage - 1) * pageSize)
                                .Take(pageSize)

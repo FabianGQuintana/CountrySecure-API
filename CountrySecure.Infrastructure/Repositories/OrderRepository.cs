@@ -19,7 +19,7 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
         return await _dbContext.Orders.ToListAsync();
     }
 
-    public async Task<Order> GetByIdAsync(int idServicio)
+    public async Task<Order?> GetByIdAsync(int idServicio)
     {
         return await _dbContext.Orders.FindAsync(idServicio);
     }

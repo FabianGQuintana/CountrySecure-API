@@ -9,9 +9,9 @@ namespace CountrySecure.Application.DTOs.Request;
 
 public class CreateRequestDto
 {
-    public string Details { get; set; }
-    public string Location { get; set; }
-    public int IdUser { get; set; }
-    public int IdOrder { get; set; }
+    public required string Details { get; set; }
+    public required string Location { get; set; }
+    public required int IdUser { get; set; }
+    public required int IdOrder { get; set; }
     public RequestStatus Status { get; set; } = RequestStatus.Pending;
 }

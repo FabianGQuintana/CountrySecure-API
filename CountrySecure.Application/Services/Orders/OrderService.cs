@@ -139,7 +139,7 @@ namespace CountrySecure.Application.Services.Orders
 
             existing.LastModifiedAt = DateTime.UtcNow;
 
-            _orderRepository.UpdateAsync(existing);
+            await _orderRepository.UpdateAsync(existing);
             await _unitOfWork.SaveChangesAsync();
         }
 
@@ -157,7 +157,7 @@ namespace CountrySecure.Application.Services.Orders
             order.Status = "Inactive";
             order.DeletedAt = DateTime.UtcNow;
 
-            _orderRepository.UpdateAsync(order);
+            await _orderRepository.UpdateAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
             return true;

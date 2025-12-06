@@ -10,12 +10,12 @@ namespace CountrySecure.Domain.Entities
     public class Order: BaseEntity
     {
         //Attributes
-        public string Description { get; set; }
-        public string SupplierName { get; set; }
+        public required string Description { get; set; }
+        public required string SupplierName { get; set; }
         public OrderStatus OrderType { get; set; }
 
         // Relashionships
-        public ICollection<Request> Requests { get; set; }
-        public ICollection<EntryPermission> EntryPermissions { get; set; }
+        public ICollection<Request>? Requests { get; set; }
+        public ICollection<EntryPermission>? EntryPermissions { get; set; }
     }
 }
