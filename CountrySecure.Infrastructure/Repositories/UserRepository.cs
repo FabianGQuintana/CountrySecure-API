@@ -53,6 +53,7 @@ namespace CountrySecure.Infrastructure.Repositories
         {
             user.UpdatedAt = DateTime.UtcNow;
             _context.Users.Update(user);
+            await Task.CompletedTask;
         }
 
         public async Task<bool> DeleteAsync(Guid id)

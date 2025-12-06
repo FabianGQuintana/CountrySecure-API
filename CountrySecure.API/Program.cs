@@ -23,11 +23,14 @@ using CountrySecure.Application.Services.Lots;
 using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
 using CountrySecure.Application.Services.Visits;
+using CountrySecure.Application.Services.Orders;
+using CountrySecure.Application.Services.Request;
 
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
 using CountrySecure.Application.Validators;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,12 +57,16 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ILotRepository, LotRepository>();
 builder.Services.AddScoped<IVisitRepository, VisitRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 
 // Servicios de dominio
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
 builder.Services.AddScoped<IVisitService, VisitService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IRequestService, RequestService>();
 
 // Servicios agregados del segundo Program
 builder.Services.AddScoped<ITokenService, TokenService>();

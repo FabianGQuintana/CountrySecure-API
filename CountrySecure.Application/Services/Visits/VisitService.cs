@@ -1,10 +1,11 @@
-﻿using CountrySecure.Application.Mappers;
-// using CountrySecure.Application.DTOs.EntryPermit;
+﻿using CountrySecure.Application.DTOs.EntryPermission;
 using CountrySecure.Application.DTOs.Visits;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Application.Mappers;
 using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,10 +16,12 @@ namespace CountrySecure.Application.Services.Visits
     public class VisitService : IVisitService
     {
         private readonly IVisitRepository _visitRepository;
+        private readonly IEntryPermissionRepository _entryPermissionRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        public VisitService(IVisitRepository visitRepository, IUnitOfWork unitOfWork)
+        public VisitService(IVisitRepository visitRepository,IEntryPermissionRepository entryPermissionRepository, IUnitOfWork unitOfWork)
         {
+            _entryPermissionRepository = entryPermissionRepository;
             _visitRepository = visitRepository;
             _unitOfWork = unitOfWork;
         }
@@ -57,7 +60,7 @@ namespace CountrySecure.Application.Services.Visits
 
             // Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = "system"; // o userId si lo querés pasar
+          
 
             await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
@@ -120,26 +123,33 @@ namespace CountrySecure.Application.Services.Visits
         }
 
 
-        // public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
-        // {
-        //     var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
+         public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
+         {
+             var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
 
-        //     if (visitEntity == null || visitEntity.DeletedAt != null)
-        //         return null;
+             if (visitEntity == null || visitEntity.DeletedAt != null)
+                 return null;
 
-        //     return visitEntity.ToResponseDto();
-        // }
+             return visitEntity.ToResponseDto();
+         }
 
-        // public async Task<IEnumerable<EntryPermitResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
-        // {
-        //     var permits = await _visitRepository.GetPermitsByVisitIdAsync(visitId);
-        //     return permits.ToPermitDto();
-        // }
+        public async Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
+        {
+            var permits = await _entryPermissionRepository.GetEntryPermissionsByVisitIdAsync(visitId);
+            return permits.ToResponseDto();
+        }
 
-        // public async Task<EntryPermitResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
-        // {
-        //     var permit = await _visitRepository.GetValidPermitByVisitIdAsync(visitId);
-        //     return permit?.ToPermitDto();
-        // }
+        public async Task<EntryPermissionResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
+        {
+            var permit = await _entryPermissionRepository
+                .GetEntryPermissionsByVisitIdAsync(visitId);
+
+            var valid = permit
+                .Where(p => p.Status == PermissionStatus.Pending)
+                .FirstOrDefault();
+
+            return valid?.ToResponseDto();
+        }
+
     }
 }

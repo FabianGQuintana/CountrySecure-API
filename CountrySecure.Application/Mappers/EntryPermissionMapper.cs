@@ -30,6 +30,11 @@ namespace CountrySecure.Application.Mappers
                 Id = permission.Id,
                 QrCodeValue = permission.QrCodeValue,
                 Type = permission.PermissionType,
+                Status = permission.Status,
+                ValidFrom = permission.ValidFrom,
+                EntryTime = permission.EntryTime,
+                DepartureTime = permission.DepartureTime,
+
 
                 // Propiedades de Auditoría (Mapeadas de la Entidad Base)
                 CreatedAt = permission.CreatedAt,
@@ -64,12 +69,15 @@ namespace CountrySecure.Application.Mappers
                 QrCodeValue = dto.QrCodeValue,
                 PermissionType = dto.PermissionType,
                 Description = dto.Description,
+                ValidFrom = dto.ValidFrom,
+                Status = dto.Status,
+
 
                 // Asignación de Claves Foráneas (FKs)
                 // Se asume que el DTO solo proporciona los IDs
                 UserId = dto.UserId,
                 VisitId = dto.VisitId,
-                ServiceId = dto.ServiceId, // Puede ser null
+                OrderId = dto.OrderId, // Puede ser null
             };
         }
 
@@ -98,9 +106,22 @@ namespace CountrySecure.Application.Mappers
             {
                 existingEntity.UserId = dto.UserId.Value;
             }
-            if (dto.ServiceId.HasValue)
+            if (dto.OrderId.HasValue)
             {
-                existingEntity.ServiceId = dto.ServiceId.Value;
+                existingEntity.OrderId = dto.OrderId.Value;
+            }
+
+            if (dto.EntryTime.HasValue)
+            {
+                existingEntity.EntryTime = dto.EntryTime.Value;
+            }
+            if (dto.DepartureTime.HasValue)
+            {
+                existingEntity.DepartureTime = dto.DepartureTime.Value;
+            }
+            if (dto.Status.HasValue)
+            {
+                existingEntity.Status = dto.Status.Value;
             }
         }
     }
