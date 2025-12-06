@@ -68,8 +68,6 @@ builder.Services.AddScoped<IEntryPermissionRepository, EntryPermissionRepository
 <<<<<<< Updated upstream
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
-=======
->>>>>>> Stashed changes
 
 // Servicios de dominio
 builder.Services.AddScoped<IUserService, UserService>();

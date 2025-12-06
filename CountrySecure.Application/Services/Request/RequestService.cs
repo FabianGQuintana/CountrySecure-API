@@ -40,7 +40,7 @@ namespace CountrySecure.Application.Services.Request
         public async Task<RequestResponseDto?> GetRequestByIdAsync(Guid requestId)
         {
             var request = await _requestRepository.GetByIdAsync(requestId);
-            
+
             if (request == null)
                 return null;
 
