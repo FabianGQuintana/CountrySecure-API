@@ -5,22 +5,20 @@ namespace CountrySecure.Application.DTOs.Amenity
 {
     public class AmenityUpdateDto
     {
-        [Required]
-        public Guid Id { get; set; }
+        // La Id se pasa al servicio a través de la URL.
 
-        [Required]
         [StringLength(100)]
-        public required string AmenityName { get; set; }
+        public string? AmenityName { get; set; } // Hacemos nullable para PATCH
 
         [StringLength(500)]
-        public required string Description { get; set; }
+        public string? Description { get; set; } // Hacemos nullable para PATCH
 
         [StringLength(200)]
-        public required string Schedules { get; set; }
+        public string? Schedules { get; set; } // Hacemos nullable para PATCH
 
         [Range(1, 100)]
-        public int Capacity { get; set; }
+        public int? Capacity { get; set; } // Hacemos nullable para PATCH
 
-        public required string Status { get; set; }
+        public string? Status { get; set; } // Hacemos nullable para PATCH
     }
 }

@@ -6,31 +6,29 @@ using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
-
 namespace CountrySecure.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")] 
-    public class AmenitiesController : ControllerBase
+    [Route("api/[controller]")]
+    public class AmenityController : ControllerBase
     {
         private readonly IAmenityService _amenityService;
 
-        public AmenitiesController(IAmenityService amenityService)
+        public AmenityController(IAmenityService amenityService)
         {
             _amenityService = amenityService;
         }
 
         // --- Método Auxiliar para Seguridad (Auditoría) ---
-        private Guid GetCurrentUserId()
+        private Guid? GetCurrentUserId()
         {
-            // Busca el ClaimTypes.NameIdentifier (sub) o el claim que uses para almacenar el ID
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (userIdClaim != null && Guid.TryParse(userIdClaim, out Guid userId))
             {
                 return userId;
             }
-            return Guid.Empty;
+            return null;
         }
 
         // -------------------------------------------------------------------
@@ -44,13 +42,15 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState);
             }
 
+            var currentUserId = GetCurrentUserId();
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             try
             {
-                var currentUserId = GetCurrentUserId();
-                if (currentUserId == Guid.Empty) return Unauthorized();
-
-                // Asumo que tu servicio tiene un método AmenityCreateAsync que acepta el DTO y el ID de usuario
-                var result = await _amenityService.AmenityCreateAsync(createDto, currentUserId);
+                var result = await _amenityService.AmenityCreateAsync(createDto, currentUserId.Value);
 
                 return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
             }
@@ -61,6 +61,7 @@ namespace CountrySecure.API.Controllers
             }
             catch (Exception ex)
             {
+                // Manejo genérico de errores (ej. errores de DB no controlados)
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
@@ -73,7 +74,6 @@ namespace CountrySecure.API.Controllers
         {
             try
             {
-                // El servicio GetAmenityByIdAsync ya maneja la lógica de Not Found/IsDeleted
                 var result = await _amenityService.GetByIdAsync(id);
                 return Ok(result);
             }
@@ -89,7 +89,7 @@ namespace CountrySecure.API.Controllers
         }
 
         // -------------------------------------------------------------------
-        // PUT: Actualización de Amenity (200 OK / 404 Not Found)
+        // PUT: Actualización de Amenity (204 No Content / 404 Not Found)
         // -------------------------------------------------------------------
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] AmenityUpdateDto updateDto)
@@ -99,20 +99,24 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState);
             }
 
+            var currentUserId = GetCurrentUserId();
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             try
             {
-                var currentUserId = GetCurrentUserId();
-                if (currentUserId == Guid.Empty) return Unauthorized(); // Seguridad
-
-                // Asumo que tu servicio tiene un método AmenityUpdateAsync que acepta el DTO, ID y el usuario
-                var result = await _amenityService.AmenityUpdateAsync(id, updateDto, currentUserId);
+                // Llama al servicio, pasando el ID de la URL y el ID del usuario
+                var result = await _amenityService.AmenityUpdateAsync(id, updateDto, currentUserId.Value);
 
                 if (result == null)
                 {
-                    return NotFound($"Amenity whit Id '{id}' not found.");
+                    // El servicio devuelve null si la Amenity no se encontró o está eliminada (404)
+                    return NotFound($"Amenity with Id '{id}' not found.");
                 }
 
-                return Ok(result); // 200 OK
+                return NoContent(); // 204 No Content (Actualización exitosa sin necesidad de devolver el objeto)
             }
             catch (KeyNotFoundException ex)
             {
@@ -131,17 +135,29 @@ namespace CountrySecure.API.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(Guid id)
         {
+            var currentUserId = GetCurrentUserId();
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             try
             {
-                var deleted = await _amenityService.DeleteAmenityAsync(id);
+                // Llama al servicio, pasando el ID para la auditoría
+                var deleted = await _amenityService.DeleteAmenityAsync(id, currentUserId.Value);
 
                 if (!deleted)
                 {
-                    // Si el servicio devuelve 'false', es probable que no lo haya encontrado
-                    return NotFound($"Amenity whit Id '{id}' not found.");
+                    // Si el servicio devuelve 'false' (aunque el servicio lanza KeyNotFoundException)
+                    return NotFound($"Amenity with Id '{id}' not found.");
                 }
 
                 return NoContent(); // 204 No Content
+            }
+            catch (KeyNotFoundException ex)
+            {
+                // Captura la excepción de 'no encontrado' que lanza el servicio
+                return NotFound(ex.Message);
             }
             catch (Exception ex)
             {
@@ -150,19 +166,18 @@ namespace CountrySecure.API.Controllers
         }
 
         // -------------------------------------------------------------------
-        // GET: Consultas de Colección y Filtros (Usando los métodos del servicio)
+        // GET: Consultas de Colección y Filtros
         // -------------------------------------------------------------------
 
-        // GET /api/amenities?pageNumber=1&pageSize=10
         [HttpGet]
         public async Task<IActionResult> GetAllWithTurns([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
-            // Usamos el método que incluye los turnos, asumiendo que es la consulta base.
+            // Nota: Aquí se usa el método GetAllAmenitiesWithTurnsAsync, el nombre del método es confuso,
+            // pero el método en el servicio está definido.
             var results = await _amenityService.GetAllAmenitiesWithTurnsAsync(pageNumber, pageSize);
             return Ok(results);
         }
 
-        // GET /api/amenities/name/{amenityName}
         [HttpGet("name/{amenityName}")]
         public async Task<IActionResult> GetByName(string amenityName)
         {
@@ -181,7 +196,6 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        // GET /api/amenities/capacity?minimumCapacity=10
         [HttpGet("capacity")]
         public async Task<IActionResult> GetByCapacity([FromQuery] int minimumCapacity)
         {
@@ -189,7 +203,6 @@ namespace CountrySecure.API.Controllers
             return Ok(results);
         }
 
-        // GET /api/amenities/status/{status}
         [HttpGet("status/{status}")]
         public async Task<IActionResult> GetByStatus(string status)
         {
