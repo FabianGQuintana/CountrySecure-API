@@ -1,4 +1,4 @@
-﻿using CountrySecure.Application.Mappers;
+﻿    using CountrySecure.Application.Mappers;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;
@@ -27,18 +27,22 @@ namespace CountrySecure.Application.Services.Properties
 
         public async Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto, Guid currentUserId)
         {
-            // 1. Convertir DTO a Entidad
+            // 1. Convertir DTO a Entidad (AHORA ES SEGURO: solo mapea FKs)
             var newPropertyEntity = newPropertyDto.ToEntity();
 
-            // 2. ASIGNACIÓN DE CAMPOS REQUIRED
+            // 2. Asignación de campos base y auditoría
+            // *Estos campos deben establecerse después del mapeo*
             newPropertyEntity.CreatedBy = currentUserId.ToString();
-            newPropertyEntity.Status = "Active"; // Estado inicial
+            newPropertyEntity.Status = "Active"; // Asignación del estado inicial
             newPropertyEntity.CreatedAt = DateTime.UtcNow;
 
+            // Nota: newPropertyEntity.User y newPropertyEntity.Lot ya son null gracias al mapeador corregido.
+
+            // 3. Persistencia
             var addedProperty = await _propertyRepository.AddAsync(newPropertyEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // 3. Mapeo de Entidad a DTO de Respuesta
+            // 4. Mapeo a DTO de respuesta
             return addedProperty.ToResponseDto();
         }
 

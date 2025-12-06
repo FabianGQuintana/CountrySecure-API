@@ -92,13 +92,29 @@ namespace CountrySecure.API.Controllers
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
             {
-                return Unauthorized();
+                return Unauthorized(); // 401 Unauthorized
             }
 
-            var propertyDto = await _propertyService.AddNewPropertyAsync(dto, currentUserId);
+            try
+            {
+                var propertyDto = await _propertyService.AddNewPropertyAsync(dto, currentUserId);
 
-            // 201 Created. propertyDto.IdProperty debe ser el ID generado.
-            return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
+                // 201 Created. propertyDto.IdProperty debe ser el ID generado.
+                return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
+            }
+            catch (KeyNotFoundException)
+            {
+                // Esto podría ser lanzado por el servicio si el LotId o UserId no existe.
+                return BadRequest(new { message = "The specified LotId or UserId does not exist." }); // 400 Bad Request
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "An unexpected error occurred",
+                    detail = ex.InnerException?.Message // Intenta obtener el mensaje interno de la DB
+                });
+            }
         }
 
         // 7. Método: PUT /api/Property/{id} (Actualización SEGURA)

@@ -30,7 +30,11 @@ using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
 using CountrySecure.Application.Validators;
+using CountrySecure.Application.Services.EntryPermission;
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -57,16 +61,28 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ILotRepository, LotRepository>();
 builder.Services.AddScoped<IVisitRepository, VisitRepository>();
+builder.Services.AddScoped<IAmenityRepository, AmenityRepository>();
+builder.Services.AddScoped<ITurnRepository, TurnRepository>();
+builder.Services.AddScoped<IEntryPermissionRepository, EntryPermissionRepository>();
+<<<<<<< Updated upstream
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
+=======
+>>>>>>> Stashed changes
 
 // Servicios de dominio
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
 builder.Services.AddScoped<IVisitService, VisitService>();
+builder.Services.AddScoped<IAmenityService, AmenityService>();
+builder.Services.AddScoped<ITurnService, TurnService>();
+builder.Services.AddScoped<IEntryPermissionService, EntryPermissionService>();
+<<<<<<< Updated upstream
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IRequestService, RequestService>();
+=======
+>>>>>>> Stashed changes
 
 // Servicios agregados del segundo Program
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -175,11 +191,11 @@ catch (Exception ex)
 }
 
 // Migraciones automáticas
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
-    db.Database.Migrate();
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
+//    db.Database.Migrate();
+//}
 
 if (app.Environment.IsDevelopment())
 {

@@ -49,7 +49,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configuration
             // PASSWORD
             builder.Property(u => u.Password)
                    .IsRequired()
-                   .HasMaxLength(100);
+                   .HasColumnType("text");
 
             // ACTIVE
             builder.Property(u => u.Active)
