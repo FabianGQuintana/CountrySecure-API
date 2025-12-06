@@ -26,12 +26,13 @@ namespace CountrySecure.Application.Services
         }
 
 
-        public async Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto)
-        {
+        
+            public async Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto, Guid createdById)
+            {
             var existingAmenity = await _amenityRepository.GetAmenityByNameAsync(dto.AmenityName);
             if (existingAmenity != null)
             {
-                throw new InvalidOperationException(/*...*/);
+                throw new InvalidOperationException("the amenity does not exist");
             }
 
 
@@ -42,7 +43,7 @@ namespace CountrySecure.Application.Services
                 Schedules = dto.Schedules,
                 Capacity = dto.Capacity,
 
-                CreatedBy = "SYSTEM"
+                CreatedBy = createdById.ToString(),
             };
 
 
@@ -59,7 +60,7 @@ namespace CountrySecure.Application.Services
 
             if (amenity == null || amenity.IsDeleted)
             {
-                throw new KeyNotFoundException($"Amenidad con Id '{id}' no encontrada.");
+                throw new KeyNotFoundException($"Amenity whit Id '{id}' not found.");
             }
 
             // 1. Mapeo Manual:
@@ -87,10 +88,10 @@ namespace CountrySecure.Application.Services
 
             if (amenity == null)
             {
-                throw new KeyNotFoundException($"Amenidad con Id '{id}' no encontrada.");
+                throw new KeyNotFoundException($"Amenity whit Id '{id}' not found");
             }
 
-           
+
             if (amenity.IsDeleted)
             {
                 return true;
@@ -99,7 +100,7 @@ namespace CountrySecure.Application.Services
             amenity.DeletedAt = DateTime.UtcNow;
 
             amenity.Status = "Deleted";
-            amenity.LastModifiedBy = "SYSTEM"; 
+            amenity.LastModifiedBy = "SYSTEM";
 
             amenity.LastModifiedAt = DateTime.UtcNow;
 
@@ -114,11 +115,11 @@ namespace CountrySecure.Application.Services
             var amenity = await _amenityRepository.GetByIdAsync(id);
             if (amenity == null || amenity.IsDeleted)
             {
-                throw new KeyNotFoundException($"Amenidad con Id '{id}' no encontrada.");
+                throw new KeyNotFoundException($"Amenity whit Id '{id}' not found");
             }
             return AmenityMapper.ToAmenityResponseDto(amenity);
         }
-       
+
         public async Task<IEnumerable<AmenityResponseDto>> GetAllAsync(int page, int size)
         {
             var amenities = await _amenityRepository.GetAllAsync(page, size);
@@ -127,7 +128,39 @@ namespace CountrySecure.Application.Services
                 .Select(a => AmenityMapper.ToAmenityResponseDto(a));
         }
 
-    }      
+        public async Task<AmenityResponseDto> GetAmenityByNameAsync(string amenityName)
+        {
+            var amenity = await _amenityRepository.GetAmenityByNameAsync(amenityName);
+            if (amenity == null || amenity.IsDeleted)
+            {
+                throw new KeyNotFoundException($"Amenity whit name '{amenityName}' not found");
+            }
+            return AmenityMapper.ToAmenityResponseDto(amenity);
+        }
 
+        public async Task<IEnumerable<AmenityResponseDto>> GetAllAmenitiesWithTurnsAsync(int pageNumber, int pageSize)
+        {
+            var amenities = await _amenityRepository.GetAllAmenitiesWithTurnsAsync(pageNumber, pageSize);
+            return amenities
+                .Where(a => !a.IsDeleted)
+                .Select(a => AmenityMapper.ToAmenityResponseDto(a));
+        }
 
+        public async Task<IEnumerable<AmenityResponseDto>> GetAmenitiesByCapacityAsync(int minimumCapacity)
+        {
+            
+            var allAmenities = await _amenityRepository.GetAllAsync(1, 10000);
+            return allAmenities
+                .Where(a => !a.IsDeleted && a.Capacity >= minimumCapacity)
+                .Select(a => AmenityMapper.ToAmenityResponseDto(a));
+        }
+
+        public async Task<IEnumerable<AmenityResponseDto>> GetAmenitiesByStatusAsync(string status)
+        {
+            var amenities = await _amenityRepository.GetAmenitiesByStatusAsync(status);
+            return amenities
+                .Where(a => !a.IsDeleted)
+                .Select(a => AmenityMapper.ToAmenityResponseDto(a));
+        }
+    }
 }

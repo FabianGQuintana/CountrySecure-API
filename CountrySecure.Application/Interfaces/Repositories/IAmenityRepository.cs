@@ -12,18 +12,18 @@ namespace CountrySecure.Application.Interfaces.Repositories
 
         Task<Amenity?> GetAmenityByNameAsync(string amenityName);
 
-        Task<Amenity?> GetAmenityWithTurnosAsync(Guid amenityId);
+        Task<Amenity?> GetAmenityWithTurnsAsync(Guid amenityId);
 
         // serv disponibles 
         Task<IEnumerable<Amenity>> GetAvailableAmenitiesAsync();
 
         //las aminidades con turnos
-        Task<IEnumerable<Amenity>> GetAllAmenitiesWithTurnosAsync(int pageNumber, int pageSize);
+        Task<IEnumerable<Amenity>> GetAllAmenitiesWithTurnsAsync(int pageNumber, int pageSize);
 
         //capacidad disponible
         Task<bool> IsAmenityAvailableForBookingAsync(Guid amenityId, DateTime startTime,DateTime endTime);
 
-        
+        Task<IEnumerable<Amenity>> GetAmenitiesByStatusAsync(string status);
     }
 
 }

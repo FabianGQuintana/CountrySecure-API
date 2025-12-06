@@ -13,7 +13,8 @@ namespace CountrySecure.Application.Interfaces.Services
 
         Task<IEnumerable<string>> GetAllBlockNamesAsync();
 
-        Task UpdateLotAsync(UpdateLotDto updateLot, Guid currentId);
+        //Task UpdateLotAsync(UpdateLotDto updateLot, Guid currentId);
+        Task UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId);
 
         Task<bool> SoftDeleteLotAsync(Guid lotId, Guid currentUserId);
 

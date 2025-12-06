@@ -8,10 +8,20 @@ namespace CountrySecure.Application.Interfaces.Services
 {
     public interface IAmenityService
     {
-        Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto);
-        Task<AmenityResponseDto> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto);
+       
+        Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto, Guid createdById); 
+        Task<AmenityResponseDto> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto, Guid modifiedById); 
         Task<bool> DeleteAmenityAsync(Guid id);
         Task<AmenityResponseDto> GetByIdAsync(Guid id);
         Task<IEnumerable<AmenityResponseDto>> GetAllAsync(int page, int size);
+
+        Task<AmenityResponseDto> GetAmenityByNameAsync(string amenityName);
+
+        Task<IEnumerable<AmenityResponseDto>> GetAllAmenitiesWithTurnsAsync(int pageNumber, int pageSize);
+
+        Task<IEnumerable<AmenityResponseDto>> GetAmenitiesByCapacityAsync(int minimumCapacity);
+
+        Task<IEnumerable<AmenityResponseDto>> GetAmenitiesByStatusAsync(string status);
+
     }
 }

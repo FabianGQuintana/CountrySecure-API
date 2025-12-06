@@ -21,7 +21,6 @@ namespace CountrySecure.Application.DTOs.Amenity
         [Range(1, 100)]
         public int Capacity { get; set; }
 
-        // El cliente también puede querer cambiar el status o activo
         public required string Status { get; set; }
     }
 }

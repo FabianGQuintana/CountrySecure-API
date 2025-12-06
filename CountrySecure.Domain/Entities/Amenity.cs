@@ -12,6 +12,7 @@ namespace CountrySecure.Domain.Entities
         public required string Description { get; set; }
         public required string Schedules { get; set; }
         public required int Capacity { get; set; }
+       
         public ICollection<Turn> Turns { get; set; } = new List<Turn>();
 
 

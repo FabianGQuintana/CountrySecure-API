@@ -22,7 +22,7 @@ namespace CountrySecure.Infrastructure.Repositories
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<Amenity?> GetAmenityWithTurnosAsync(Guid amenityId)
+        public async Task<Amenity?> GetAmenityWithTurnsAsync(Guid amenityId)
         {
             return await _dbContext.Amenities
                 .Include(a => a.Turns)
@@ -35,7 +35,7 @@ namespace CountrySecure.Infrastructure.Repositories
                                    .ToListAsync();
         }
 
-        public async Task<IEnumerable<Amenity>> GetAllAmenitiesWithTurnosAsync(int pageNumber, int pageSize)
+        public async Task<IEnumerable<Amenity>> GetAllAmenitiesWithTurnsAsync(int pageNumber, int pageSize)
         {
             return await _dbContext.Amenities
                                    .Include(a => a.Turns)
@@ -61,6 +61,13 @@ namespace CountrySecure.Infrastructure.Repositories
                 }
             }
             return true; 
+        }
+
+        public async Task<IEnumerable<Amenity>> GetAmenitiesByStatusAsync(string status)
+        {
+            return await _dbContext.Amenities
+                .Where(a => a.Status == status)
+                .ToListAsync();
         }
     }
 }

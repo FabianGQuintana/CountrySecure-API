@@ -2,46 +2,89 @@
 using CountrySecure.Application.DTOs.Amenity;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
 namespace CountrySecure.Application.Mappers
 {
-    // Una clase estática es ideal para funciones de utilidad como el mapeo
+    // Clase estática para métodos de extensión de mapeo de la entidad Amenity
     public static class AmenityMapper
     {
-        // Método para mapear una sola entidad a un Response DTO
-        public static AmenityResponseDto ToAmenityResponseDto(Amenity entity)
+        // -------------------------------------------------------------------
+        // Mapeo de SALIDA (Lectura: Entidad -> Response DTO)
+        // -------------------------------------------------------------------
+
+        public static AmenityResponseDto ToAmenityResponseDto(this Amenity entity)
         {
-            if (entity == null)
-            {
-                return null;
-            }
+            // Nota: Aquí se omiten validaciones complejas de navegación (como en EntryPermission)
+            // ya que AmenityResponseDto no parece requerir propiedades de navegación obligatorias.
 
             return new AmenityResponseDto
             {
-                // Mapeo de Propiedades
+                // Propiedades principales
                 Id = entity.Id,
                 AmenityName = entity.AmenityName,
                 Description = entity.Description,
+                Schedules = entity.Schedules,
                 Capacity = entity.Capacity,
                 Status = entity.Status,
 
-                // Mapeo de Auditoría
+                // Propiedades de Auditoría (Mapeadas de la Entidad Base)
                 CreatedAt = entity.CreatedAt,
                 LastModifiedAt = entity.LastModifiedAt
-                // Aquí deberías mapear todas las propiedades que tu DTO de respuesta necesita
+
+                // Si AmenityResponseDto tuviera una lista de Turnos, se mapearía aquí.
             };
         }
 
-        // Opcional: Método para mapear listas de entidades a listas de Response DTOs
-        public static IEnumerable<AmenityResponseDto> ToAmenityResponseDtoList(IEnumerable<Amenity> entities)
+        public static IEnumerable<AmenityResponseDto> ToAmenityResponseDto(this IEnumerable<Amenity> amenities)
         {
-            if (entities == null)
-            {
-                return new List<AmenityResponseDto>();
-            }
+            // Mapeo de colecciones (simplificado: aplica ToAmenityResponseDto a cada elemento)
+            return amenities.Select(a => a.ToAmenityResponseDto());
+        }
 
-            // Usamos LINQ para aplicar el mapeo a cada elemento de la lista
-            return entities.Select(ToAmenityResponseDto);
+        // -------------------------------------------------------------------
+        // Mapeo de ENTRADA (Escritura: Create DTO -> Entidad)
+        // -------------------------------------------------------------------
+
+        public static Amenity ToAmenityEntity(this AmenityCreateDto dto)
+        {
+            return new Amenity
+            {
+                // Mapeo de propiedades simples
+                AmenityName = dto.AmenityName,
+                Description = dto.Description,
+                Schedules = dto.Schedules,
+                Capacity = dto.Capacity,
+
+                // Las propiedades de auditoría (CreatedBy, CreatedAt) son manejadas por el servicio
+                // o la BaseEntity y no deben mapearse desde el DTO.
+
+                // NOTA IMPORTANTE: Los Turnos (dto.Turns) DEBEN ser mapeados y agregados 
+                // a la entidad Amenity en la capa de Servicio, 
+                // ya que requieren lógica de negocio (validación, FKs).
+            };
+        }
+
+        // -------------------------------------------------------------------
+        // Mapeo de ACTUALIZACIÓN (Actualización: Update DTO -> Entidad Existente)
+        // -------------------------------------------------------------------
+
+        public static void MapToAmenityEntity(this AmenityUpdateDto dto, Amenity existingEntity)
+        {
+            // Aplicamos todos los campos requeridos en el DTO de actualización:
+
+            existingEntity.AmenityName = dto.AmenityName;
+            existingEntity.Description = dto.Description;
+            existingEntity.Schedules = dto.Schedules;
+            existingEntity.Capacity = dto.Capacity;
+            existingEntity.Status = dto.Status;
+
+            // La propiedad Id no se actualiza (es la clave).
+            // La auditoría (LastModifiedAt, LastModifiedBy) se gestiona en la capa de Servicio.
+
+            // NOTA: Si el DTO de actualización fuera para un PATCH (con campos nulleables), 
+            // usaríamos la lógica del EntryPermissionMapper (existingEntity.Prop = dto.Prop ?? existingEntity.Prop).
+            // Dado que todos los campos del AmenityUpdateDto son [Required], hacemos una asignación directa.
         }
     }
 }
