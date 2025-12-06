@@ -14,6 +14,6 @@ public class Property : BaseEntity
 	public Guid LotId { get; set; }
 
     //Navigation Properties
-    public required User User { get; set; }
-	public required Lot Lot { get; set; }
+    public  User? User { get; set; }
+	public  Lot? Lot { get; set; }
 }

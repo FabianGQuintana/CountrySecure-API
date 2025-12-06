@@ -30,12 +30,12 @@ namespace CountrySecure.API.Controllers
             return Ok(user);
         }
 
-        // [HttpPost]
-        // public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
-        // {
-        //     var createdUser = await _userService.CreateUserAsync(dto);
-        //     return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser); 
-        // }
+        //[HttpPost]
+        //public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
+        //{
+        //    var createdUser = await _userService.CreateUserAsync(dto);
+        //    return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
+        //}
 
         [HttpPut("{id}")] 
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
