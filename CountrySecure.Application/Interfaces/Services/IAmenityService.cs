@@ -1,4 +1,4 @@
-﻿using CountrySecure.Application.DTOs.Amenity;
+﻿using CountrySecure.Application.DTOs.Amenities;
 using CountrySecure.Domain.Entities; 
 using System;
 using System.Collections.Generic;

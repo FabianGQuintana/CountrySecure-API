@@ -82,41 +82,41 @@ namespace CountrySecure.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = lotDto.LotId }, lotDto);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(Guid id, [FromBody] UpdateLotDto updateDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        // [HttpPut("{id}")]
+        // public async Task<IActionResult> Put(Guid id, [FromBody] UpdateLotDto updateDto)
+        // {
+        //     if (!ModelState.IsValid)
+        //     {
+        //         return BadRequest(ModelState);
+        //     }
 
-            // CORRECCIÓN DE LA COHERENCIA DEL ID (Asumo que el DTO usa LotId)
-            if (id != updateDto.Id)
-            {
-                return BadRequest(new { message = "ID mismatch between URL and body." });
-            }
+        //     // CORRECCIÓN DE LA COHERENCIA DEL ID (Asumo que el DTO usa LotId)
+        //     if (id != updateDto.Id)
+        //     {
+        //         return BadRequest(new { message = "ID mismatch between URL and body." });
+        //     }
 
-            // 1. Extracción del ID del token para auditoría/permisos
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
-            {
-                return Unauthorized();
-            }
+        //     // 1. Extracción del ID del token para auditoría/permisos
+        //     var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //     if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+        //     {
+        //         return Unauthorized();
+        //     }
 
-            try
-            {
-                await _lotService.UpdateLotAsync(updateDto, currentUserId);
-                return NoContent();
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-        }
+        //     try
+        //     {
+        //         await _lotService.UpdateLotAsync(updateDto, currentUserId);
+        //         return NoContent();
+        //     }
+        //     catch (KeyNotFoundException)
+        //     {
+        //         return NotFound();
+        //     }
+        //     catch (UnauthorizedAccessException)
+        //     {
+        //         return Forbid();
+        //     }
+        // }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> SoftDelete(Guid id)

@@ -1,4 +1,4 @@
-﻿using CountrySecure.Application.DTOs.Amenity;
+﻿using CountrySecure.Application.DTOs.Amenities;
 using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using System;

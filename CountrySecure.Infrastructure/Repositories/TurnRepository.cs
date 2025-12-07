@@ -37,12 +37,12 @@ namespace CountrySecure.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status)
-        {
-            return await _dbContext.Turns
-                .Where(t => t.Status == status)
-                .ToListAsync();
-        }
+        // public async Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status)
+        // {
+        //     return await _dbContext.Turns
+        //         .Where(t => t.Status == status)
+        //         .ToListAsync();
+        // }
 
        
 

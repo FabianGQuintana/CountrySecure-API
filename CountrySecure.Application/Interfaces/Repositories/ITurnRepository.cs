@@ -13,7 +13,7 @@ namespace CountrySecure.Application.Interfaces.Repositories
 
         Task<IEnumerable<Turn>> GetTurnsByDateRange(DateTime startDate, DateTime endDate);
 
-        Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status);
+        // Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status);
 
 
 

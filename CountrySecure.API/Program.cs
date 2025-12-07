@@ -24,7 +24,7 @@ using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
 using CountrySecure.Application.Services.Visits;
 using CountrySecure.Application.Services.Orders;
-using CountrySecure.Application.Services.Request;
+// using CountrySecure.Application.Services.Request;
 using CountrySecure.Application.Services.EntryPermission;
 
 using CountrySecure.Infrastructure.Persistence;
@@ -83,7 +83,7 @@ builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<ITurnService, TurnService>();
 builder.Services.AddScoped<IEntryPermissionService, EntryPermissionService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IRequestService, RequestService>();
+// builder.Services.AddScoped<IRequestService, RequestService>();
 
 
 // ======================================

@@ -33,7 +33,7 @@ namespace CountrySecure.Application.Services.Turns
             newTurnEntity.UserId = currentUserId; // El UserId viene del token
             newTurnEntity.CreatedBy = currentUserId.ToString();
             newTurnEntity.CreatedAt = DateTime.UtcNow;
-            newTurnEntity.Status = TurnStatus.Pending; // Estado inicial
+            //newTurnEntity.Status = TurnStatus.Pending; // Estado inicial
 
             // 3. Persistencia
             var addedTurn = await _turnRepository.AddAsync(newTurnEntity);
@@ -61,7 +61,7 @@ namespace CountrySecure.Application.Services.Turns
             }
 
             // 3. Mapear DTO -> Entidad Existente
-            updateTurnDto.MapToEntity(existingTurn);
+            //updateTurnDto.MapToEntity(existingTurn);
 
             // 4. Actualizar Auditoría
             existingTurn.LastModifiedAt = DateTime.UtcNow;
@@ -90,7 +90,7 @@ namespace CountrySecure.Application.Services.Turns
             existingTurn.LastModifiedBy = currentUserId.ToString();
 
             // Opcional: Podrías cambiar el estado del turno a Cancelled/Inactive si lo requieres.
-             existingTurn.Status = TurnStatus.CancelledByAdmin; 
+            //existingTurn.Status = TurnStatus.CancelledByAdmin; 
 
             await _turnRepository.UpdateAsync(existingTurn);
             await _unitOfWork.SaveChangesAsync();

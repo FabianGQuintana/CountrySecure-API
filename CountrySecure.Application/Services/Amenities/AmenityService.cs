@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using CountrySecure.Application.DTOs.Amenity;
+using CountrySecure.Application.DTOs.Amenities;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;

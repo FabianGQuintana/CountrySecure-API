@@ -34,7 +34,7 @@ public class RequestRepository : GenericRepository<Request>, IRequestRepository
     }
 
 
-    public async Task<IEnumerable<Request>> GetByUserIdAsync(int userId)
+    public async Task<IEnumerable<Request>> GetByUserIdAsync(Guid userId)
     {
         return await _dbContext.Requests
                                .Where(r => r.IdUser == userId)
