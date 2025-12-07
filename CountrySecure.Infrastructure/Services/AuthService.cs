@@ -165,5 +165,6 @@ namespace CountrySecure.Infrastructure.Services
                 Role = user.Role
             };
         }
+
     }
 }
