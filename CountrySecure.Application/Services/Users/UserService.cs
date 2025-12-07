@@ -32,8 +32,6 @@ namespace CountrySecure.Application.Services.Users
                 Password = dto.Password,
                 Role = dto.Role,
 
-                //  Inicializacion de BaseEntity para el primer Admin no autenticado
-                CreatedBy = "SYSTEM", // Asignamos un valor fijo para el primer Admin no autenticado
                 CreatedAt = DateTime.UtcNow,
                 Status = "Active"
             };
@@ -80,16 +78,16 @@ namespace CountrySecure.Application.Services.Users
             return user.ToDto();
         }
 
-        public async Task<bool> DeleteUserAsync(Guid id)
-        {
-            var deleted = await _userRepository.DeleteAsync(id);
+        // public async Task<bool> DeleteUserAsync(Guid id)
+        // {
+        //     var deleted = await _userRepository.DeleteAsync(id);
 
-            if (!deleted) return false;
+        //     if (!deleted) return false;
 
-            await _unitOfWork.SaveChangesAsync();
+        //     await _unitOfWork.SaveChangesAsync();
 
-            return true;
-        }
+        //     return true;
+        // }
 
         public async Task<UserResponseDto?> ToggleActiveAsync(Guid id)
         {

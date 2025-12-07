@@ -1,5 +1,5 @@
 ﻿using CountrySecure.Domain.Entities;
-using CountrySecure.Application.DTOs.Amenity;
+using CountrySecure.Application.DTOs.Amenities;
 using System.Collections.Generic;
 using System.Linq;
 using System;
@@ -67,11 +67,17 @@ namespace CountrySecure.Application.Mappers
             // ELIMINACIÓN DEL ERROR DE NULIDAD (?? y HasValue): 
             // Si el DTO de actualización tiene todos los campos como [Required] (PUT):
 
-            existingEntity.AmenityName = dto.AmenityName;
-            existingEntity.Description = dto.Description;
-            existingEntity.Schedules = dto.Schedules;
-            existingEntity.Capacity = (int)dto.Capacity; // Asignación directa (Capacity es 'int' en el DTO)
-            existingEntity.Status = dto.Status;
+            existingEntity.AmenityName = dto.AmenityName ?? existingEntity.AmenityName;
+            existingEntity.Description = dto.Description ?? existingEntity.Description;
+            existingEntity.Schedules = dto.Schedules ?? existingEntity.Schedules;
+            if (dto.Capacity.HasValue)
+            {
+                existingEntity.Capacity = dto.Capacity.Value;
+            }
+            if (dto.Status != null)
+            {
+                existingEntity.Status = dto.Status;
+            }
 
             // Si en el futuro cambias el DTO a nullable (string? y int?) para permitir un PATCH:
             // Tendrías que usar: existingEntity.AmenityName = dto.AmenityName ?? existingEntity.AmenityName;

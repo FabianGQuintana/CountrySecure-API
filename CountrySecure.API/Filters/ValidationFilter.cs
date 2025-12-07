@@ -3,37 +3,42 @@ using FluentValidation.Results;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-public class ValidationFilter : IAsyncActionFilter
+namespace CountrySecure.API.Filters
 {
-    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    public class ValidationFilter : IAsyncActionFilter
     {
-        foreach (var argument in context.ActionArguments)
+        public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
-            var value = argument.Value;
-            if (value == null) continue;
-
-            var validatorType = typeof(IValidator<>).MakeGenericType(value.GetType());
-            var validator = context.HttpContext.RequestServices.GetService(validatorType) as IValidator;
-
-            if (validator != null)
+            foreach (var argument in context.ActionArguments)
             {
-                ValidationResult result = await validator.ValidateAsync(new ValidationContext<object>(value));
+                var value = argument.Value;
+                if (value == null) continue;
 
-                if (!result.IsValid)
+                var validatorType = typeof(IValidator<>).MakeGenericType(value.GetType());
+                var validator = context.HttpContext.RequestServices.GetService(validatorType) as IValidator;
+
+                if (validator != null)
                 {
-                    var errors = result.Errors
-                        .GroupBy(e => e.PropertyName)
-                        .ToDictionary(
-                            g => g.Key,
-                            g => g.Select(e => e.ErrorMessage).ToArray()
-                        );
+                    ValidationResult result = await validator.ValidateAsync(new ValidationContext<object>(value));
 
-                    context.Result = new BadRequestObjectResult(new { errors });
-                    return;
+                    if (!result.IsValid)
+                    {
+                        var errors = result.Errors
+                            .GroupBy(e => e.PropertyName)
+                            .ToDictionary(
+                                g => g.Key,
+                                g => g.Select(e => e.ErrorMessage).ToArray()
+                            );
+
+                        context.Result = new BadRequestObjectResult(new { errors });
+                        return;
+                    }
                 }
             }
-        }
 
-        await next();
+            await next();
+        }
     }
+
 }
+

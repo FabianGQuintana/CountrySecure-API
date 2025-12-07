@@ -83,25 +83,25 @@ namespace CountrySecure.Application.Mappers
         // Mapeo de ACTUALIZACIÓN (Actualización: Update DTO -> Entidad Existente)
         // -------------------------------------------------------------------
 
-        public static void MapToEntity(this UpdateTurnDto dto, Turn existingEntity)
-        {
-            // Solo actualiza si el valor del DTO no es null
+        // public static void MapToEntity(this UpdateTurnDto dto, Turn existingEntity)
+        // {
+        //     // Solo actualiza si el valor del DTO no es null
 
-            // Actualización de DateTime (usamos .HasValue si fueran nulleables)
-            if (dto.StartTime.HasValue)
-            {
-                existingEntity.StartTime = dto.StartTime.Value;
-            }
-            if (dto.EndTime.HasValue)
-            {
-                existingEntity.EndTime = dto.EndTime.Value;
-            }
+        //     // Actualización de DateTime (usamos .HasValue si fueran nulleables)
+        //     if (dto.StartTime.HasValue)
+        //     {
+        //         existingEntity.StartTime = dto.StartTime.Value;
+        //     }
+        //     if (dto.EndTime.HasValue)
+        //     {
+        //         existingEntity.EndTime = dto.EndTime.Value;
+        //     }
 
-            // Actualización del Status (Mapeo de String a Enum)
-            if (!string.IsNullOrEmpty(dto.Status) && Enum.TryParse<TurnStatus>(dto.Status, true, out var newStatus))
-            {
-                existingEntity.Status = newStatus;
-            }
-        }
+        //     // Actualización del Status (Mapeo de String a Enum)
+        //     if (!string.IsNullOrEmpty(dto.Status) && Enum.TryParse<TurnStatus>(dto.Status, true, out var newStatus))
+        //     {
+        //         existingEntity.Status = newStatus;
+        //     }
+        // }
     }
 }

@@ -24,18 +24,18 @@ using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Users;
 using CountrySecure.Application.Services.Visits;
 using CountrySecure.Application.Services.Orders;
-using CountrySecure.Application.Services.Request;
+// using CountrySecure.Application.Services.Request;
+using CountrySecure.Application.Services.EntryPermission;
 
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
+using CountrySecure.Infrastructure.Utils;
+
 using CountrySecure.Application.Validators;
-using CountrySecure.Application.Services.EntryPermission;
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
-
+using CountrySecure.API.Filters;
+using CountrySecure.Application.Services;
+using CountrySecure.Application.Services.Turns;  // si tu ValidationFilter está aquí (ajustalo según tu proyecto)
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,10 +46,10 @@ var builder = WebApplication.CreateBuilder(args);
 // ======================================
 //
 
-// Controllers + JSON
+// Controllers + JSON + Validation Filter
 builder.Services.AddControllers(options =>
 {
-    options.Filters.Add<ValidationFilter>();   
+    options.Filters.Add<ValidationFilter>();
 })
 .AddJsonOptions(options =>
 {
@@ -57,7 +57,10 @@ builder.Services.AddControllers(options =>
     options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
-// Repositorios
+
+// ======================================
+//          REPOSITORIOS
+// ======================================
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
 builder.Services.AddScoped<ILotRepository, LotRepository>();
@@ -65,13 +68,13 @@ builder.Services.AddScoped<IVisitRepository, VisitRepository>();
 builder.Services.AddScoped<IAmenityRepository, AmenityRepository>();
 builder.Services.AddScoped<ITurnRepository, TurnRepository>();
 builder.Services.AddScoped<IEntryPermissionRepository, EntryPermissionRepository>();
-<<<<<<< Updated upstream
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
-=======
->>>>>>> Stashed changes
 
-// Servicios de dominio
+
+// ======================================
+//          SERVICIOS DOMINIO
+// ======================================
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
 builder.Services.AddScoped<ILotService, LotService>();
@@ -79,28 +82,32 @@ builder.Services.AddScoped<IVisitService, VisitService>();
 builder.Services.AddScoped<IAmenityService, AmenityService>();
 builder.Services.AddScoped<ITurnService, TurnService>();
 builder.Services.AddScoped<IEntryPermissionService, EntryPermissionService>();
-<<<<<<< Updated upstream
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IRequestService, RequestService>();
-=======
->>>>>>> Stashed changes
+// builder.Services.AddScoped<IRequestService, RequestService>();
 
-// Servicios agregados del segundo Program
+
+// ======================================
+//          SERVICIOS AGREGADOS
+// ======================================
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Unit of Work
+// Unity of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-// Filter
+// JwtUtils
+builder.Services.AddSingleton<JwtUtils>();
+
+// Filters
 builder.Services.AddScoped<ValidationFilter>();
 
+// FluentValidation
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 
 
-// ---------------------------
-// 3) CORS (IMPORTANTE!)
-// ---------------------------
-
+// ======================================
+//                 CORS
+// ======================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -108,7 +115,7 @@ builder.Services.AddCors(options =>
         policy
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowAnyOrigin(); // Desarrollo
+            .AllowAnyOrigin();
     });
 });
 
@@ -117,8 +124,6 @@ builder.Services.AddCors(options =>
 // ======================================
 //            AUTENTICACIÓN JWT
 // ======================================
-//
-
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -145,9 +150,6 @@ builder.Services.AddAuthorization();
 // ======================================
 //          CONFIG BASE DE DATOS
 // ======================================
-//
-
-// Obtener ConnectionString del appsettings o del entorno
 var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
               ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
 
@@ -158,23 +160,16 @@ if (string.IsNullOrWhiteSpace(connStr))
     );
 }
 
-// DbContext con reintentos ante fallos transitorios
+// DbContext con reintentos
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
     options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure())
 );
-
-builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
-
 
 
 //
 // ======================================
 //          BUILD + PIPELINE
 // ======================================
-//
-
-=======
->>>>>>> 7f36f1b (Avances en Auth: login, register, JWT)
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -182,7 +177,8 @@ var logger = app.Services.GetRequiredService<ILogger<Program>>();
 var fromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") != null;
 logger.LogInformation("Connection string cargada. Override desde ENV: {FromEnv}", fromEnv);
 
-// Esperar a BD antes de iniciar
+
+// Esperar BD antes de iniciar
 try
 {
     await WaitForDatabaseAsync(connStr, logger, timeoutSeconds: 30);
@@ -193,12 +189,14 @@ catch (Exception ex)
     throw;
 }
 
-// Migraciones automáticas
-//using (var scope = app.Services.CreateScope())
-//{
-//    var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
-//    db.Database.Migrate();
-//}
+
+// Migraciones automáticas (puedes activarlas si querés)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
+    db.Database.Migrate();
+}
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -206,7 +204,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AllowAll");  // <--- HABILITA CORS
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -219,8 +217,6 @@ app.Run();
 // ======================================
 //         FUNCIÓN WAIT-FOR-DB
 // ======================================
-//
-
 static async Task WaitForDatabaseAsync(string connectionString, ILogger logger, int timeoutSeconds = 30, CancellationToken ct = default)
 {
     var builder = new NpgsqlConnectionStringBuilder(connectionString);

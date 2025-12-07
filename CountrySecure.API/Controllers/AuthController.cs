@@ -55,6 +55,13 @@ namespace CountrySecure.API.Controllers
             return Ok(result);
         }
 
+        // [HttpPost("refresh")]
+        // public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        // {
+        //     var result = await _authService.RefreshTokenAsync(request);
+        //     return Ok(result);
+        // }
+
         // [Authorize]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)

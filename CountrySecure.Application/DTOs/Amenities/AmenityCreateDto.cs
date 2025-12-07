@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CountrySecure.Application.DTOs.Amenity
+namespace CountrySecure.Application.DTOs.Amenities
 {
     public class AmenityCreateDto
     {
@@ -20,7 +20,7 @@ namespace CountrySecure.Application.DTOs.Amenity
         [Range(1, 100)] 
         public int Capacity { get; set; }
 
-        [Required]
-        public ICollection<TurnDto> Turns { get; set; } = new List<TurnDto>();
+        // [Required]
+        // public ICollection<TurnDto> Turns { get; set; } = new List<TurnDto>();
     }
 }

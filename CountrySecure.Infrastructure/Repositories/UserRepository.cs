@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Domain.Constants;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Persistence.Specifications;
@@ -29,17 +30,15 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize, string? role = null)
         {
 
-        public async Task<User?> GetByEmailAsync(string email)
-        {
-            return await _context.Users
-                .Where(UserPredicates.NotDeleted)
-                .FirstOrDefaultAsync(u => u.Email == email);
-        }
+            var query = _context.Users
+                .AsQueryable();
 
-        public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize)
-        {
-            return await _context.Users
-                .Where(UserPredicates.NotDeleted)
+            if (!string.IsNullOrEmpty(role))
+            {
+                query = query.Where(u => u.Role == role);
+            }
+
+            return await query
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -50,23 +49,25 @@ namespace CountrySecure.Infrastructure.Repositories
             await _context.Users.AddAsync(user);
         }
 
-        public async Task UpdateAsync(User user)
+        public Task UpdateAsync(User user)
         {
             user.UpdatedAt = DateTime.UtcNow;
             _context.Users.Update(user);
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
-        {
-            var user = await GetByIdAsync(id);
-            if (user == null) return false;
+        // public async Task<bool> DeleteAsync(Guid id)
+        // {
+        //     var user = await GetByIdAsync(id);
+        //     if (user == null) return false;
 
-            user.DeletedAt = DateTime.UtcNow; // soft delete
-            _context.Users.Update(user);
+        //     user.DeletedAt = DateTime.UtcNow;
+        //     user.Status = "Inactive"; // soft delete
+        //     user.Active = false;
+        //     _context.Users.Update(user);
 
-            return true;
-        }
+        //     return true;
+        // }
 
         public async Task<User?> ToggleActiveAsync(Guid id)
         {
@@ -74,6 +75,14 @@ namespace CountrySecure.Infrastructure.Repositories
             if (user == null) return null;
 
             user.Active = !user.Active;
+
+            user.Status = user.Status == "Active" ? "Inactive" : "Active";
+
+            if (!user.Active)
+                user.DeletedAt = DateTime.UtcNow;
+            else
+                user.DeletedAt = null;
+
             user.UpdatedAt = DateTime.UtcNow;
 
             return user; // EF ya trackea esta entidad
@@ -87,5 +96,21 @@ namespace CountrySecure.Infrastructure.Repositories
                 .FirstOrDefaultAsync(u => u.Email == email);
         }
 
+        public async Task<RefreshToken?> GetRefreshTokenAsync(string token)
+        {
+            return await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == token);
+        }
+
+        public async Task AddRefreshTokenAsync(RefreshToken token)
+        {
+            await _context.RefreshTokens.AddAsync(token);
+        }
+
+        public async Task UpdateRefreshTokenAsync(RefreshToken token)
+        {
+            _context.RefreshTokens.Update(token);
+        }
     }
 }

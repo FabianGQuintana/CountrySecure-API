@@ -10,6 +10,6 @@ namespace CountrySecure.Application.Interfaces.Repositories;
 public interface IRequestRepository: IGenericRepository<Request>
 {
     Task<IEnumerable<Request>> GetByStatusAsync(RequestStatus status, int numberPage, int pageSize);
-    Task<IEnumerable<Request>> GetByUserIdAsync(int userId);
+    Task<IEnumerable<Request>> GetByUserIdAsync(Guid userId);
     Task<int> CountByStatusAsync(RequestStatus status);
 }

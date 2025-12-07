@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CountrySecure.Application.DTOs.Amenity
+namespace CountrySecure.Application.DTOs.Amenities
 {
     public class AmenityResponseDto
     {

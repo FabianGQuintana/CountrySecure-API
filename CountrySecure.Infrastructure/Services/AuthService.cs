@@ -3,6 +3,7 @@ using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;
+using CountrySecure.Infrastructure.Utils;
 
 namespace CountrySecure.Infrastructure.Services
 {
@@ -13,15 +14,19 @@ namespace CountrySecure.Infrastructure.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly ITokenService _tokenService;
 
+        private readonly JwtUtils _jwtUtils;
+
         public AuthService(
             IUserRepository userRepository,
             IUnitOfWork unitOfWork,
-            ITokenService tokenService
+            ITokenService tokenService,
+            JwtUtils jwtUtils
         )
         {
             _userRepository = userRepository;
             _unitOfWork = unitOfWork;
             _tokenService = tokenService;
+            _jwtUtils = jwtUtils;
         }
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterUserDto dto)
@@ -35,7 +40,7 @@ namespace CountrySecure.Infrastructure.Services
                     Message = "Email is already registered"
                 };
             }
-                
+
 
             var user = new User
             {
@@ -51,13 +56,9 @@ namespace CountrySecure.Infrastructure.Services
             await _userRepository.AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            var token = _tokenService.GenerateToken(user);
-
             return new AuthResponseDto
             {
                 Success = true,
-                Token = token,
-                Expiration = DateTime.UtcNow.AddHours(8),
                 UserId = user.Id,
                 Email = user.Email,
                 Name = user.Name,
@@ -70,7 +71,8 @@ namespace CountrySecure.Infrastructure.Services
         public async Task<AuthResponseDto> LoginAsync(LoginUserDto dto)
         {
             var user = await _userRepository.GetByEmailAsync(dto.Email);
-            if (user == null) {
+            if (user == null)
+            {
                 return new AuthResponseDto
                 {
                     Success = false,
@@ -86,14 +88,26 @@ namespace CountrySecure.Infrastructure.Services
                     Message = "Invalid credentials"
                 };
             }
-                
+
 
             var token = _tokenService.GenerateToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            // Guardar refresh token en base
+            await _unitOfWork.Users.AddRefreshTokenAsync(new RefreshToken
+            {
+                Token = refreshToken,
+                UserId = user.Id,
+                Expires = DateTime.UtcNow.AddDays(7)
+            });
+
+            await _unitOfWork.SaveChangesAsync();
 
             return new AuthResponseDto
             {
                 Success = true,
-                Token = token,
+                AccessToken = token,
+                RefreshToken = refreshToken,
                 Expiration = DateTime.UtcNow.AddHours(8),
                 UserId = user.Id,
                 Email = user.Email,
@@ -103,6 +117,53 @@ namespace CountrySecure.Infrastructure.Services
             };
         }
 
+        public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);
 
+            if (storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
+                throw new Exception("Invalid refresh token");
+
+            if (storedToken.Expires < DateTime.UtcNow)
+                throw new Exception("Refresh Token expirado");
+
+            var principal = _jwtUtils.GetPrincipalFromExpiredToken(request.AccessToken);
+            var userId = Guid.Parse(principal.Claims.First(c => c.Type == "id").Value);
+
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+            // marcar refresh viejo como usado
+            storedToken.IsUsed = true;
+            await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
+
+            if (user == null)
+                throw new Exception("User not found.");
+
+            // generar nuevos tokens
+            var newAccessToken = _tokenService.GenerateToken(user);
+            var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+            await _unitOfWork.Users.AddRefreshTokenAsync(new RefreshToken
+            {
+                Token = newRefreshToken,
+                UserId = user.Id,
+                Expires = DateTime.UtcNow.AddDays(7)
+            });
+
+            await _unitOfWork.SaveChangesAsync();
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+                Expiration = DateTime.UtcNow.AddHours(8),
+                UserId = user.Id,
+                Email = user.Email,
+                Name = user.Name,
+                Lastname = user.Lastname,
+                Role = user.Role
+            };
+        }
     }
 }
