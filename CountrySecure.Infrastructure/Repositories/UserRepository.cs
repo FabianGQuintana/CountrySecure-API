@@ -29,16 +29,17 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize, string? role = null)
         {
 
-            var query = _context.Users
+        public async Task<User?> GetByEmailAsync(string email)
+        {
+            return await _context.Users
                 .Where(UserPredicates.NotDeleted)
-                .AsQueryable();
+                .FirstOrDefaultAsync(u => u.Email == email);
+        }
 
-            if (!string.IsNullOrEmpty(role))
-            {
-                query = query.Where(u => u.Role == role);
-            }
-
-            return await query
+        public async Task<IEnumerable<User>> GetAllAsync(int pageNumber, int pageSize)
+        {
+            return await _context.Users
+                .Where(UserPredicates.NotDeleted)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

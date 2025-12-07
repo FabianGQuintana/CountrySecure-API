@@ -37,6 +37,7 @@ using CountrySecure.Application.Services.EntryPermission;
 >>>>>>> Stashed changes
 
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 //
@@ -172,6 +173,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 // ======================================
 //
 
+=======
+>>>>>>> 7f36f1b (Avances en Auth: login, register, JWT)
 var app = builder.Build();
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();

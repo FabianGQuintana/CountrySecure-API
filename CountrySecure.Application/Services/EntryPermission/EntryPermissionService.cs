@@ -99,11 +99,14 @@ namespace CountrySecure.Application.Services.EntryPermission
 
             // --- Manejo de Not Found ---
             if (entity == null)
+            {
                 throw new KeyNotFoundException("QR Code not found in the system.");
+            }
 
             // --- Validaciones de Reglas de Negocio ---
             if (entity.Status != PermissionStatus.Pending)
             {
+                // Si el estado es "Used", "Expired", etc.
                 return new GateCheckResponseDto
                 {
                     PermissionId = entity.Id,

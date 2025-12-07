@@ -42,26 +42,49 @@ namespace CountrySecure.Application.Services.Lots
             return addedLot.ToResponseDto();
         }
 
-        public async Task UpdateLotAsync(UpdateLotDto updateLot, Guid currentId)
+        public async Task UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId)
         {
-            // 1. Obtener la entidad existente (usando LotId del DTO)
-            var existingEntity = await _lotRepository.GetByIdAsync(updateLot.Id);
+            // 1. Buscar la entidad existente por ID
+            // Se usa GetByIdAsync del repositorio IGenericRepository<T>
+            var lotToUpdate = await _lotRepository.GetByIdAsync(lotId);
 
-            if (existingEntity == null)
+            // 2. Manejar el caso de no encontrado
+            if (lotToUpdate == null)
             {
-                throw new KeyNotFoundException($"Lot with ID {updateLot.Id} not found.");
+                // Es crucial lanzar una excepción para notificar que el recurso no existe.
+                throw new KeyNotFoundException($"El Lote con ID {lotId} no fue encontrado.");
             }
 
-            updateLot.MapToEntity(existingEntity);
+            // 3. Mapear o aplicar las modificaciones del DTO a la entidad
+            // Se aplican solo los valores que tienen datos en el DTO.
+            if (!string.IsNullOrWhiteSpace(updateLot.LotName))
+            {
+                lotToUpdate.LotName = updateLot.LotName;
+            }
 
-            //  Actualizar Auditoría
-            existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = currentId.ToString();
+            if (!string.IsNullOrWhiteSpace(updateLot.BlockName))
+            {
+                lotToUpdate.BlockName = updateLot.BlockName;
+            }
 
-            await _lotRepository.UpdateAsync(existingEntity);
-            await _unitOfWork.SaveChangesAsync();
+            // 4. Actualizar el Status (si viene en el DTO)
+            // Se convierte el enum LotStatus del DTO a string para el BaseEntity.Status
+            if (updateLot.Status.HasValue)
+            {
+                lotToUpdate.Status = updateLot.Status.Value.ToString();
+            }
+
+
+            // 5. **Auditoría:** Actualizar campos de modificación (heredados de BaseEntity)
+            // Se utiliza la lógica de auditoría de tu BaseEntity
+            lotToUpdate.LastModifiedAt = DateTime.UtcNow;
+            lotToUpdate.LastModifiedBy = currentUserId.ToString();
+
+
+            // 6. Guardar los cambios en el repositorio
+            // Se utiliza UpdateAsync del repositorio IGenericRepository<T>
+            await _lotRepository.UpdateAsync(lotToUpdate);
         }
-
         public async Task<bool> SoftDeleteLotAsync(Guid lotId, Guid currentUserId)
         {
 

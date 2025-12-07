@@ -13,7 +13,7 @@ namespace CountrySecure.Application.DTOs.EntryPermission
 
         [StringLength(600)]
         public string? Description { get; set; }
-        
+
         [Required]
         public DateTime ValidFrom { get; set; }
         public DateTime? EntryTime { get; set; }

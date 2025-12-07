@@ -22,6 +22,13 @@ namespace CountrySecure.Infrastructure.Persistence
       
         public DbSet<Turn> Turns { get; set; }
 
+        public DbSet<Amenity> Amenities { get; set; }
+
+      
+        public DbSet<Turn> Turns { get; set; }
+
+        public DbSet<Amenity> Amenities { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
 
