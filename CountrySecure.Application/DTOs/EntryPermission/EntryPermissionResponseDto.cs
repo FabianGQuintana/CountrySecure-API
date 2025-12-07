@@ -9,6 +9,11 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public required string QrCodeValue { get; set; }
 
         public PermissionType Type { get; set; }
+        public PermissionStatus Status { get; set; }
+        public DateTime ValidFrom { get; set; }
+        public DateTime EntryTime { get; set; }
+        public DateTime DepartureTime { get; set; }
+
 
         public DateTime CreatedAt { get; set; }
         public required string CreatedBy { get; set; }
@@ -22,6 +27,6 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public required EntryPermissionVisitDto Visitor { get; set; }
 
         // Información del Servicio si aplica (FK: id_servicio, puede ser null)
-        public EntryPermissionServiceDto? Service { get; set; }
+        public EntryPermissionServiceDto? Order { get; set; }
     }
 }

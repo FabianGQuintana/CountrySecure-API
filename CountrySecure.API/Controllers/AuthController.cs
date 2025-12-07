@@ -23,7 +23,7 @@ namespace CountrySecure.API.Controllers
 
         // [Authorize(Roles = "Admin")]
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterUserDto dto)
+        public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)
         {
             var result = await _authService.RegisterAsync(dto);
 
@@ -38,7 +38,7 @@ namespace CountrySecure.API.Controllers
 
         [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginUserDto dto)
+        public async Task<IActionResult> Login([FromBody] LoginUserDto dto)
         {
             var result = await _authService.LoginAsync(dto);
 

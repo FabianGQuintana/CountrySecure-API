@@ -9,6 +9,6 @@ public class Visit : BaseEntity
     public required int DniVisit { get; set; }
 
     //relationships
-    public ICollection<EntryPermission>? EntryPermissions { get; set; }
+    public ICollection<EntryPermission> EntryPermissions { get; set; } = new List<EntryPermission>();
 }
 

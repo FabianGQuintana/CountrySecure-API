@@ -39,32 +39,17 @@ namespace CountrySecure.Application.Mappers
         {
             return new Property
             {
+                // Mapeo de propiedades simples
                 Street = dto.Street,
-                PropertyNumber = dto.HouseNumber,
+                PropertyNumber = dto.PropertyNumber,
+
+                // Asignación de Claves Foráneas (FKs)
                 UserId = dto.UserId,
                 LotId = dto.LotId,
-                // Inicialización de miembros requeridos con valores predeterminados
-                User = new User
-                {
-                    Id = dto.UserId,
-                    Name = string.Empty,
-                    Lastname = string.Empty,
-                    Dni = 0,
-                    Phone = string.Empty,
-                    Email = string.Empty,
-                    Password = string.Empty,
-                    Role = string.Empty,
-                    Active = false,
-                    Properties = new List<Property>()
-                },
-                Lot = new Lot
-                { 
-                    Id = dto.LotId,
-                    LotName = string.Empty,
-                    BlockName = string.Empty,
-                    Properties = new List<Property>()
-                }
-                // Status y CreatedBy se asignarán en el servicio o por la entidad base
+
+                // **CRÍTICO: Las propiedades de navegación deben ser NULL para evitar el error 23505 (PK Violation)**
+                User = null,
+                Lot = null
             };
         }
 

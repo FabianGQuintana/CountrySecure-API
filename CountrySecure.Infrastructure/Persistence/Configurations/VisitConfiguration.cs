@@ -25,10 +25,10 @@ public class VisitConfiguration : IEntityTypeConfiguration<Visit>
         builder.HasIndex(v => v.DniVisit)
                .IsUnique();
         // === 3. RELACIONES 1:N ===
-        // Relación Visit a EntryPermit
-       //  builder.HasMany(v => v.EntryPermits)
-       //         .WithOne(ep => ep.Visit)
-       //         .HasForeignKey(ep => ep.VisitId)
-       //         .OnDelete(DeleteBehavior.Cascade); // Al borrar un Visit, se borran sus EntryPermits
+        // Relación Visit a EntryPermission
+         builder.HasMany(v => v.EntryPermissions)
+              .WithOne(ep => ep.Visit)
+              .HasForeignKey(ep => ep.VisitId)
+               .OnDelete(DeleteBehavior.Cascade); // Al borrar un Visit, se borran sus EntryPermits
     }
 }

@@ -1,0 +1,50 @@
+﻿using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
+using CountrySecure.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+using System;
+
+namespace CountrySecure.Infrastructure.Repositories
+{
+    public class TurnRepository : GenericRepository<Turn>,ITurnRepository
+    {
+        private readonly CountrySecureDbContext _dbContext;
+
+        public TurnRepository(CountrySecureDbContext dbContext) : base(dbContext)
+        {
+            _dbContext = dbContext;
+        }
+
+        public async Task<IEnumerable<Turn>> GetTurnsByAmenityId(Guid amenityId)
+        {
+            return await _dbContext.Turns
+                .Where(t => t.AmenityId == amenityId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Turn>> GetTurnsByUserId(Guid userId)
+        {
+            return await _dbContext.Turns
+                .Where(t => t.UserId == userId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Turn>> GetTurnsByDateRange(DateTime startDate, DateTime endDate)
+        {
+            return await _dbContext.Turns
+                .Where(t => t.StartTime >= startDate && t.EndTime <= endDate)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status)
+        {
+            return await _dbContext.Turns
+                .Where(t => t.Status == status)
+                .ToListAsync();
+        }
+
+       
+
+    }
+}

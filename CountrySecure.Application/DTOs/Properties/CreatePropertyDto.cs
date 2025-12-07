@@ -9,7 +9,7 @@ namespace CountrySecure.Application.DTOs.Properties
         public required string Street { get; set; }
 
         [Required]
-        public int HouseNumber { get; set; }
+        public int PropertyNumber { get; set; }
 
         [Required]
         public Guid UserId { get; set; }

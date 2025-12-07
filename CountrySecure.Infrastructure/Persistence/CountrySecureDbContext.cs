@@ -14,10 +14,17 @@ namespace CountrySecure.Infrastructure.Persistence
         public DbSet<User> Users {get; set;}
         public DbSet<Property> Properties { get; set; }
         public DbSet<Visit> Visits { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<Request> Requests { get; set; }
         public DbSet<Lot> Lots { get; set; }
         public DbSet<EntryPermission> EntryPermissions { get; set; }
+      
+        public DbSet<Turn> Turns { get; set; }
+
+        public DbSet<Amenity> Amenities { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
