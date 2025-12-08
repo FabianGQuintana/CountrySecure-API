@@ -93,14 +93,17 @@ namespace CountrySecure.Infrastructure.Services
             var token = _tokenService.GenerateToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
-            // Guardar refresh token en base
-            await _unitOfWork.Users.AddRefreshTokenAsync(new RefreshToken
+            var refreshTokenEntity = new RefreshToken
             {
                 Token = refreshToken,
                 UserId = user.Id,
-                Expires = DateTime.UtcNow.AddDays(7)
-            });
+                Expires = DateTime.UtcNow.AddDays(7),
+                CreatedAt = DateTime.UtcNow,
+                IsUsed = false,
+                IsRevoked = false
+            };
 
+            await _unitOfWork.Users.AddRefreshTokenAsync(refreshTokenEntity);
             await _unitOfWork.SaveChangesAsync();
 
             return new AuthResponseDto
@@ -117,39 +120,56 @@ namespace CountrySecure.Infrastructure.Services
             };
         }
 
+
+        public async Task LogoutAsync(string refreshToken)
+        {
+            var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(refreshToken);
+
+            if (storedToken == null) return;
+
+            storedToken.IsRevoked = true;
+            await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
+            await _unitOfWork.SaveChangesAsync();
+        }
+
+
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequest request)
         {
+            // 1. Primero se busca el Refresh token en la DB
             var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);
 
             if (storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
                 throw new Exception("Invalid refresh token");
 
             if (storedToken.Expires < DateTime.UtcNow)
-                throw new Exception("Refresh Token expirado");
+                throw new Exception("Refresh Token expired");
 
+            // 2. Extraer el UserId del accesToken que expiró
             var principal = _jwtUtils.GetPrincipalFromExpiredToken(request.AccessToken);
             var userId = Guid.Parse(principal.Claims.First(c => c.Type == "id").Value);
 
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
-
-            // marcar refresh viejo como usado
-            storedToken.IsUsed = true;
-            await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
-
             if (user == null)
                 throw new Exception("User not found.");
 
-            // generar nuevos tokens
+
+            // 3. marcar Refresh token previo como usado
+            storedToken.IsUsed = true;
+            await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
+
+            // 4. Generar nuevos tokens
             var newAccessToken = _tokenService.GenerateToken(user);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
-            await _unitOfWork.Users.AddRefreshTokenAsync(new RefreshToken
+            var newRefreshTokenEntity = new RefreshToken
             {
                 Token = newRefreshToken,
                 UserId = user.Id,
-                Expires = DateTime.UtcNow.AddDays(7)
-            });
+                Expires = DateTime.UtcNow.AddDays(7),
+                CreatedAt = DateTime.UtcNow
+            };
 
+            await _unitOfWork.Users.AddRefreshTokenAsync(newRefreshTokenEntity);
             await _unitOfWork.SaveChangesAsync();
 
             return new AuthResponseDto
