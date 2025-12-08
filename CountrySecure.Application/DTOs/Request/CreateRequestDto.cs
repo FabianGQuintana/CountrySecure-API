@@ -11,7 +11,7 @@ public class CreateRequestDto
 {
     public required string Details { get; set; }
     public required string Location { get; set; }
-    public required int IdUser { get; set; }
-    public required int IdOrder { get; set; }
+    public required Guid IdUser { get; set; }
+    public required Guid IdOrder { get; set; }
     public RequestStatus Status { get; set; } = RequestStatus.Pending;
 }

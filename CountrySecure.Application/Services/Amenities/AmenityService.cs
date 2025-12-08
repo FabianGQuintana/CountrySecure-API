@@ -49,7 +49,7 @@ namespace CountrySecure.Application.Services
             return amenity.ToResponseDto();
         }
 
-        // COINCIDENCIA DE FIRMA CON LA INTERFAZ: Usamos 'currentUserId'
+        
         public async Task<AmenityResponseDto?> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto, Guid currentUserId)
         {
             var amenity = await _amenityRepository.GetByIdAsync(id);
@@ -103,7 +103,7 @@ namespace CountrySecure.Application.Services
 
         // --- MÉTODOS DE LECTURA ---
 
-        public async Task<AmenityResponseDto> GetByIdAsync(Guid id)
+        public async Task<AmenityResponseDto?> GetByIdAsync(Guid id)
         {
             var amenity = await _amenityRepository.GetByIdAsync(id);
             if (amenity == null || amenity.IsDeleted)
@@ -121,7 +121,7 @@ namespace CountrySecure.Application.Services
                 .ToResponseDto();
         }
 
-        public async Task<AmenityResponseDto> GetAmenityByNameAsync(string amenityName)
+        public async Task<AmenityResponseDto?> GetAmenityByNameAsync(string amenityName)
         {
             var amenity = await _amenityRepository.GetAmenityByNameAsync(amenityName);
             if (amenity == null || amenity.IsDeleted)

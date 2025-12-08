@@ -4,7 +4,7 @@ using CountrySecure.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
-using System.Security.Claims; // Necesario para FindFirstValue
+using System.Security.Claims; 
 using System.Threading.Tasks;
 
 namespace CountrySecure.API.Controllers
@@ -165,7 +165,7 @@ namespace CountrySecure.API.Controllers
         }
 
         // -------------------------------------------------------------------
-        // FALTANTES: Consultas por FK (UserID, VisitID, ServiceID)
+        // Consultas por FK (UserID, VisitID, ServiceID)
         // -------------------------------------------------------------------
 
         [HttpGet("user/{userId}")] // GET /api/entrypermissions/user/{userId}

@@ -82,41 +82,43 @@ namespace CountrySecure.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = lotDto.LotId }, lotDto);
         }
 
-        // [HttpPut("{id}")]
-        // public async Task<IActionResult> Put(Guid id, [FromBody] UpdateLotDto updateDto)
-        // {
-        //     if (!ModelState.IsValid)
-        //     {
-        //         return BadRequest(ModelState);
-        //     }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> put(Guid id, [FromBody] UpdateLotDto updatedto) // 1. Usar 'id' de la ruta
+        {
+            // 2. Extracción y validación del ID del usuario del token (Patrón 'EntryPermissionsController')
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+            {
+                return Unauthorized();
+            }
 
-        //     // CORRECCIÓN DE LA COHERENCIA DEL ID (Asumo que el DTO usa LotId)
-        //     if (id != updateDto.Id)
-        //     {
-        //         return BadRequest(new { message = "ID mismatch between URL and body." });
-        //     }
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
 
-        //     // 1. Extracción del ID del token para auditoría/permisos
-        //     var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //     if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
-        //     {
-        //         return Unauthorized();
-        //     }
+            try
+            {
+                // 3. Llamada al servicio con los 3 argumentos: DTO, ID del Lote (de la URL) e ID del Usuario
+                await _lotService.UpdateAsync(updatedto, id, currentUserId);
 
-        //     try
-        //     {
-        //         await _lotService.UpdateLotAsync(updateDto, currentUserId);
-        //         return NoContent();
-        //     }
-        //     catch (KeyNotFoundException)
-        //     {
-        //         return NotFound();
-        //     }
-        //     catch (UnauthorizedAccessException)
-        //     {
-        //         return Forbid();
-        //     }
-        // }
+                // Si el servicio no devuelve un objeto, 204 No Content es la respuesta estándar para PUT/DELETE exitosos.
+                return NoContent();
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound($"Lote con ID {id} no encontrado.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception)
+            {
+                // Manejo de error genérico (ej. problemas de base de datos)
+                return StatusCode(500, "Ocurrió un error interno al actualizar el lote.");
+            }
+        }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> SoftDelete(Guid id)

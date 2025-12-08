@@ -19,7 +19,7 @@ namespace CountrySecure.Domain.Entities
         public ICollection<Property> Properties { get; set; } = new List<Property>();
         public ICollection<EntryPermission> EntryPermissions { get; set; } = new List<EntryPermission>();
 
-        // public ICollection<Turn> Turns {get; set;} = new List<Turn>();
+         public ICollection<Turn> Turns {get; set;} = new List<Turn>();
 
     }
 }
