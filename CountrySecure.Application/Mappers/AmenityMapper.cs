@@ -3,7 +3,8 @@ using CountrySecure.Application.DTOs.Amenities;
 using System.Collections.Generic;
 using System.Linq;
 using System;
-using CountrySecure.Domain.Enums; // Asegúrate de incluir el namespace del Enum Turn
+using CountrySecure.Domain.Enums;
+using CountrySecure.Application.DTOs.Turns; // Asegúrate de incluir el namespace del Enum Turn
 
 namespace CountrySecure.Application.Mappers
 {
@@ -27,8 +28,7 @@ namespace CountrySecure.Application.Mappers
                 CreatedAt = entity.CreatedAt,
                 LastModifiedAt = entity.LastModifiedAt,
 
-                // Si la colección de Turnos está cargada, la mapeamos (asumiendo que existe TurnMapper.ToResponseDto)
-                // Turns = entity.Turns.Any() ? entity.Turns.ToResponseDto() : new List<TurnResponseDto>()
+                
             };
         }
 
@@ -79,9 +79,6 @@ namespace CountrySecure.Application.Mappers
                 existingEntity.Status = dto.Status;
             }
 
-            // Si en el futuro cambias el DTO a nullable (string? y int?) para permitir un PATCH:
-            // Tendrías que usar: existingEntity.AmenityName = dto.AmenityName ?? existingEntity.AmenityName;
-            // Y: existingEntity.Capacity = dto.Capacity.HasValue ? dto.Capacity.Value : existingEntity.Capacity;
         }
     }
 }

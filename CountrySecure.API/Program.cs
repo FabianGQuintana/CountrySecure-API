@@ -190,14 +190,6 @@ catch (Exception ex)
 }
 
 
-// Migraciones automáticas (puedes activarlas si querés)
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
-    db.Database.Migrate();
-}
-
-
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
