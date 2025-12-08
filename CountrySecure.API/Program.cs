@@ -162,8 +162,12 @@ if (string.IsNullOrWhiteSpace(connStr))
 
 // DbContext con reintentos
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
-    options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure())
-);
+{
+    options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure());
+    options.EnableSensitiveDataLogging(false);
+    options.EnableDetailedErrors(false);
+    options.LogTo(_ => { }, LogLevel.None); // desactiva logs SQL
+});
 
 
 //
@@ -172,22 +176,22 @@ builder.Services.AddDbContext<CountrySecureDbContext>(options =>
 // ======================================
 var app = builder.Build();
 
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
+// var logger = app.Services.GetRequiredService<ILogger<Program>>();
 
-var fromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") != null;
-logger.LogInformation("Connection string cargada. Override desde ENV: {FromEnv}", fromEnv);
+// var fromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") != null;
+// logger.LogInformation("Connection string cargada. Override desde ENV: {FromEnv}", fromEnv);
 
 
 // Esperar BD antes de iniciar
-try
-{
-    await WaitForDatabaseAsync(connStr, logger, timeoutSeconds: 30);
-}
-catch (Exception ex)
-{
-    logger.LogCritical(ex, "No se pudo conectar a la base de datos.");
-    throw;
-}
+// try
+// {
+//     await WaitForDatabaseAsync(connStr, logger, timeoutSeconds: 30);
+// }
+// catch (Exception ex)
+// {
+//     logger.LogCritical(ex, "No se pudo conectar a la base de datos.");
+//     throw;
+// }
 
 
 // Migraciones automáticas (puedes activarlas si querés)
@@ -217,34 +221,34 @@ app.Run();
 // ======================================
 //         FUNCIÓN WAIT-FOR-DB
 // ======================================
-static async Task WaitForDatabaseAsync(string connectionString, ILogger logger, int timeoutSeconds = 30, CancellationToken ct = default)
-{
-    var builder = new NpgsqlConnectionStringBuilder(connectionString);
-    logger.LogInformation("Esperando BD en {Host}:{Port}", builder.Host, builder.Port);
+// static async Task WaitForDatabaseAsync(string connectionString, ILogger logger, int timeoutSeconds = 30, CancellationToken ct = default)
+// {
+//     var builder = new NpgsqlConnectionStringBuilder(connectionString);
+//     logger.LogInformation("Esperando BD en {Host}:{Port}", builder.Host, builder.Port);
 
-    var sw = Stopwatch.StartNew();
-    int attempt = 0;
+//     var sw = Stopwatch.StartNew();
+//     int attempt = 0;
 
-    while (sw.Elapsed.TotalSeconds < timeoutSeconds)
-    {
-        ct.ThrowIfCancellationRequested();
-        attempt++;
+//     while (sw.Elapsed.TotalSeconds < timeoutSeconds)
+//     {
+//         ct.ThrowIfCancellationRequested();
+//         attempt++;
 
-        try
-        {
-            await using var conn = new NpgsqlConnection(connectionString);
-            await conn.OpenAsync(ct);
+//         try
+//         {
+//             await using var conn = new NpgsqlConnection(connectionString);
+//             await conn.OpenAsync(ct);
 
-            logger.LogInformation("Base de datos DISPONIBLE en {Host}:{Port}", conn.Host, conn.Port);
-            return;
-        }
-        catch (Exception ex)
-        {
-            int delay = Math.Min(1000 * attempt, 5000);
-            logger.LogWarning(ex, "Intento {Attempt}: BD no disponible; reintentando en {Delay} ms...", attempt, delay);
-            await Task.Delay(delay, ct);
-        }
-    }
+//             logger.LogInformation("Base de datos DISPONIBLE en {Host}:{Port}", conn.Host, conn.Port);
+//             return;
+//         }
+//         catch (Exception ex)
+//         {
+//             int delay = Math.Min(1000 * attempt, 5000);
+//             logger.LogWarning(ex, "Intento {Attempt}: BD no disponible; reintentando en {Delay} ms...", attempt, delay);
+//             await Task.Delay(delay, ct);
+//         }
+//     }
 
-    throw new TimeoutException($"Tiempo de espera agotado esperando la BD ({timeoutSeconds}s).");
-}
+//     throw new TimeoutException($"Tiempo de espera agotado esperando la BD ({timeoutSeconds}s).");
+// }

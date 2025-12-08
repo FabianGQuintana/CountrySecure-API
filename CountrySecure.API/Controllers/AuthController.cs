@@ -55,21 +55,19 @@ namespace CountrySecure.API.Controllers
             return Ok(result);
         }
 
-        [[HttpPost("logout")]]
+        [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
         {
             await _authService.LogoutAsync(request.RefreshToken);
             return Ok(new { message = "Logout succesful"});
         }
 
-        // [HttpPost("refresh")]
-        // public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
-        // {
-        //     var result = await _authService.RefreshTokenAsync(request);
-        //     return Ok(result);
-        // }
-
-
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            var result = await _authService.RefreshTokenAsync(request);
+            return Ok(result);
+        }
 
         // [Authorize]
         [HttpGet("{id}")]

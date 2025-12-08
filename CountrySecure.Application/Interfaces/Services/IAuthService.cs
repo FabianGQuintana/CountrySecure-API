@@ -6,5 +6,7 @@ namespace CountrySecure.Application.Interfaces.Services
     {
         Task<AuthResponseDto> RegisterAsync(RegisterUserDto dto);
         Task<AuthResponseDto> LoginAsync(LoginUserDto dto);
+        Task LogoutAsync(string refreshToken);
+        Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequest request);
     }
 }

@@ -15,14 +15,14 @@ namespace CountrySecure.Domain.Entities
 
         public required string Role { get; set; }
 
-        public string? RefreshToken { get; set; }
-        public DateTime? RefreshTokenExpiration {get; set;}
 
         // FK
         public ICollection<Property> Properties { get; set; } = new List<Property>();
         public ICollection<EntryPermission> EntryPermissions { get; set; } = new List<EntryPermission>();
-
         public ICollection<Turn> Turns {get; set;} = new List<Turn>();
+        public ICollection<RefreshToken> RefreshTokens { get; set;} = new List<RefreshToken>();
+
+
 
     }
 }
