@@ -1,5 +1,6 @@
 using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
@@ -39,6 +40,8 @@ namespace CountrySecure.API.Controllers
         //    return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
         //}
 
+
+        // [Authorize(Roles = "Admin,Resident")]
         [HttpPut("{id}")] 
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
         {

@@ -4,6 +4,7 @@ using CountrySecure.Application.DTOs.Auth;
 using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CountrySecure.API.Controllers
 {
@@ -55,18 +56,36 @@ namespace CountrySecure.API.Controllers
             return Ok(result);
         }
 
+        [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
         {
             await _authService.LogoutAsync(request.RefreshToken);
-            return Ok(new { message = "Logout succesful"});
+            return Ok(new { message = "Logout succesful" });
         }
 
+
+        [AllowAnonymous]
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
         {
-            var result = await _authService.RefreshTokenAsync(request);
-            return Ok(result);
+            try
+            {
+                var result = await _authService.RefreshTokenAsync(request);
+                return Ok(result);
+            }
+            catch (SecurityTokenExpiredException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
         }
 
         // [Authorize]

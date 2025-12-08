@@ -1,9 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using CountrySecure.Application.DTOs.Auth;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Infrastructure.Utils;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CountrySecure.Infrastructure.Services
 {
@@ -49,7 +52,7 @@ namespace CountrySecure.Infrastructure.Services
                 Dni = dto.Dni,
                 Phone = dto.Phone,
                 Email = dto.Email,
-                Password = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                Password = BCrypt.Net.BCrypt.HashPassword(dto.Password, workFactor: 10),
                 Role = dto.Role,
             };
 
@@ -73,24 +76,15 @@ namespace CountrySecure.Infrastructure.Services
             var user = await _userRepository.GetByEmailAsync(dto.Email);
             if (user == null)
             {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "User not found"
-                };
+                return new AuthResponseDto { Success = false, Message = "User not found" };
             }
 
             if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
             {
-                return new AuthResponseDto
-                {
-                    Success = false,
-                    Message = "Invalid credentials"
-                };
+                return new AuthResponseDto { Success = false, Message = "Invalid credentials" };
             }
 
-
-            var token = _tokenService.GenerateToken(user);
+            var accessToken = _tokenService.GenerateToken(user);
             var refreshToken = _tokenService.GenerateRefreshToken();
 
             var refreshTokenEntity = new RefreshToken
@@ -109,7 +103,7 @@ namespace CountrySecure.Infrastructure.Services
             return new AuthResponseDto
             {
                 Success = true,
-                AccessToken = token,
+                AccessToken = accessToken,
                 RefreshToken = refreshToken,
                 Expiration = DateTime.UtcNow.AddHours(8),
                 UserId = user.Id,
@@ -135,29 +129,47 @@ namespace CountrySecure.Infrastructure.Services
 
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequest request)
         {
-            // 1. Primero se busca el Refresh token en la DB
+            // 1. Buscar el refresh token en la base de datos
             var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);
 
             if (storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
-                throw new Exception("Invalid refresh token");
+                throw new InvalidOperationException("Invalid refresh token.");
 
             if (storedToken.Expires < DateTime.UtcNow)
-                throw new Exception("Refresh Token expired");
+                throw new SecurityTokenExpiredException("Refresh token expired.");
 
-            // 2. Extraer el UserId del accesToken que expiró
+            // 2. Obtener los claims del access token (vencido o no)
             var principal = _jwtUtils.GetPrincipalFromExpiredToken(request.AccessToken);
-            var userId = Guid.Parse(principal.Claims.First(c => c.Type == "id").Value);
 
+            // Extraer el UserId del token, tolerando varios nombres de claim
+            var userIdClaim = principal.Claims.FirstOrDefault(c =>
+                c.Type == "id" ||
+                c.Type == JwtRegisteredClaimNames.Sub ||
+                c.Type == ClaimTypes.NameIdentifier
+            );
+
+            if (userIdClaim == null)
+                throw new InvalidOperationException("User ID not found in access token claims.");
+
+            var userId = Guid.Parse(userIdClaim.Value);
+
+            // 3. Obtener el usuario de la DB
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
-                throw new Exception("User not found.");
+                throw new KeyNotFoundException("User not found.");
 
+            // Validar que el refresh token pertenece a ese usuario
+            if (storedToken.UserId != user.Id)
+                throw new InvalidOperationException("Refresh token does not belong to this user.");
 
-            // 3. marcar Refresh token previo como usado
+            // 4. Marcar el refresh token previo como usado
             storedToken.IsUsed = true;
             await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
 
-            // 4. Generar nuevos tokens
+            // Borrar los RefreshToken de la DB que tengan mas de 24hr
+            await _unitOfWork.Users.DeleteRefreshTokenAsync(userId, TimeSpan.FromHours(24));
+
+            // 5. Generar nuevos tokens
             var newAccessToken = _tokenService.GenerateToken(user);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
@@ -170,8 +182,11 @@ namespace CountrySecure.Infrastructure.Services
             };
 
             await _unitOfWork.Users.AddRefreshTokenAsync(newRefreshTokenEntity);
+
+            // Se guardan todos los cambios
             await _unitOfWork.SaveChangesAsync();
 
+            // 6. Respuesta al cliente
             return new AuthResponseDto
             {
                 Success = true,
@@ -185,6 +200,7 @@ namespace CountrySecure.Infrastructure.Services
                 Role = user.Role
             };
         }
+
 
     }
 }
