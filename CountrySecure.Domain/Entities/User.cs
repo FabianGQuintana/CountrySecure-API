@@ -21,8 +21,5 @@ namespace CountrySecure.Domain.Entities
         public ICollection<EntryPermission> EntryPermissions { get; set; } = new List<EntryPermission>();
         public ICollection<Turn> Turns {get; set;} = new List<Turn>();
         public ICollection<RefreshToken> RefreshTokens { get; set;} = new List<RefreshToken>();
-
-
-
     }
 }

@@ -12,8 +12,8 @@ public class RequestResponseDto
     public  required string Details { get; set; }
     public  required string Location { get; set; }  
     public RequestStatus Status { get; set; }  
-    public int IdUser { get; set; }  
-    public int IdOrder { get; set; }  
+    public Guid IdUser { get; set; }  
+    public Guid IdOrder { get; set; }  
 
 }
 
