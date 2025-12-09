@@ -36,5 +36,16 @@ namespace CountrySecure.Infrastructure.Utils
 
             return principal;
         }
+
+
+        public string HashPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.HashPassword(password, workFactor: 10);
+        }
+
+        public bool VerifyPassword(string plainTextPassword, string hashedPassword)
+        {
+            return BCrypt.Net.BCrypt.Verify(plainTextPassword, hashedPassword);
+        }
     }
 }

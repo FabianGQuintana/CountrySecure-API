@@ -35,7 +35,8 @@ using CountrySecure.Infrastructure.Utils;
 using CountrySecure.Application.Validators;
 using CountrySecure.API.Filters;
 using CountrySecure.Application.Services;
-using CountrySecure.Application.Services.Turns;  // si tu ValidationFilter está aquí (ajustalo según tu proyecto)
+using CountrySecure.Application.Services.Turns;
+using System.Security.Claims;  // si tu ValidationFilter está aquí (ajustalo según tu proyecto)
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -139,7 +140,9 @@ builder.Services.AddAuthentication("Bearer")
 
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            )
+            ),
+
+            RoleClaimType = ClaimTypes.Role
         };
     });
 

@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using CountrySecure.Application.DTOs.Auth;
+using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
@@ -81,7 +82,7 @@ namespace CountrySecure.Infrastructure.Services
 
             if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.Password))
             {
-                return new AuthResponseDto { Success = false, Message = "Invalid credentials" };
+                return new AuthResponseDto { Success = false, Message = "Incorrect password" };
             }
 
             var accessToken = _tokenService.GenerateToken(user);
@@ -124,6 +125,27 @@ namespace CountrySecure.Infrastructure.Services
             storedToken.IsRevoked = true;
             await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
             await _unitOfWork.SaveChangesAsync();
+        }
+
+
+        public async Task<(bool Success, string? ErrorMessage)> ChangePasswordAsync(Guid userId, ChangePasswordDto dto)
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+
+            if (user == null)
+                return (false, "Usuario no encontrado.");
+
+            // Verificar password actual
+            if (!_jwtUtils.VerifyPassword(dto.CurrentPassword, user.Password))
+                return (false, "Current password is incorrect.");
+
+            // Hashear nueva
+            user.Password = _jwtUtils.HashPassword(dto.NewPassword);
+
+            await _userRepository.UpdateAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return (true, null);
         }
 
 
@@ -200,7 +222,6 @@ namespace CountrySecure.Infrastructure.Services
                 Role = user.Role
             };
         }
-
 
     }
 }

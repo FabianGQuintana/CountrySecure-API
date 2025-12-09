@@ -1,6 +1,8 @@
 
 
+using System.Security.Claims;
 using CountrySecure.Application.DTOs.Auth;
+using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,7 +24,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)
         {
@@ -87,6 +89,26 @@ namespace CountrySecure.API.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(new { message = "Invalid token." });
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var result = await _authService.ChangePasswordAsync(userId, dto);
+
+            if (!result.Success)
+                return BadRequest(new { message = result.ErrorMessage });
+
+            return Ok(new { message = "Password was succesfully updated." });
+        }
+
 
         // [Authorize]
         [HttpGet("{id}")]
