@@ -14,11 +14,14 @@ namespace CountrySecure.Application.Mappers
         {
             return new LotResponseDto
             {
-                LotId = lot.Id, 
+                LotId = lot.Id,
                 LotName = lot.LotName,
                 BlockName = lot.BlockName,
-                Status = Enum.TryParse<LotStatus>(lot.Status, true, out var statusResult) ? statusResult : LotStatus.Available,
-                CreatedAt = lot.CreatedAt, // Desde BaseEntity
+                LotState = lot.LotState,
+                // Status en la Entidad (BaseEntity) es string ("Active", "Inactive").
+                Status = lot.Status,
+
+                CreatedAt = lot.CreatedAt,
             };
         }
 
@@ -31,12 +34,12 @@ namespace CountrySecure.Application.Mappers
         // 3. DTO de Creación -> Entidad (Escritura POST)
         public static Lot ToEntity(this CreateLotDto dto)
         {
-            // Nota: Los campos required (Status, CreatedBy) deben ser inicializados
             return new Lot
             {
                 LotName = dto.LotName,
-                BlockName = dto.BlockName
-                // Status y CreatedBy se manejarán en la capa de Servicio o con un Hook de EF Core
+                BlockName = dto.BlockName,
+                // **CAMBIO:** Mapear el estado del DTO a la nueva propiedad de la entidad
+                LotState = dto.LotState
             };
         }
 

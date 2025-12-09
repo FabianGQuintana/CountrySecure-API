@@ -5,8 +5,6 @@ namespace CountrySecure.Application.DTOs.EntryPermission
 {
     public class CreateEntryPermissionDto
     {
-        [Required]
-        public required string QrCodeValue { get; set; }
 
         [Required]
         public  PermissionType PermissionType { get; set; }

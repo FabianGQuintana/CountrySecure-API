@@ -172,6 +172,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("LotState")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -285,7 +288,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
@@ -605,8 +608,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("Properties")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Lot");
 
@@ -656,7 +658,7 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasForeignKey("AmenityId1");
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
-                        .WithMany()
+                        .WithMany("Turns")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -688,6 +690,8 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Navigation("EntryPermissions");
 
                     b.Navigation("Properties");
+
+                    b.Navigation("Turns");
                 });
 
             modelBuilder.Entity("Visit", b =>

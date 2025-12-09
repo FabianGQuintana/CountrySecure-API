@@ -28,25 +28,41 @@ namespace CountrySecure.Application.Services.EntryPermission
             // 1. Mapeo DTO a Entidad
             var newPermissionEntity = dto.ToEntity();
 
-            // Generar un valor único para el código QR
+            // 2. GENERACIÓN DE VALOR CRÍTICO
+            // El campo QrCodeValue se genera en el servidor
             newPermissionEntity.QrCodeValue = Guid.NewGuid().ToString();
 
-            // 2. Asignación de Auditoría y Estado Inicial
-            newPermissionEntity.CreatedBy = currentUserId.ToString();
-            newPermissionEntity.Status = PermissionStatus.Pending;
-            newPermissionEntity.CreatedAt = DateTime.UtcNow;
+            // 3. Asignación de Auditoría y Estado Inicial
 
-            // 3. Guardar en Repositorio
+            // a. Creador
+            newPermissionEntity.CreatedBy = currentUserId.ToString();
+
+            // b. Fechas de Creación/Modificación (Auditoría)
+            newPermissionEntity.CreatedAt = DateTime.UtcNow;
+            newPermissionEntity.LastModifiedAt = DateTime.UtcNow;
+
+            // c. Estado Funcional (Defensivo)
+            newPermissionEntity.Status = PermissionStatus.Pending;
+
+            // 4. Guardar en Repositorio (Solo inserta la fila, NO carga User/Visit)
             var addedPermission = await _entryPermissionRepository.AddAsync(newPermissionEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // 4. Mapeo de Entidad a DTO de Respuesta
-            return addedPermission.ToResponseDto();
+            //Obtenemos la entidad Completa para que no lance error.
+            var fullPermission = await _entryPermissionRepository.GetEntryPermissionWithDetailsAsync(addedPermission.Id);
+
+            // Verificación defensiva (aunque no debería ser nulo)
+            if (fullPermission == null)
+            {
+                throw new InvalidOperationException("Permission was created but could not be retrieved for mapping.");
+            }
+
+            // 6. Mapeo de Entidad Completa a DTO de Respuesta
+            return fullPermission.ToResponseDto();
         }
 
         public async Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid entryPermissionId, Guid currentUserId)
         {
-            // 1. Buscar y Validar existencia
             var existingEntity = await _entryPermissionRepository.GetByIdAsync(entryPermissionId);
 
             if (existingEntity == null)
@@ -55,24 +71,24 @@ namespace CountrySecure.Application.Services.EntryPermission
                 return null;
             }
 
-            // 2. Aplicar la lógica de negocio de autorización (Ej: Solo el creador puede actualizar)
-             if (existingEntity.CreatedBy != currentUserId.ToString())
+            if (existingEntity.CreatedBy != currentUserId.ToString())
             {
                 throw new UnauthorizedAccessException("User is not authorized to update this EntryPermission. Only the creator may modify it.");
             }
-           
-            // 3. Aplicar cambios del DTO a la Entidad existente
+
             dto.MapToEntity(existingEntity);
 
-            // 4. Actualizar Auditoría
-            existingEntity.LastModifiedAt = DateTime.UtcNow;
            
+            existingEntity.LastModifiedAt = DateTime.UtcNow;
+            existingEntity.LastModifiedBy = currentUserId.ToString();
 
-            // 5. Guardar Cambios
+            
             var updatedEntity = await _entryPermissionRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // 6. Mapeo de Entidad a DTO de Respuesta
+            // NOTA: Para que ToResponseDto funcione correctamente, la entidad updatedEntity 
+            // debe tener sus propiedades de navegación (User, Visit) cargadas. 
+            // Si no lo están, la llamada al repositorio debe usar Eager Loading (Include()).
             return updatedEntity.ToResponseDto();
         }
 

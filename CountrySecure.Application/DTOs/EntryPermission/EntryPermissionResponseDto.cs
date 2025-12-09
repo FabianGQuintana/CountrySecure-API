@@ -27,6 +27,6 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public required EntryPermissionVisitDto Visitor { get; set; }
 
         // Información del Servicio si aplica (FK: id_servicio, puede ser null)
-        public EntryPermissionServiceDto? Order { get; set; }
+        public EntryPermissionOrderDto? Order { get; set; }
     }
 }
