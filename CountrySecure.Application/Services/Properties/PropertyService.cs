@@ -16,10 +16,11 @@ namespace CountrySecure.Application.Services.Properties
     {
         private readonly IPropertyRepository _propertyRepository;
         private readonly IUnitOfWork _unitOfWork;
-
-        public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork)
+        private readonly ILotRepository _lotRepository;
+        public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork, ILotRepository lotRepository)
         {
             _propertyRepository = propertyRepository;
+            _lotRepository = lotRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -27,22 +28,31 @@ namespace CountrySecure.Application.Services.Properties
 
         public async Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto, Guid currentUserId)
         {
-            // 1. Convertir DTO a Entidad (AHORA ES SEGURO: solo mapea FKs)
+            // 1. Mapeo de DTO a Entidad
             var newPropertyEntity = newPropertyDto.ToEntity();
 
-            // 2. Asignación de campos base y auditoría
-            // *Estos campos deben establecerse después del mapeo*
-            newPropertyEntity.CreatedBy = currentUserId.ToString();
-            newPropertyEntity.Status = "Active"; // Asignación del estado inicial
-            newPropertyEntity.CreatedAt = DateTime.UtcNow;
+            // Forzamos la asignación del LotId para asegurar que la FK se envíe correctamente.
+            newPropertyEntity.LotId = newPropertyDto.LotId;
 
-            // Nota: newPropertyEntity.User y newPropertyEntity.Lot ya son null gracias al mapeador corregido.
+            var lotExists = await _lotRepository.GetByIdAsync(newPropertyDto.LotId);
+
+            if (lotExists == null || lotExists.IsDeleted) // Verifica que exista Y no esté eliminado
+            {
+                // Esto lanzará la excepción que tu controlador debe atrapar para devolver 404/400
+                throw new KeyNotFoundException($"El Lote con ID {newPropertyDto.LotId} no existe o está inactivo/eliminado.");
+            }
+
+            // 2. CONFIGURACIÓN DE ESTADO INICIAL Y AUDITORÍA
+            newPropertyEntity.CreatedBy = currentUserId.ToString();
+            newPropertyEntity.PropertyType = PropertyStatus.NewBrand;
+            newPropertyEntity.Status = "Active";
+            newPropertyEntity.CreatedAt = DateTime.UtcNow;
+            newPropertyEntity.LastModifiedAt = DateTime.UtcNow;
 
             // 3. Persistencia
             var addedProperty = await _propertyRepository.AddAsync(newPropertyEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // 4. Mapeo a DTO de respuesta
             return addedProperty.ToResponseDto();
         }
 

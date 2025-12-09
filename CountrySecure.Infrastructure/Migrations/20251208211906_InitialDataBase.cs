@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialDataBase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -39,6 +39,7 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     LotName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    LotState = table.Column<int>(type: "integer", nullable: false),
                     BlockName = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -129,7 +130,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     Street = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     PropertyNumber = table.Column<int>(type: "integer", nullable: false),
                     PropertyType = table.Column<int>(type: "integer", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: true),
                     LotId = table.Column<Guid>(type: "uuid", nullable: false),
                     IdLot = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),

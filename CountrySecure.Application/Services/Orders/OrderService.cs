@@ -28,6 +28,8 @@ namespace CountrySecure.Application.Services.Orders
 
             // Auditoría
             newOrder.CreatedBy = currentUserId.ToString();
+
+            newOrder.LastModifiedAt = DateTime.UtcNow; // Asignamos fecha
             newOrder.LastModifiedBy = currentUserId.ToString();
 
             await _orderRepository.AddAsync(newOrder);
@@ -123,31 +125,31 @@ namespace CountrySecure.Application.Services.Orders
                 .Where(o => !o.IsDeleted)
                 .ToResponseDto();
         }
-
         // ============================================================
         // 9. Actualizar Orden
         // ============================================================
-        public async Task UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto)
+        public async Task UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto, Guid currentUserId)
         {
             var existing = await _orderRepository.GetByIdAsync(orderId);
 
             if (existing == null || existing.IsDeleted)
-                throw new Exception("Order not found.");
+                throw new KeyNotFoundException("Order not found."); 
 
-            // Mapear cambios
+
             updateOrderDto.MapToEntity(existing);
 
             existing.LastModifiedAt = DateTime.UtcNow;
+            existing.LastModifiedBy = currentUserId.ToString(); 
+                                                               
 
             await _orderRepository.UpdateAsync(existing);
             await _unitOfWork.SaveChangesAsync();
         }
 
-
         // ============================================================
         // 10. Soft Delete
         // ============================================================
-        public async Task<bool> SoftDeleteOrderAsync(Guid orderId)
+        public async Task<bool> SoftDeleteOrderAsync(Guid orderId, Guid currentUserId)
         {
             var order = await _orderRepository.GetByIdAsync(orderId);
 
@@ -156,6 +158,7 @@ namespace CountrySecure.Application.Services.Orders
 
             order.Status = "Inactive";
             order.DeletedAt = DateTime.UtcNow;
+            order.LastModifiedAt = DateTime.UtcNow;
 
             await _orderRepository.UpdateAsync(order);
             await _unitOfWork.SaveChangesAsync();

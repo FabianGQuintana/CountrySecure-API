@@ -16,9 +16,8 @@ namespace CountrySecure.Application.Mappers
 
         public static EntryPermissionResponseDto ToResponseDto(this EntryPermission permission)
         {
-            // NOTA: Si la Entidad no está cargada con Include(), esto fallará.
-
             // 1. Validar que las entidades requeridas estén cargadas (Eager Loading)
+            // NOTA: Se asume que ToEntryPermissionUserDto y ToEntryPermissionVisitDto están definidos en otro lugar
             if (permission.User == null || permission.Visit == null)
             {
                 throw new InvalidOperationException("Cannot map EntryPermission to Response DTO. Required navigation properties (User or Visit) were not loaded from the database.");
@@ -28,6 +27,7 @@ namespace CountrySecure.Application.Mappers
             {
                 // Propiedades principales
                 Id = permission.Id,
+                // QrCodeValue se mapea de la entidad (donde fue generado en el servicio)
                 QrCodeValue = permission.QrCodeValue,
                 Type = permission.PermissionType,
                 Status = permission.Status,
@@ -40,15 +40,13 @@ namespace CountrySecure.Application.Mappers
                 CreatedAt = permission.CreatedAt,
                 CreatedBy = permission.CreatedBy,
 
-                // 2. Mapeo de DTOs Anidados (Llama a los mappers de User/Visit/Service)
-                // Usamos el operador ternario para el Servicio, que es opcional (nulleable)
-                Resident = permission.User.ToEntryPermissionUserDto(), // Llama a UserMapper.ToEntryPermissionUserDto
+                // Mapeo de DTOs Anidados
+                Resident = permission.User.ToEntryPermissionUserDto(),
+                Visitor = permission.Visit.ToEntryPermissionVisitDto(),
 
-                Visitor = permission.Visit.ToEntryPermissionVisitDto(), // Llama a VisitMapper.ToEntryPermissionVisitDto
-
-                // Service = permission.Service != null
-                //             ? permission.Service.ToEntryPermissionServiceDto()
-                //             : null // Retorna null si Service no fue cargado o ServiceId es null
+                Order = permission.Order != null
+            ? permission.Order.ToEntryPermissionOrderDto() 
+            : null
             };
         }
 
@@ -65,19 +63,21 @@ namespace CountrySecure.Application.Mappers
         {
             return new EntryPermission
             {
-                // Mapeo de propiedades simples
-                QrCodeValue = dto.QrCodeValue,
+                QrCodeValue = string.Empty,
                 PermissionType = dto.PermissionType,
                 Description = dto.Description,
                 ValidFrom = dto.ValidFrom,
                 Status = dto.Status,
 
-
                 // Asignación de Claves Foráneas (FKs)
-                // Se asume que el DTO solo proporciona los IDs
                 UserId = dto.UserId,
                 VisitId = dto.VisitId,
-                OrderId = dto.OrderId, // Puede ser null
+                OrderId = dto.OrderId,
+
+                // **INICIALIZACIÓN CRÍTICA DE PROPIEDADES DE NAVEGACIÓN A NULL**
+                Visit = null,
+                User = null,
+                Order = null
             };
         }
 
@@ -123,6 +123,29 @@ namespace CountrySecure.Application.Mappers
             {
                 existingEntity.Status = dto.Status.Value;
             }
+            // NOTA: Recuerda actualizar LastModifiedAt y LastModifiedBy en el Servicio después de llamar a MapToEntity
+        }
+
+
+        // -------------------------------------------------------------------
+        // Mapeo de Extensión 
+        // -------------------------------------------------------------------
+
+
+        public static EntryPermissionOrderDto ToEntryPermissionOrderDto(this Order order)
+        {
+            return new EntryPermissionOrderDto
+            {
+                Id = order.Id,
+
+                SupplierName = order.SupplierName,
+
+                Description = order.Description,
+
+                OrderType = order.OrderType,
+
+                Status = order.Status
+            };
         }
     }
 }

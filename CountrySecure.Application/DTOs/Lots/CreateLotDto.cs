@@ -8,7 +8,7 @@ namespace CountrySecure.Application.DTOs.Lots
 
         public required string BlockName { get; set; }
 
-        public LotStatus status { get; set; }
+        public LotStatus LotState { get; set; }
 
 
     }
