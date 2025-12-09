@@ -39,12 +39,21 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
     public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status, int numberPage, int pageSize)
 	{
 		return await _dbContext.Properties
-			.Where(p => (int)p.PropertyType == (int)status)
+			.Where(p => (int)p.PropertyStatus == (int)status)
 			.OrderBy(p => p.Id)
 			.Skip((numberPage - 1) * pageSize)
 			.Take(pageSize)
 			.ToListAsync();
 	}
+
+    public async Task<Property?> GetByIdWithIncludesAsync(Guid id)
+    {
+        // Usar el DbSet y aplicar las inclusiones necesarias antes de buscar por ID.
+        return await _dbContext.Set<Property>()
+            .Include(p => p.Lot) // Incluye la propiedad de navegación Lot
+            .Include(p => p.User) // Incluye la propiedad de navegación User
+            .FirstOrDefaultAsync(p => p.Id == id);
+    }
 
 
 }

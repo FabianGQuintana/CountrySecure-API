@@ -20,7 +20,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
             // 3. Relación 1:N con Property (Navegación bidireccional)
             builder.HasMany(l => l.Properties) // Un Lote tiene muchas Propiedades
                    .WithOne(p => p.Lot)       // Una Propiedad pertenece a un Lote
-                   .HasForeignKey("IdLot")    // La FK está en la tabla Property (asumiendo que la columna es IdLot)
+                   .HasForeignKey("LotId")    // La FK está en la tabla Property (asumiendo que la columna es IdLot)
                    .OnDelete(DeleteBehavior.Restrict); // Evita la eliminación en cascada
 
             // 4. Configuración del estado (Status)

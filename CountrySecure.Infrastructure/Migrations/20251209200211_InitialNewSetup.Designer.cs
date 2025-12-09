@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CountrySecure.Infrastructure.Migrations
 {
     [DbContext(typeof(CountrySecureDbContext))]
-    [Migration("20251208211906_InitialDataBase")]
-    partial class InitialDataBase
+    [Migration("20251209200211_InitialNewSetup")]
+    partial class InitialNewSetup
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -261,9 +261,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("IdLot")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -276,7 +273,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<int>("PropertyNumber")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PropertyType")
+                    b.Property<int>("PropertyStatus")
                         .HasColumnType("integer");
 
                     b.Property<string>("Status")
@@ -296,7 +293,7 @@ namespace CountrySecure.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdLot");
+                    b.HasIndex("LotId");
 
                     b.HasIndex("UserId");
 
@@ -604,7 +601,7 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     b.HasOne("CountrySecure.Domain.Entities.Lot", "Lot")
                         .WithMany("Properties")
-                        .HasForeignKey("IdLot")
+                        .HasForeignKey("LotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 

@@ -14,3 +14,4 @@ namespace CountrySecure.Application.DTOs.Order
         public List<Guid>? EntryPermissionIds { get; set; }
     }
 }
+    

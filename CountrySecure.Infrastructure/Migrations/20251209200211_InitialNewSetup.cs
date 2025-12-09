@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialDataBase : Migration
+    public partial class InitialNewSetup : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -129,10 +129,9 @@ namespace CountrySecure.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Street = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     PropertyNumber = table.Column<int>(type: "integer", nullable: false),
-                    PropertyType = table.Column<int>(type: "integer", nullable: false),
+                    PropertyStatus = table.Column<int>(type: "integer", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: true),
                     LotId = table.Column<Guid>(type: "uuid", nullable: false),
-                    IdLot = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -145,8 +144,8 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     table.PrimaryKey("PK_Properties", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Properties_Lots_IdLot",
-                        column: x => x.IdLot,
+                        name: "FK_Properties_Lots_LotId",
+                        column: x => x.LotId,
                         principalTable: "Lots",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -323,9 +322,9 @@ namespace CountrySecure.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Properties_IdLot",
+                name: "IX_Properties_LotId",
                 table: "Properties",
-                column: "IdLot");
+                column: "LotId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Properties_Street_PropertyNumber",

@@ -12,19 +12,22 @@ namespace CountrySecure.Application.Mappers
         // 1. Entidad -> DTO de Respuesta (Lectura/Consulta)
         public static PropertyResponseDto ToResponseDto(this Property property)
         {
-            // Convertir el Status string (de BaseEntity) al enum PropertyStatus
-            var statusEnum = PropertyStatus.Inactive;
-            if (!string.IsNullOrWhiteSpace(property.Status) && Enum.TryParse<PropertyStatus>(property.Status, out var parsed))
-            {
-                statusEnum = parsed;
-            }
 
             return new PropertyResponseDto
             {
                 PropertyId = property.Id,
                 Street = property.Street,
-                HouseNumber = property.PropertyNumber,
-                Status = statusEnum
+                PropertyNumber = property.PropertyNumber,
+                // **Mapeo del Estado Funcional (El Enum)**
+                PropertyStatus = property.PropertyStatus,
+
+                // **Mapeo del Estado de Auditoría (El String de BaseEntity)**
+                StatusAuditoria = property.Status,
+                CreatedAt = property.CreatedAt,
+
+                LotName = property.Lot?.LotName,
+                OwnerName = property.User?.Name
+
             };
         }
 
@@ -42,7 +45,7 @@ namespace CountrySecure.Application.Mappers
                 // Mapeo de propiedades simples
                 Street = dto.Street,
                 PropertyNumber = dto.PropertyNumber,
-
+                PropertyStatus = PropertyStatus.NewBrand, // Estado inicial predeterminado
                 // Asignación de Claves Foráneas (FKs)
                 // El UserId se omite aquí y será NULL en la entidad
                 LotId = dto.LotId,
@@ -59,10 +62,16 @@ namespace CountrySecure.Application.Mappers
             // Solo sobrescribe si el valor del DTO NO es nulo
             existingEntity.Street = dto.Street ?? existingEntity.Street;
 
-            // Tipo de valor (int?) requiere una comprobación HasValue
-            if (dto.NumberProperty.HasValue)
+
+            if (dto.PropertyStatus.HasValue)
             {
-                existingEntity.PropertyNumber = dto.NumberProperty.Value;
+                existingEntity.PropertyStatus = dto.PropertyStatus.Value; 
+            }
+
+            // Tipo de valor (int?) requiere una comprobación HasValue
+            if (dto.PropertyNumber.HasValue)
+            {
+                existingEntity.PropertyNumber = dto.PropertyNumber.Value;
             }
 
             // Si quieres permitir cambiar el usuario/lote:
