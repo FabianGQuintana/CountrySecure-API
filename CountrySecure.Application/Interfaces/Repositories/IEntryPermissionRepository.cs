@@ -24,5 +24,7 @@ namespace CountrySecure.Application.Interfaces.Repositories
 
         //Obtener permiso de entrada por valor de código QR.
         Task<EntryPermission?> GetByQrCodeValueAsync(string qrCodeValue);
+
+        Task<EntryPermission?> GetEntryPermissionWithDetailsAsync(Guid id);
     }
 }

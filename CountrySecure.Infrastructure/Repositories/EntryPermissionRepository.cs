@@ -82,10 +82,17 @@ namespace CountrySecure.Infrastructure.Repositories
             return await _dbContext.EntryPermissions
                                  .Include(p => p.User)    // El Residente/Creador
                                  .Include(p => p.Visit)   // El Visitante
-                                //  .Include(p => p.Service) // El Servicio (si aplica)
+                                  .Include(p => p.Order) // El Servicio (si aplica)
                                  .FirstOrDefaultAsync(p => p.QrCodeValue == qrCodeValue);
         }
 
-
+        public async Task<EntryPermission?> GetEntryPermissionWithDetailsAsync(Guid id)
+        {
+            return await _dbContext.EntryPermissions
+                .Include(p => p.User)    // Requerido por el mapeador
+                .Include(p => p.Visit)   // Requerido por el mapeador
+                .Include(p => p.Order)   // Opcional, pero bueno incluirlo si está en el DTO de respuesta
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
     }
 }

@@ -1,15 +1,11 @@
 ﻿using CountrySecure.Application.DTOs.Order;
-using CountrySecure.Application.DTOs.Visits;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Application.Services.Visits;
 using CountrySecure.Domain.Enums;
-using Humanizer;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
-
 
 namespace CountrySecure.API.Controllers
 {
@@ -17,113 +13,228 @@ namespace CountrySecure.API.Controllers
     [ApiController]
     public class OrderController : ControllerBase
     {
-        readonly IOrderService _orderService;
+        private readonly IOrderService _orderService;
 
         public OrderController(IOrderService orderService)
         {
             _orderService = orderService;
         }
 
-        [HttpGet("/ping-order")]
-        public IActionResult Ping()
-        {
-            return Ok("OrderController is working! 🏓");
-        }
-
-
+        // -------------------------------------------------------------------
+        // MÉTODOS DE ESCRITURA (POST, PUT, DELETE)
+        // -------------------------------------------------------------------
 
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
         {
-            // Obtener el usuario autenticado desde el token (recomendado)
-            var userId = GetCurrentUserId();
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState); // 400 Bad Request
+            }
 
-            var created = await _orderService.CreateOrderAsync(dto, userId);
+            try
+            {
+                // Obtener el usuario autenticado (Lanza UnauthorizedAccessException si falla)
+                var userId = GetCurrentUserId();
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { orderId = created.Id },   // <-- debe coincidir con la ruta de GetById
-                created
-            );
+                var created = await _orderService.CreateOrderAsync(dto, userId);
+
+                return CreatedAtAction(
+                    nameof(GetById),
+                    new { id = created.Id }, // Usar 'id' para coincidir con la ruta GetById
+                    created
+                );
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(); // 401 Unauthorized
+            }
+            catch (Exception ex)
+            {
+                // Capturar errores de servicio/base de datos
+                return StatusCode(500, new { message = "Error interno al crear la orden.", detail = ex.Message });
+            }
+        }
+
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateOrder(Guid id, [FromBody] UpdateOrderDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState); // 400 Bad Request
+            }
+
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+
+                await _orderService.UpdateOrderAsync(id, dto, currentUserId);
+                return NoContent(); // 204 No Content (Éxito sin devolver cuerpo)
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound($"Orden con ID {id} no encontrada."); // 404 Not Found
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid(); // 403 Forbidden (Si la lógica de negocio prohíbe la modificación)
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al actualizar la orden.", detail = ex.Message });
+            }
+        }
+
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> SoftDeleteOrder(Guid id)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId(); 
+
+               
+                var deleted = await _orderService.SoftDeleteOrderAsync(id, currentUserId); // <-- ¡CAMBIO APLICADO!
+
+                if (!deleted)
+                {
+                    return NotFound($"Orden con ID {id} no encontrada."); // 404 Not Found
+                }
+                return NoContent(); // 204 No Content
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid(); // 403 Forbidden
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al eliminar la orden.", detail = ex.Message });
+            }
         }
 
 
-
-
+        // -------------------------------------------------------------------
+        // MÉTODOS DE LECTURA (GET)
+        // -------------------------------------------------------------------
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
-            var order = await _orderService.GetOrderByIdAsync(id);
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(id);
 
-            if (order == null)
-                return NotFound("Order not found.");
+                if (order == null)
+                    return NotFound($"Orden con ID {id} no encontrada.");
 
-            return Ok(order);
+                return Ok(order); // 200 OK
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al buscar la orden.", detail = ex.Message });
+            }
         }
+
+        // Los métodos GetAll, GetPaged, GetByStatus, etc., son de lectura. 
+        // Si el servicio solo devuelve una lista o null, basta con manejar el 500.
 
         [HttpGet("paged")]
         public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int size = 10)
         {
-            var results = await _orderService.GetAllOrdersAsync(page, size);
-
-            return Ok(results);
+            try
+            {
+                var results = await _orderService.GetAllOrdersAsync(page, size);
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al paginar órdenes.", detail = ex.Message });
+            }
         }
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var results = await _orderService.GetAllOrdersWithoutFilterAsync();
-
-            return Ok(results);
+            try
+            {
+                var results = await _orderService.GetAllOrdersWithoutFilterAsync();
+                return Ok(results); // 200 OK
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al obtener todas las órdenes.", detail = ex.Message });
+            }
         }
+
 
         [HttpGet("status")]
         public async Task<IActionResult> GetByStatus([FromQuery] bool isActive)
         {
-            var results = await _orderService.GetByStatusAsync(isActive);
-
-            return Ok(results);
+            try
+            {
+                var results = await _orderService.GetByStatusAsync(isActive);
+                return Ok(results); // 200 OK
+            }
+            catch (Exception ex)
+            {
+                // Nota: Tu repositorio GetByStatusAsync lanza ArgumentException si el estado es inválido. 
+                // Se podría añadir un catch para devolver 400 Bad Request aquí si fuera necesario.
+                return StatusCode(500, new { message = "Error interno al buscar órdenes por estado.", detail = ex.Message });
+            }
         }
 
         [HttpGet("type/{orderType}")]
         public async Task<IActionResult> GetByType(OrderStatus orderType)
         {
-            var results = await _orderService.GetByTypeAsync(orderType);
-
-            return Ok(results);
+            try
+            {
+                var results = await _orderService.GetByTypeAsync(orderType);
+                return Ok(results); // 200 OK
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al buscar órdenes por tipo.", detail = ex.Message });
+            }
         }
 
         [HttpGet("supplier/{name}")]
         public async Task<IActionResult> GetBySupplier(string name)
         {
-            var results = await _orderService.GetBySupplierAsync(name);
-
-            return Ok(results);
+            try
+            {
+                var results = await _orderService.GetBySupplierAsync(name);
+                return Ok(results); // 200 OK
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al buscar órdenes por proveedor.", detail = ex.Message });
+            }
         }
 
         [HttpGet("most-requested")]
         public async Task<IActionResult> GetMostRequested()
         {
-            var results = await _orderService.GetMostRequestedAsync();
-
-            return Ok(results);
+            try
+            {
+                var results = await _orderService.GetMostRequestedAsync();
+                return Ok(results); // 200 OK
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Error interno al buscar las órdenes más solicitadas.", detail = ex.Message });
+            }
         }
 
-        [HttpPut("{Id:guid}")]
-        public async Task<IActionResult> UpdateOrder(Guid orderId, [FromBody] UpdateOrderDto dto)
-        {
-            await _orderService.UpdateOrderAsync(orderId, dto);
-            return NoContent();
-        }
+        // -------------------------------------------------------------------
+        // MÉTODO DE UTILIDAD
+        // -------------------------------------------------------------------
 
-
+        // Este método ahora lanza una excepción que será atrapada por los try/catch de arriba
         private Guid GetCurrentUserId()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrEmpty(userId))
-                throw new UnauthorizedAccessException("User ID not found in token.");
+                throw new UnauthorizedAccessException("User ID not found in token."); // Lanza una excepción específica
 
             return Guid.Parse(userId);
         }

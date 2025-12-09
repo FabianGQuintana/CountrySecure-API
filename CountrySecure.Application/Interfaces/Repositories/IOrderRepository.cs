@@ -13,8 +13,6 @@ public interface IOrderRepository: IGenericRepository<Order>
     // Obtener todos los servicios
     Task<IEnumerable<Order>> GetAllAsync();
 
-    // Obtener un servicio por ID
-    Task<Order?> GetByIdAsync(int idServicio);
 
     // Obtener servicios por estado (activo/inactivo)
     Task<IEnumerable<Order>> GetByStatusAsync(bool activo);

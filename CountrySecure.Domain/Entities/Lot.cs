@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CountrySecure.Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,6 +10,8 @@ namespace CountrySecure.Domain.Entities
     public class Lot : BaseEntity
     {
         public required string LotName { get; set; }
+
+        public required LotStatus LotState { get; set; }
 
         public required string BlockName { get; set; }
 

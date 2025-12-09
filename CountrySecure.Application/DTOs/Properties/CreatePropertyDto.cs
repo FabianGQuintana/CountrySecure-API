@@ -12,9 +12,6 @@ namespace CountrySecure.Application.DTOs.Properties
         public int PropertyNumber { get; set; }
 
         [Required]
-        public Guid UserId { get; set; }
-
-        [Required]
         public Guid LotId { get; set; }
     }
 }

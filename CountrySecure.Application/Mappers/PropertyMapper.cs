@@ -44,10 +44,10 @@ namespace CountrySecure.Application.Mappers
                 PropertyNumber = dto.PropertyNumber,
 
                 // Asignación de Claves Foráneas (FKs)
-                UserId = dto.UserId,
+                // El UserId se omite aquí y será NULL en la entidad
                 LotId = dto.LotId,
 
-                // **CRÍTICO: Las propiedades de navegación deben ser NULL para evitar el error 23505 (PK Violation)**
+                // **CRÍTICO: Las propiedades de navegación deben ser NULL**
                 User = null,
                 Lot = null
             };

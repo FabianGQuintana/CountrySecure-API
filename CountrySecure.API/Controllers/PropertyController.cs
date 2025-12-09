@@ -88,37 +88,41 @@ namespace CountrySecure.API.Controllers
                 return BadRequest(ModelState); // 400 Bad Request
             }
 
-            // Extraer el ID del usuario desde el token
+            // Extraer el ID del usuario ADMIN desde el token (para auditoría)
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
             {
-                return Unauthorized(); // 401 Unauthorized
+                return Unauthorized(); // 401 Unauthorized (No hay token o es inválido)
             }
 
             try
             {
+                // El servicio solo necesita el DTO (sin UserId) y el ID del creador
                 var propertyDto = await _propertyService.AddNewPropertyAsync(dto, currentUserId);
 
-                // 201 Created. propertyDto.IdProperty debe ser el ID generado.
+                // 201 Created.
+                // (Asumo que tienes un método GetById, si no, usa solo Created())
                 return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
             }
             catch (KeyNotFoundException)
             {
-                // Esto podría ser lanzado por el servicio si el LotId o UserId no existe.
-                return BadRequest(new { message = "The specified LotId or UserId does not exist." }); // 400 Bad Request
+                // Esto ahora solo indicará que el LotId no existe.
+                return BadRequest(new { message = "The specified LotId does not exist." });
             }
             catch (Exception ex)
             {
+                // Captura el error de DB (si el LotId es inválido)
                 return StatusCode(500, new
                 {
                     message = "An unexpected error occurred",
-                    detail = ex.InnerException?.Message // Intenta obtener el mensaje interno de la DB
+                    detail = ex.InnerException?.Message
                 });
             }
         }
 
-        // 7. Método: PUT /api/Property/{id} (Actualización SEGURA)
-        [HttpPut("{id}")]
+
+            // 7. Método: PUT /api/Property/{id} (Actualización SEGURA)
+            [HttpPut("{id}")]
         public async Task<IActionResult> Put(Guid id, [FromBody] UpdatePropertyDto updateDto)
         {
             if (!ModelState.IsValid)
