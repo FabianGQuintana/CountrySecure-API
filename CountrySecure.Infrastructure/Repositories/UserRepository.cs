@@ -39,6 +39,7 @@ namespace CountrySecure.Infrastructure.Repositories
             }
 
             return await query
+                .AsNoTracking()
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -108,9 +109,25 @@ namespace CountrySecure.Infrastructure.Repositories
             await _context.RefreshTokens.AddAsync(token);
         }
 
-        public async Task UpdateRefreshTokenAsync(RefreshToken token)
+        public Task UpdateRefreshTokenAsync(RefreshToken token)
         {
             _context.RefreshTokens.Update(token);
+            return Task.CompletedTask;
+        }
+
+        public async Task DeleteRefreshTokenAsync(Guid userId, TimeSpan maxAge)
+        {
+            var cutOfDate = DateTime.UtcNow - maxAge;
+
+            var tokensToDelete = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && rt.CreatedAt < cutOfDate)
+                .ToListAsync();
+
+            if (tokensToDelete.Any())
+            {
+                _context.RefreshTokens.RemoveRange(tokensToDelete);
+            } 
+
         }
     }
 }

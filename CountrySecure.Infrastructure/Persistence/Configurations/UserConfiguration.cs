@@ -62,6 +62,20 @@ namespace CountrySecure.Infrastructure.Persistence.Configuration
                             .OnDelete(DeleteBehavior.Restrict);
                      // Restrict evita que eliminar un usuario borre todas las propiedades
 
+                     builder.HasMany(u => u.EntryPermissions)
+                            .WithOne(ep => ep.User)
+                            .HasForeignKey(ep => ep.UserId)
+                            .OnDelete(DeleteBehavior.Restrict);
+
+                     builder.HasMany(u => u.Turns)
+                            .WithOne(t => t.User)
+                            .HasForeignKey(t => t.UserId)
+                            .OnDelete(DeleteBehavior.Restrict);
+
+                     builder.HasMany(u => u.RefreshTokens)
+                            .WithOne(rt => rt.User)
+                            .HasForeignKey(rt => rt.UserId)
+                            .OnDelete(DeleteBehavior.Cascade);
               }
        }
 }

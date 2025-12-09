@@ -1,9 +1,12 @@
 
 
+using System.Security.Claims;
 using CountrySecure.Application.DTOs.Auth;
+using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CountrySecure.API.Controllers
 {
@@ -21,7 +24,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)
         {
@@ -55,12 +58,57 @@ namespace CountrySecure.API.Controllers
             return Ok(result);
         }
 
-        // [HttpPost("refresh")]
-        // public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
-        // {
-        //     var result = await _authService.RefreshTokenAsync(request);
-        //     return Ok(result);
-        // }
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
+        {
+            await _authService.LogoutAsync(request.RefreshToken);
+            return Ok(new { message = "Logout succesful" });
+        }
+
+
+        [AllowAnonymous]
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
+        {
+            try
+            {
+                var result = await _authService.RefreshTokenAsync(request);
+                return Ok(result);
+            }
+            catch (SecurityTokenExpiredException ex)
+            {
+                return Unauthorized(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(new { message = "Invalid token." });
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var result = await _authService.ChangePasswordAsync(userId, dto);
+
+            if (!result.Success)
+                return BadRequest(new { message = result.ErrorMessage });
+
+            return Ok(new { message = "Password was succesfully updated." });
+        }
+
 
         // [Authorize]
         [HttpGet("{id}")]

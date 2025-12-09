@@ -1,5 +1,6 @@
 using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
@@ -16,7 +17,7 @@ namespace CountrySecure.API.Controllers
             _userService = userService;
         }
 
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] string? role = null)
         {
@@ -24,7 +25,7 @@ namespace CountrySecure.API.Controllers
             return Ok(users);
         }
 
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpGet("{id}")]      
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -39,6 +40,8 @@ namespace CountrySecure.API.Controllers
         //    return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
         //}
 
+
+        [Authorize(Roles = "Admin,Resident")]
         [HttpPut("{id}")] 
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
         {
@@ -53,7 +56,7 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        // [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin")]
         [HttpPatch("{id}/toggle-active")]
         public async Task<IActionResult> ToggleActive(Guid id)
         {

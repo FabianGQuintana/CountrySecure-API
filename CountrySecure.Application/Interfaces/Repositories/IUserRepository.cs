@@ -18,5 +18,6 @@ namespace CountrySecure.Application.Interfaces.Repositories
         Task<RefreshToken?> GetRefreshTokenAsync(string token);
         Task AddRefreshTokenAsync(RefreshToken token);
         Task UpdateRefreshTokenAsync(RefreshToken token);
+        Task DeleteRefreshTokenAsync(Guid userId, TimeSpan maxAge);
     }
 }
