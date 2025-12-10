@@ -52,7 +52,26 @@ public class VisitRepository : GenericRepository<Visit>, IVisitRepository
             .OrderBy(v => v.CreatedAt)
             .ToListAsync();
     }
+    public async Task<Visit?> GetByIdWithoutFiltersAsync(Guid id)
+    {
+        return await _dbContext.Visits
+            .FirstOrDefaultAsync(v => v.Id == id);
+    }
 
+    public async Task<Visit?> SoftDeleteVisitAsync(Guid visitId)
+    {
+        var visit = await _dbContext.Visits
+            .FirstOrDefaultAsync(v => v.Id == visitId);
+
+        if (visit == null )
+            return null;
+
+        visit.Status = "Inactive";
+        visit.DeletedAt = DateTime.UtcNow;
+        visit.UpdatedAt = DateTime.UtcNow;
+
+        return visit; // EF ya lo trackea
+    }
 
 
 }

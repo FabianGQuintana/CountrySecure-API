@@ -1,8 +1,10 @@
-﻿using System;
+﻿using CountrySecure.Application.DTOs.EntryPermission;
+using CountrySecure.Application.DTOs.Visits;
+using CountrySecure.Application.Interfaces.Persistence;
+using CountrySecure.Application.Interfaces.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CountrySecure.Application.DTOs.Visits;
-using CountrySecure.Application.DTOs.EntryPermission;
 
 namespace CountrySecure.Application.Interfaces.Services
 {
@@ -16,9 +18,9 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync();
         Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId);
         Task<EntryPermissionResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId);
-        Task UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto);
+        Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto);
+        Task<VisitResponseDto?> SoftDeleteVisitAsync(Guid visitId);
 
-        Task<bool> SoftDeleteVisitAsync(Guid visitId);
     }
 }
 

@@ -102,20 +102,23 @@ namespace CountrySecure.API.Controllers
         [HttpPut("{visitId:guid}")]
         public async Task<IActionResult> UpdateVisit(Guid visitId, [FromBody] UpdateVisitDto updateVisitDto)
         {
-            await _visitService.UpdateVisitAsync(visitId, updateVisitDto);
-            return NoContent();
+            
+            var updatedVisit = await _visitService.UpdateVisitAsync(visitId, updateVisitDto);
+            return Ok(updatedVisit);
+
         }
 
         //  SOFT DELETE
         // eliminacion logica
-        [HttpDelete("{visitId:guid}")]
+        [HttpPatch("{visitId:guid}/soft-delete")]
         public async Task<IActionResult> SoftDeleteVisit(Guid visitId)
         {
-            var result = await _visitService.SoftDeleteVisitAsync(visitId);
+            var visit = await _visitService.SoftDeleteVisitAsync(visitId);
 
-            if (!result) return NotFound("Visit not found");
+            if (visit == null)
+                return NotFound(new { message = $"Visit with id {visitId} not found" });
 
-            return NoContent();
+            return Ok(visit);
         }
 
         // VIEW ALL

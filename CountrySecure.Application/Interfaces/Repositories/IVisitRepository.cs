@@ -12,6 +12,8 @@ public interface IVisitRepository : IGenericRepository<Visit>
     Task<IEnumerable<EntryPermission>> GetPermitsByVisitIdAsync(Guid visitId);
     Task<IEnumerable<Visit>> GetAllWithoutPaginationAsync();
     Task<EntryPermission?> GetValidPermitByVisitIdAsync(Guid visitId);
+    Task<Visit?> GetByIdWithoutFiltersAsync(Guid id);
+    Task<Visit?> SoftDeleteVisitAsync(Guid visitId);
 }
 
 

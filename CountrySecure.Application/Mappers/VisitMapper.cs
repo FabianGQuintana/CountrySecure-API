@@ -73,10 +73,17 @@ namespace CountrySecure.Application.Mappers
             // Usamos ?? para strings (si dto.NameVisit es nulo, mantiene existingEntity.NameVisit)
             existingEntity.NameVisit = dto.NameVisit ?? existingEntity.NameVisit;
             existingEntity.LastNameVisit = dto.LastNameVisit ?? existingEntity.LastNameVisit;
-
             
+
             if (dto.DniVisit.HasValue)
-                existingEntity.DniVisit = dto.DniVisit.Value;
+            { existingEntity.DniVisit = dto.DniVisit.Value;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.StatusVisit))
+            {
+                existingEntity.Status = dto.StatusVisit;
+            }
+
         }
     }
 }

@@ -46,38 +46,39 @@ namespace CountrySecure.Application.Services.Visits
             return addedVisit.ToResponseDto();
         }
 
-        public async Task UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto)
+        public async Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto)
         {
-            var existingEntity = await _visitRepository.GetByIdAsync(visitId);
+            var existingEntity = await _visitRepository.GetByIdWithoutFiltersAsync(visitId);
 
-            if (existingEntity == null || existingEntity.DeletedAt != null)
+
+            if (existingEntity == null )
                 throw new KeyNotFoundException($"Visit with ID {visitId} not found.");
 
-            // Mapear cambios al entity
             updateVisitDto.MapToEntity(existingEntity);
 
             existingEntity.LastModifiedAt = DateTime.UtcNow;
 
             await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
+
+            // Volver a cargar si necesitás incluir permisos
+            return existingEntity.ToResponseDto();
         }
 
 
-        public async Task<bool> SoftDeleteVisitAsync(Guid visitId)
+
+        public async Task<VisitResponseDto?> SoftDeleteVisitAsync(Guid visitId)
         {
-            var existingEntity = await _visitRepository.GetByIdAsync(visitId);
+            var visit = await _visitRepository.SoftDeleteVisitAsync(visitId);
 
-            if (existingEntity == null || existingEntity.DeletedAt != null)
-                return false;
+            if (visit == null)
+                return null;
 
-            existingEntity.DeletedAt = DateTime.UtcNow;
-            existingEntity.Status = "Inactive";
-
-            await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            return true;
+            return visit.ToResponseDto();
         }
+
 
         // ============================================================
         // MÉTODOS DE CONSULTA
