@@ -9,8 +9,6 @@ namespace CountrySecure.Application.Interfaces.Services
     public interface IAmenityService
     {
        
-        Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto, Guid createdById); 
-        Task<bool> DeleteAmenityAsync(Guid id, Guid currentUserId); 
         Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto, Guid createdById);
         Task<AmenityResponseDto?> ToggleActiveAsync(Guid id, Guid currentUserId); 
         Task<AmenityResponseDto?> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto, Guid currentUserId);
