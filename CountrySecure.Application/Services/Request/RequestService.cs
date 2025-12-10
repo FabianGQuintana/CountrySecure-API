@@ -39,19 +39,20 @@ namespace CountrySecure.Application.Services.Request
         // Obtener una solicitud por ID
         public async Task<RequestResponseDto?> GetRequestByIdAsync(Guid requestId)
         {
-            var request = await _requestRepository.GetByIdAsync(requestId);
+            var request = await _requestRepository.GetRequestWithDetailsAsync(requestId);
+
 
             if (request == null)
                 return null;
 
             // Convertir explícitamente
-            return request.ToResponseDto();  // Asegúrate de que ToResponseDto es un método estático que mapeará de ResponseRequestDto a ResponseRequestDto
+            return request.ToResponseDto();  
         }
 
         // Obtener todas las solicitudes con paginación
         public async Task<IEnumerable<RequestResponseDto>> GetAllRequestsAsync(int pageNumber, int pageSize)
         {
-            var requests = await _requestRepository.GetAllAsync(pageNumber, pageSize);
+            var requests = await _requestRepository.GetAllRequestsWithDetailsAsync(pageNumber, pageSize);
             return requests.ToResponseDto();
         }
 
@@ -69,20 +70,23 @@ namespace CountrySecure.Application.Services.Request
         }
 
         // Actualizar una solicitud
-        public async Task<UpdateRequestDto> UpdateRequestAsync(Guid requestId, UpdateRequestDto updateRequestDto)
+        public async Task<RequestResponseDto> UpdateRequestAsync(Guid requestId, UpdateRequestDto updateRequestDto)
         {
             var requestEntity = await _requestRepository.GetByIdAsync(requestId);
 
             if (requestEntity == null)
                 throw new KeyNotFoundException("Request not found.");
 
-            // Mapear los cambios del DTO a la entidad existente
+            // Mapear los cambios
             updateRequestDto.MapToEntity(requestEntity);
 
-            // Guardar los cambios
             await _unitOfWork.SaveChangesAsync();
 
-            return updateRequestDto;  // Podrías devolver el DTO de respuesta si prefieres
+            // IMPORTANTE: volver a traer la entidad con sus relaciones
+            requestEntity = await _requestRepository.GetRequestWithDetailsAsync(requestId);
+
+            // Ahora devolvés una vista COMPLETA del objeto
+            return requestEntity.ToResponseDto();
         }
 
         // Eliminar una solicitud (soft delete)
@@ -101,6 +105,27 @@ namespace CountrySecure.Application.Services.Request
 
             return true;
         }
+
+        public async Task<RequestResponseDto?> ToggleActiveAsync(Guid id)
+        {
+            // 1. Llama al repositorio para cambiar el estado (y actualizar la entidad)
+            // Asumimos que ToggleActiveAsync existe en IRequestRepository
+            var request = await _requestRepository.ToggleActiveAsync(id);
+
+            if (request == null)
+            {
+                return null; // La solicitud no fue encontrada
+            }
+
+            // 2. Guarda los cambios en la base de datos
+            await _unitOfWork.SaveChangesAsync();
+
+            // 3. Mapea y devuelve el DTO de respuesta de la solicitud actualizada
+            // NOTA: Asegúrate de que el request que devuelve el repositorio tiene cargados User y Order
+            // (Puedes modificar el repositorio para que use Includes)
+            return request.ToResponseDto();
+        }
+
     }
 }
 

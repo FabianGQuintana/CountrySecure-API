@@ -1,6 +1,7 @@
 ﻿using CountrySecure.Application.DTOs.Request;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -49,6 +50,7 @@ namespace CountrySecure.API.Controllers
         public async Task<ActionResult<IEnumerable<RequestResponseDto>>> GetAllRequests([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var requests = await _requestService.GetAllRequestsAsync(pageNumber, pageSize);
+
             return Ok(requests);
         }
 
@@ -70,26 +72,26 @@ namespace CountrySecure.API.Controllers
 
         // PUT: api/requests/{id}
         [HttpPut("{id}")]
-        public async Task<ActionResult<UpdateRequestDto>> UpdateRequest(Guid id, [FromBody] UpdateRequestDto updateRequestDto)
+        public async Task<ActionResult<RequestResponseDto>> UpdateRequest(Guid id, [FromBody] UpdateRequestDto updateRequestDto)
         {
-            
-                var result = await _requestService.UpdateRequestAsync(id, updateRequestDto);
-                return Ok(result);
-            
+            var result = await _requestService.UpdateRequestAsync(id, updateRequestDto);
+            return Ok(result);
         }
 
-        // DELETE: api/requests/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRequest(Guid id)
-        {
-            var deleted = await _requestService.DeleteRequestAsync(id);
 
-            if (!deleted)
+        
+        [HttpPatch("{id}/soft-delete")]
+        public async Task<IActionResult> ToggleActive(Guid id)
+        {
+            var updatedRequest = await _requestService.ToggleActiveAsync(id);
+
+            if (updatedRequest == null)
             {
-                return NotFound();
+                return NotFound(new { message = $"Request with id {id} not found." });
             }
 
-            return NoContent(); // 204 No Content es el estándar para borrados exitosos
+            // Devolvemos el DTO de respuesta actualizado
+            return Ok(updatedRequest);
         }
     }
 }

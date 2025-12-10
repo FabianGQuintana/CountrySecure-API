@@ -13,7 +13,7 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<IEnumerable<RequestResponseDto>> GetAllRequestsAsync(int pageNumber, int pageSize);
         Task<IEnumerable<RequestResponseDto>> GetRequestsByStatusAsync(RequestStatus status, int pageNumber, int pageSize);
         Task<int> CountRequestsByStatusAsync(RequestStatus status);
-        Task<UpdateRequestDto> UpdateRequestAsync(Guid requestId, UpdateRequestDto updateRequestDto);
-        Task<bool> DeleteRequestAsync(Guid requestId);
+        Task<RequestResponseDto> UpdateRequestAsync(Guid requestId, UpdateRequestDto updateRequestDto);
+        Task<RequestResponseDto?> ToggleActiveAsync(Guid id);
     }
 }

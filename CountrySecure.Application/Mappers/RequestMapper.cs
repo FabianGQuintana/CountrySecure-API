@@ -17,13 +17,14 @@ namespace CountrySecure.Application.Mappers
                 // Propiedades de datos
                 Details = request.Details,
                 Location = request.Location,
-
-                // IDs (Guid a Guid)
-                IdUser = request.IdUser,
-                IdOrder = request.IdOrder,
-
-                // Status (Enum a Enum)
                 Status = request.RequestStatus,
+
+                CreatedAt = request.CreatedAt,
+
+                User = request.User.ToRequestUserDto(),
+                Order = request.Order.ToRequestOrderDto()
+
+
             };
         }
 
@@ -43,8 +44,8 @@ namespace CountrySecure.Application.Mappers
                 Location = dto.Location,
 
                 // IDs (Guid a Guid)
-                IdUser = dto.IdUser,
-                IdOrder = dto.IdOrder,
+                IdUser = dto.UserId,
+                IdOrder = dto.OrderId,
 
                 // Status (Se inicializa al valor del DTO o al defecto si no se requiere en DTO)
                 RequestStatus = dto.Status,
@@ -52,8 +53,9 @@ namespace CountrySecure.Application.Mappers
                 // Miembros requeridos de la Entidad (Relationships) para EF Core/Domain
                 // Se inicializan a 'null!' para satisfacer el 'required' del compilador, 
                 // asumiendo que el contexto de la base de datos o el servicio los gestionará.
-                UserRequest = null!,
-                OrderRequest = null!,
+                
+                User = null!,
+                Order = null!   
             };
         }
 
@@ -71,6 +73,33 @@ namespace CountrySecure.Application.Mappers
             }
 
             // Nota: IdUser e IdOrder (relaciones) generalmente NO se actualizan en un UpdateRequestDto.
+        }
+
+        public static RequestOrderDto ToRequestOrderDto(this Order order)
+        {
+             // Si order es null, devolvemos null o manejamos excepción según preferencia
+             if (order == null) throw new ArgumentNullException(nameof(order));
+
+             return new RequestOrderDto
+             {
+                 Id = order.Id,
+                 SupplierName = order.SupplierName,
+                 Description = order.Description,
+                 OrderType = (int)order.OrderType
+             };
+        }
+        
+        public static RequestUserDto ToRequestUserDto(this User user)
+        {
+            if (user == null) throw new ArgumentNullException(nameof(user));
+
+            return new RequestUserDto
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Lastname = user.Lastname,
+                Email = user.Email
+            };
         }
     }
 }

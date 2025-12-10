@@ -36,7 +36,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
 
             // Relaciones
             builder.HasMany(o => o.Requests)
-                .WithOne(r => r.OrderRequest)
+                .WithOne(r => r.Order)
                 .HasForeignKey(r => r.IdOrder)
                 .OnDelete(DeleteBehavior.Restrict);
 

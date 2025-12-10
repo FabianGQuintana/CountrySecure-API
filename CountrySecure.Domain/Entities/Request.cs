@@ -15,9 +15,11 @@ namespace CountrySecure.Domain.Entities
 
         //relationships
         public Guid IdUser { get; set; }
-        public required User UserRequest { get; set; }
+        public required User User { get; set; }
 
         public Guid IdOrder { get; set; }
-        public  required Order OrderRequest { get; set; }
+        public  required Order Order { get; set; }
+
+      
     }
 }

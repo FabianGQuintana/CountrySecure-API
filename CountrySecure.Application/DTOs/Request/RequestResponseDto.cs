@@ -1,4 +1,6 @@
 ﻿using CountrySecure.Domain.Enums;
+using CountrySecure.Application.DTOs.Order;
+using CountrySecure.Application.DTOs.Users;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,9 +13,10 @@ public class RequestResponseDto
 {
     public  required string Details { get; set; }
     public  required string Location { get; set; }  
-    public RequestStatus Status { get; set; }  
-    public Guid IdUser { get; set; }  
-    public Guid IdOrder { get; set; }  
+    public RequestStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public required RequestUserDto User { get; set; }
+    public required RequestOrderDto Order { get; set; }
 
 }
 

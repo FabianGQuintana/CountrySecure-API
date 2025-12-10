@@ -28,13 +28,13 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
                    .IsRequired();
 
             // Relación uno a muchos con User (Una solicitud tiene un único usuario)
-            builder.HasOne(r => r.UserRequest)
+            builder.HasOne(r => r.User)
                    .WithMany()  // No es necesario especificar una colección en User
                    .HasForeignKey(r => r.IdUser)
                    .OnDelete(DeleteBehavior.Cascade);  // Si el usuario se elimina, se eliminan las solicitudes asociadas
 
             // Relación uno a muchos con Order (Una solicitud está asociada a una única orden)
-            builder.HasOne(r => r.OrderRequest)
+            builder.HasOne(r => r.Order)
                    .WithMany(o => o.Requests)  // Una orden tiene muchas solicitudes
                    .HasForeignKey(r => r.IdOrder)
                    .OnDelete(DeleteBehavior.Restrict);  // No se puede eliminar una orden si tiene solicitudes asociadas
