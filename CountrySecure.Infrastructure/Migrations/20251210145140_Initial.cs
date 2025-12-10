@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class MigracionConTodasTablas : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -231,7 +231,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     TurnStatus = table.Column<int>(type: "integer", nullable: false),
                     AmenityId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    AmenityId1 = table.Column<Guid>(type: "uuid", nullable: true),
                     Status = table.Column<string>(type: "text", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -248,12 +247,7 @@ namespace CountrySecure.Infrastructure.Migrations
                         column: x => x.AmenityId,
                         principalTable: "Amenities",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Turns_Amenities_AmenityId1",
-                        column: x => x.AmenityId1,
-                        principalTable: "Amenities",
-                        principalColumn: "Id");
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Turns_Users_UserId",
                         column: x => x.UserId,
@@ -363,11 +357,6 @@ namespace CountrySecure.Infrastructure.Migrations
                 name: "IX_Turns_AmenityId",
                 table: "Turns",
                 column: "AmenityId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Turns_AmenityId1",
-                table: "Turns",
-                column: "AmenityId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Turns_UserId",
