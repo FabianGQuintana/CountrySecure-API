@@ -138,7 +138,7 @@ namespace CountrySecure.API.Controllers
         // Si el servicio solo devuelve una lista o null, basta con manejar el 500.
 
         [HttpGet("paged")]
-        public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int size = 10)
+        public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int size = 100)
         {
             try
             {

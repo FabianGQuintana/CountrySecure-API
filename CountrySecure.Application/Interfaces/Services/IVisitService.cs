@@ -14,10 +14,10 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<VisitResponseDto?> GetVisitByIdAsync(Guid visitId);
         Task<IEnumerable<VisitResponseDto>> GetVisitsByDniAsync(int dniVisit);
         Task<IEnumerable<VisitResponseDto>> GetAllVisitsAsync(int pageNumber, int pageSize);
-        Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId);
+        Task<VisitWithPermitsDto?> GetVisitWithPermitsAsync(Guid visitId);
         Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync();
         Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId);
-        Task<EntryPermissionResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId);
+        Task<IEnumerable<VisitEntryPermissionDto>> GetValidPermitsByVisitIdAsync(Guid visitId);
         Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto);
         Task<VisitResponseDto?> SoftDeleteVisitAsync(Guid visitId);
 

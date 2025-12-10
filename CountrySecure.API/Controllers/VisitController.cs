@@ -73,30 +73,21 @@ namespace CountrySecure.API.Controllers
               return Ok(visit);
           }
 
-        //  GET PERMITS BY VISIT ID
-        // Cuando necesitás ver toda la información de la visita y sus permisos en una sola llamada.
-
-        // [HttpGet("{visitId:guid}/permits")]
-        //   public async Task<IActionResult> GetPermitsByVisitId(Guid visitId)
-        //  {
-        //      var permits = await _visitService.GetPermitsByVisitIdAsync(visitId);
-        //      return Ok(permits);
-        //  }
-
 
         //  GET VALID PERMIT
-        // Devuelve todos los permisos asociados a esa visita, solo los permisos, sin los datos de la visita.
+        // Devuelve todos los permisos validos asociados a esa visita, solo los permisos, sin los datos de la visita.
 
-         [HttpGet("{visitId:guid}/permits/valid")]
-           public async Task<IActionResult> GetValidPermit(Guid visitId)
-          {
-              var permit = await _visitService.GetValidPermitByVisitIdAsync(visitId);
+        [HttpGet("{visitId:guid}/permits/valid")]
+        public async Task<IActionResult> GetValidPermits(Guid visitId)
+        {
+            var permits = await _visitService.GetValidPermitsByVisitIdAsync(visitId);
 
-              if (permit == null) return NotFound("No valid permit found");
+            
 
-              return Ok(permit);
-          }
+            return Ok(permits);
+        }
 
+        
 
         //  UPDATE
         [HttpPut("{visitId:guid}")]

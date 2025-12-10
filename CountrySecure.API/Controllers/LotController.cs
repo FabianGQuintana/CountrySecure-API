@@ -23,7 +23,7 @@ namespace CountrySecure.API.Controllers
         // --- MÉTODOS DE CONSULTA (GET) ---
 
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var lotsDto = await _lotService.GetAllLotsAsync(pageNumber, pageSize);
             return Ok(lotsDto);
@@ -48,7 +48,7 @@ namespace CountrySecure.API.Controllers
         }
 
         [HttpGet("status")]
-        public async Task<IActionResult> GetLotsByStatus([FromQuery] LotStatus status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetLotsByStatus([FromQuery] LotStatus status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var lotsDto = await _lotService.GetLotsByStatusAsync(status, pageNumber, pageSize);
             // La verificación de null es innecesaria si el servicio devuelve una lista vacía, pero la mantendremos si la interfaz lo requiere.

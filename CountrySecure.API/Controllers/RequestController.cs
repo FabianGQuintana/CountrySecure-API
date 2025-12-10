@@ -45,7 +45,7 @@ namespace CountrySecure.API.Controllers
             return Ok(request);
         }
 
-        // GET: api/requests?pageNumber=1&pageSize=10
+        // GET: api/requests?pageNumber=1&pageSize=100
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RequestResponseDto>>> GetAllRequests([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
@@ -54,7 +54,7 @@ namespace CountrySecure.API.Controllers
             return Ok(requests);
         }
 
-        // GET: api/requests/status/{status}?pageNumber=1&pageSize=10
+        // GET: api/requests/status/{status}?pageNumber=1&pageSize=100
         [HttpGet("status/{status}")]
         public async Task<ActionResult<IEnumerable<RequestResponseDto>>> GetRequestsByStatus(RequestStatus status, int pageNumber = 1, int pageSize = 100)
         {

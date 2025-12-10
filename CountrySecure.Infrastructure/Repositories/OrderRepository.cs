@@ -54,7 +54,7 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
     {
         return await _dbContext.Orders
             .OrderByDescending(o => o.Requests.Count)
-            .Take(10)
+            .Take(5)
             .ToListAsync();
     }
 }

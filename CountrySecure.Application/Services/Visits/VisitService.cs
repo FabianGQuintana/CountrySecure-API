@@ -121,15 +121,16 @@ namespace CountrySecure.Application.Services.Visits
         }
 
 
-         public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
-         {
-             var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
+        public async Task<VisitWithPermitsDto?> GetVisitWithPermitsAsync(Guid visitId)
+        {
+            var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
 
-             if (visitEntity == null || visitEntity.DeletedAt != null)
-                 return null;
+            if (visitEntity == null || visitEntity.DeletedAt != null)
+                return null;
 
-             return visitEntity.ToResponseDto();
-         }
+            return visitEntity.ToVisitWithPermitsDto();
+        }
+
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
         {
@@ -137,17 +138,21 @@ namespace CountrySecure.Application.Services.Visits
             return permits.ToResponseDto();
         }
 
-        public async Task<EntryPermissionResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
+        public async Task<IEnumerable<VisitEntryPermissionDto>> GetValidPermitsByVisitIdAsync(Guid visitId)
         {
-            var permit = await _entryPermissionRepository
-                .GetEntryPermissionsByVisitIdAsync(visitId);
+            var permits = await _entryPermissionRepository.GetEntryPermissionsByVisitIdAsync(visitId);
 
-            var valid = permit
+            // Tomamos todos los permisos válidos (Pending)
+            var valid = permits
                 .Where(p => p.Status == PermissionStatus.Pending)
-                .FirstOrDefault();
+                .Select(p => p.ToVisitEntryPermissionDto()) // ← tu mapper liviano
+                .ToList();
 
-            return valid?.ToResponseDto();
+            return valid;
         }
+
+
+
 
     }
 }

@@ -85,5 +85,39 @@ namespace CountrySecure.Application.Mappers
             }
 
         }
+
+        public static VisitWithPermitsDto ToVisitWithPermitsDto(this Visit visit)
+        {
+            return new VisitWithPermitsDto
+            {
+
+                NameVisit = visit.NameVisit,
+                LastNameVisit = visit.LastNameVisit,
+                DniVisit = visit.DniVisit,
+                VisitStatus = visit.Status,
+
+                // 👉 SOLO LOS CAMPOS REDUCIDOS
+                Permits = visit.EntryPermissions?.Select(ep => ep.ToVisitEntryPermissionDto()).ToList() ?? new()
+            };
+        }
+
+
+        public static VisitEntryPermissionDto ToVisitEntryPermissionDto(this EntryPermission permission)
+        {
+            return new VisitEntryPermissionDto
+            {
+                QrCodeValue = permission.QrCodeValue,
+                Type = permission.PermissionType,
+                Status = permission.Status,
+                ValidFrom = permission.ValidFrom,
+                EntryTime = permission.EntryTime,
+                DepartureTime = permission.DepartureTime
+            };
+        }
+        public static IEnumerable<VisitEntryPermissionDto> ToVisitEntryPermissionDto(
+        this IEnumerable<EntryPermission> list)
+        {
+            return list.Select(p => p.ToVisitEntryPermissionDto());
+        }
     }
 }
