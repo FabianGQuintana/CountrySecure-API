@@ -418,9 +418,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<Guid>("AmenityId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("AmenityId1")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -459,8 +456,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AmenityId");
-
-                    b.HasIndex("AmenityId1");
 
                     b.HasIndex("UserId");
 
@@ -667,15 +662,11 @@ namespace CountrySecure.Infrastructure.Migrations
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.Turn", b =>
                 {
-                    b.HasOne("CountrySecure.Domain.Entities.Amenity", null)
+                    b.HasOne("CountrySecure.Domain.Entities.Amenity", "Amenity")
                         .WithMany("Turns")
                         .HasForeignKey("AmenityId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("CountrySecure.Domain.Entities.Amenity", "Amenity")
-                        .WithMany()
-                        .HasForeignKey("AmenityId1");
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("Turns")

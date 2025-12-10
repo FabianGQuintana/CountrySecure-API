@@ -19,13 +19,13 @@ namespace CountrySecure.API.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 10, [FromQuery] string? role = null)
+        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 100, [FromQuery] string? role = null)
         {
             var users = await _userService.GetAllAsync(page, size, role);
             return Ok(users);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         [HttpGet("{id}")]      
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -38,7 +38,7 @@ namespace CountrySecure.API.Controllers
         //{
         //    var createdUser = await _userService.CreateUserAsync(dto);
         //    return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
-        //}
+        //
 
 
         [Authorize(Roles = "Admin,Resident")]
