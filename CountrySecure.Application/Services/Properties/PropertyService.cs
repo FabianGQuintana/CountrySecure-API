@@ -67,7 +67,8 @@ namespace CountrySecure.Application.Services.Properties
 
         public async Task<PropertyResponseDto?> UpdatePropertyAsync(Guid propertyId, UpdatePropertyDto updateProperty, Guid currentId)
         {
-            var existingEntity = await _propertyRepository.GetByIdAsync(propertyId);
+            var existingEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+
 
             if (existingEntity == null)
             {
@@ -105,54 +106,42 @@ namespace CountrySecure.Application.Services.Properties
             return updatedEntity.ToResponseDto();
         }
 
-        public async Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId)
+        public async Task<PropertyResponseDto?> SoftDeleteAsync(Guid id)
         {
-            var existingProperty = await _propertyRepository.GetByIdAsync(propertyId);
+            var property = await _propertyRepository.SoftDeleteAsync(id);
 
-            if (existingProperty == null)
-            {
-                return false; // No encontrado
-            }
+            if (property == null) return null;
 
-            // REGLA DE NEGOCIO: Validar Autorización
-            if (existingProperty.CreatedBy != currentUserId.ToString())
-            {
-                throw new UnauthorizedAccessException("User is not authorized to delete this property.");
-            }
+            await _unitOfWork.SaveChangesAsync();
 
-            // Se asume que DeleteAsync maneja el borrado lógico (DeletedAt, Status = "Inactive")
-            bool marked = await _propertyRepository.DeleteAsync(propertyId);
-
-            if (marked)
-            {
-                await _unitOfWork.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
+            return property.ToResponseDto();
         }
+
 
         // --- MÉTODOS DE CONSULTA ---
 
         public async Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId)
         {
-            var propertyEntity = await _propertyRepository.GetByIdAsync(propertyId);
-            if (propertyEntity == null) return null;
+            var propertyEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+
+            if (propertyEntity == null)
+                return null;
 
             return propertyEntity.ToResponseDto();
         }
+
 
         public async Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize)
         {
             var propertyEntities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
 
+            // OPTIONAL: If you want navigation props → load includes one by one (costly)
             return propertyEntities.ToResponseDto();
         }
 
         public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
         {
             var propertyEntities = await _propertyRepository.GetPropertiesByStatusAsync(status, pageNumber, pageSize);
-
             return propertyEntities.ToResponseDto();
         }
 

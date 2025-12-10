@@ -146,33 +146,17 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        [HttpDelete("{id:guid}")]
+        [HttpPatch("{id:guid}/soft-delete")]
         public async Task<IActionResult> SoftDelete(Guid id)
         {
-            try
-            {
-                // 1. EXTRAER ID Y AUTORIZAR
-                var currentUserId = GetCurrentUserId();
+            var property = await _propertyService.SoftDeleteAsync(id);
 
-                // 2. ELIMINACIÓN
-                bool deleted = await _propertyService.SoftDeletePropertyAsync(id, currentUserId);
+            if (property == null)
+                return NotFound(new { message = $"Property with id {id} not found" });
 
-                if (!deleted)
-                {
-                    return NotFound(); // 404 Not Found (La propiedad no existe)
-                }
-                return NoContent(); // 204 No Content
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Captura la excepción si el usuario no es el dueño
-                return Forbid(); // 403 Forbidden
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Error inesperado al eliminar la propiedad.", detail = ex.Message });
-            }
+            return Ok(property);
         }
+
 
         // --- MÉTODO DE UTILIDAD ---
 

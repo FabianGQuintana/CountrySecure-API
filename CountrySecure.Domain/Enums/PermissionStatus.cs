@@ -10,5 +10,5 @@ public enum PermissionStatus
 {
     Pending = 1,
     Completed = 2,
-    Expirado = 3
+    Expired = 3
 }

@@ -16,6 +16,7 @@ namespace CountrySecure.Application.Mappers
         {
             return new OrderResponseDto
             {
+                Id = order.Id,
                 Description = order.Description,
                 SupplierName = order.SupplierName,
                 OrderType = order.OrderType,

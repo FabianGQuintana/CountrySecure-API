@@ -74,7 +74,7 @@ namespace CountrySecure.Application.Services.Orders
             var all = await _orderRepository.GetAllAsync();
 
             return all
-                .Where(o => !o.IsDeleted)
+              //  .Where(o => !o.IsDeleted)
                 .ToResponseDto();
         }
 

@@ -16,7 +16,8 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync();
         Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId);
         Task<EntryPermissionResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId);
-        Task UpdateVisitAsync(UpdateVisitDto updateVisitDto);
+        Task UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto);
+
         Task<bool> SoftDeleteVisitAsync(Guid visitId);
     }
 }

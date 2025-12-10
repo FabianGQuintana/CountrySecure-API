@@ -26,8 +26,7 @@ namespace CountrySecure.Application.Mappers
                 CreatedAt = property.CreatedAt,
 
                 LotName = property.Lot?.LotName,
-                OwnerName = property.User?.Name
-
+                OwnerName = property.User != null ? $"{property.User.Name} {property.User.Lastname}": null
             };
         }
 
@@ -82,6 +81,11 @@ namespace CountrySecure.Application.Mappers
             if (dto.LotId.HasValue)
             {
                 existingEntity.LotId = dto.LotId.Value;
+            }
+
+            if (!string.IsNullOrEmpty(dto.StatusAuditoria))
+            {
+                existingEntity.Status = dto.StatusAuditoria;
             }
 
             // Nota: La actualización del Status se manejará con métodos específicos (ej. SoftDelete)

@@ -46,25 +46,22 @@ namespace CountrySecure.Application.Services.Visits
             return addedVisit.ToResponseDto();
         }
 
-        public async Task UpdateVisitAsync(UpdateVisitDto updateVisitDto)
+        public async Task UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto)
         {
-            var existingEntity = await _visitRepository.GetByIdAsync(updateVisitDto.VisitId);
+            var existingEntity = await _visitRepository.GetByIdAsync(visitId);
 
             if (existingEntity == null || existingEntity.DeletedAt != null)
-            {
-                throw new KeyNotFoundException($"Visit with ID {updateVisitDto.VisitId} not found.");
-            }
+                throw new KeyNotFoundException($"Visit with ID {visitId} not found.");
 
-            // Aplicar cambios utilizando el mapper
+            // Mapear cambios al entity
             updateVisitDto.MapToEntity(existingEntity);
 
-            // Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
-          
 
             await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
         }
+
 
         public async Task<bool> SoftDeleteVisitAsync(Guid visitId)
         {
@@ -109,9 +106,9 @@ namespace CountrySecure.Application.Services.Visits
         {
             var visits = await _visitRepository.GetAllAsync(pageNumber, pageSize);
 
-            var filtered = visits.Where(v => v.DeletedAt == null);
+            
 
-            return filtered.ToResponseDto();
+            return visits.ToResponseDto();
         }
 
         public async Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync()

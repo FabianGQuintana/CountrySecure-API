@@ -165,22 +165,7 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-
-        [HttpGet("status")]
-        public async Task<IActionResult> GetByStatus([FromQuery] bool isActive)
-        {
-            try
-            {
-                var results = await _orderService.GetByStatusAsync(isActive);
-                return Ok(results); // 200 OK
-            }
-            catch (Exception ex)
-            {
-                // Nota: Tu repositorio GetByStatusAsync lanza ArgumentException si el estado es inválido. 
-                // Se podría añadir un catch para devolver 400 Bad Request aquí si fuera necesario.
-                return StatusCode(500, new { message = "Error interno al buscar órdenes por estado.", detail = ex.Message });
-            }
-        }
+       
 
         [HttpGet("type/{orderType}")]
         public async Task<IActionResult> GetByType(OrderStatus orderType)
@@ -196,6 +181,7 @@ namespace CountrySecure.API.Controllers
             }
         }
 
+        // Si busco uno eliminado me devuelve el 200 pero no el vuerpo
         [HttpGet("supplier/{name}")]
         public async Task<IActionResult> GetBySupplier(string name)
         {

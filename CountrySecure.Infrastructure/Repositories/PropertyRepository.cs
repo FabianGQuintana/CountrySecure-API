@@ -18,20 +18,28 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
 	public async Task<Property?> GetPropertyByAdressAsync(string street, int PropertyNumber)
 	{
 		return await _dbContext.Properties
-			.FirstOrDefaultAsync(p => p.Street == street && p.PropertyNumber == PropertyNumber);
+            .Include(p => p.Lot)
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Street == street && p.PropertyNumber == PropertyNumber);
 	}
 
-	public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(Guid UserId)
-	{
-		return await _dbContext.Properties
-			.Where(p => p.UserId == UserId)
-			.ToListAsync();
-	}
+    public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(Guid UserId)
+    {
+        return await _dbContext.Properties
+            .Where(p => p.UserId == UserId)
+            .Include(p => p.Lot)
+            .Include(p => p.User)
+            .ToListAsync();
+    }
+
+
 
     public async Task<IEnumerable<Property>> GetPropertiesByLotIdAsync(Guid lotId)
     {
         return await _dbContext.Properties
                                .Where(p => p.LotId == lotId)
+                               .Include(p => p.Lot)
+                               .Include(p => p.User)
                                .ToListAsync();
     }
 
@@ -41,7 +49,9 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
 		return await _dbContext.Properties
 			.Where(p => (int)p.PropertyStatus == (int)status)
 			.OrderBy(p => p.Id)
-			.Skip((numberPage - 1) * pageSize)
+            .Include(p => p.Lot)
+			.Include(p => p.User)
+            .Skip((numberPage - 1) * pageSize)
 			.Take(pageSize)
 			.ToListAsync();
 	}
@@ -55,5 +65,32 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
             .FirstOrDefaultAsync(p => p.Id == id);
     }
 
+
+    public async Task<IEnumerable<Property>> GetAllAsync(int pageNumber, int pageSize)
+    {
+        return await _dbContext.Properties
+            .Include(p => p.Lot) // <---- ESTO ES LO QUE FALTABA
+            .Include(p => p.User)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<Property?> SoftDeleteAsync(Guid id)
+    {
+        var property = await _dbContext.Properties
+        .Include(p => p.Lot)
+        .Include(p => p.User)
+        .FirstOrDefaultAsync(p => p.Id == id);
+
+
+        if (property == null) return null;
+
+        property.Status = "Inactive";
+        property.DeletedAt = DateTime.UtcNow;
+        property.UpdatedAt = DateTime.UtcNow;
+
+        return property; // EF Core ya lo trackea como Update
+    }
 
 }

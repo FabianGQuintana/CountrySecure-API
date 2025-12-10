@@ -138,7 +138,7 @@ namespace CountrySecure.Application.Services.EntryPermission
                     CheckResultStatus = entity.Status switch
                     {
                         PermissionStatus.Completed => "Permiso Completado",
-                        PermissionStatus.Expirado => "Permiso Expirado",
+                        PermissionStatus.Expired => "Permiso Expirado",
                         _ => "Permiso Inactivo"
                     },
 

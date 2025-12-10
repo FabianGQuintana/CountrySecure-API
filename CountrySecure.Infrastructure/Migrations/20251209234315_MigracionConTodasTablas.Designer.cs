@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CountrySecure.Infrastructure.Migrations
 {
     [DbContext(typeof(CountrySecureDbContext))]
-    [Migration("20251207235947_AddRefreshTokenToUser")]
-    partial class AddRefreshTokenToUser
+    [Migration("20251209234315_MigracionConTodasTablas")]
+    partial class MigracionConTodasTablas
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -175,6 +175,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("LotState")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -258,9 +261,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("IdLot")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -273,7 +273,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<int>("PropertyNumber")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PropertyType")
+                    b.Property<int>("PropertyStatus")
                         .HasColumnType("integer");
 
                     b.Property<string>("Status")
@@ -288,12 +288,12 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdLot");
+                    b.HasIndex("LotId");
 
                     b.HasIndex("UserId");
 
@@ -309,6 +309,16 @@ namespace CountrySecure.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("Expires")
                         .HasColumnType("timestamp with time zone");
 
@@ -318,9 +328,22 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<bool>("IsUsed")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -499,12 +522,6 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
 
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("RefreshTokenExpiration")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
@@ -587,7 +604,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("EntryPermissions")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Visit", "Visit")
@@ -607,15 +624,14 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     b.HasOne("CountrySecure.Domain.Entities.Lot", "Lot")
                         .WithMany("Properties")
-                        .HasForeignKey("IdLot")
+                        .HasForeignKey("LotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("Properties")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Lot");
 
@@ -625,7 +641,7 @@ namespace CountrySecure.Infrastructure.Migrations
             modelBuilder.Entity("CountrySecure.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
-                        .WithMany()
+                        .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -667,7 +683,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("Turns")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Amenity");
@@ -697,6 +713,8 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Navigation("EntryPermissions");
 
                     b.Navigation("Properties");
+
+                    b.Navigation("RefreshTokens");
 
                     b.Navigation("Turns");
                 });
