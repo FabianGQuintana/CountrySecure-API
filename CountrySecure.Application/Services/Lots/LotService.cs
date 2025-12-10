@@ -84,26 +84,23 @@ namespace CountrySecure.Application.Services.Lots
             await _lotRepository.UpdateAsync(lotToUpdate);
             await _unitOfWork.SaveChangesAsync();
         }
-        public async Task<bool> SoftDeleteLotAsync(Guid lotId, Guid currentUserId)
+        public async Task<LotResponseDto?> SoftDeleteLotAsync(Guid lotId, Guid currentUserId)
         {
+            var lot = await _lotRepository.SoftDeleteLotAsync(lotId);
 
-            var existingLot = await _lotRepository.GetByIdAsync(lotId);
-            if (existingLot == null)
-            {
-                return false;
-            }
+            if (lot == null)
+                return null;
+            
+            lot.LastModifiedBy = currentUserId.ToString();
+            lot.LastModifiedAt = DateTime.UtcNow;
 
-            // Llama al repositorio para marcar el estado como "Inactive"
-            bool marked = await _lotRepository.DeleteAsync(lotId);
+            await _unitOfWork.SaveChangesAsync();
 
-            if (marked)
-            {
-                await _unitOfWork.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
+            return lot.ToResponseDto();
         }
+
+
+
 
         // --- MÉTODOS DE CONSULTA ---
 

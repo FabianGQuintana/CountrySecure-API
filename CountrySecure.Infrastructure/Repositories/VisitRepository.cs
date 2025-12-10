@@ -63,15 +63,27 @@ public class VisitRepository : GenericRepository<Visit>, IVisitRepository
         var visit = await _dbContext.Visits
             .FirstOrDefaultAsync(v => v.Id == visitId);
 
-        if (visit == null )
+        if (visit == null)
             return null;
 
-        visit.Status = "Inactive";
-        visit.DeletedAt = DateTime.UtcNow;
+        if (visit.DeletedAt == null)
+        {
+            // DESACTIVAR
+            visit.DeletedAt = DateTime.UtcNow;
+            visit.Status = "Inactive";
+        }
+        else
+        {
+            // ACTIVAR
+            visit.DeletedAt = null;
+            visit.Status = "Active";
+        }
+
         visit.UpdatedAt = DateTime.UtcNow;
 
-        return visit; // EF ya lo trackea
+        return visit; // EF lo trackea
     }
+
 
 
 }

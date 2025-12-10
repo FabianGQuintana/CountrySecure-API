@@ -54,7 +54,7 @@ namespace CountrySecure.Application.Services
         {
             var amenity = await _amenityRepository.GetByIdAsync(id);
 
-            if (amenity == null || amenity.IsDeleted)
+            if (amenity == null)
             {
                 return null; // Devuelve null si no se encuentra (para el 404 del Controller)
             }
@@ -73,33 +73,36 @@ namespace CountrySecure.Application.Services
         }
 
         // COINCIDENCIA DE FIRMA CON LA INTERFAZ: Se corrige para que reciba currentUserId
-        public async Task<bool> DeleteAmenityAsync(Guid id, Guid currentUserId)
+        // AmenityService.ToggleActiveAsync (ejemplo)
+        public async Task<AmenityResponseDto?> ToggleActiveAsync(Guid id, Guid currentUserId)
         {
             var amenity = await _amenityRepository.GetByIdAsync(id);
+            if (amenity == null) return null;
 
-            if (amenity == null)
+            if (amenity.DeletedAt == null)
             {
-                throw new KeyNotFoundException($"Amenity with Id '{id}' not found");
+                // desactivar
+                amenity.DeletedAt = DateTime.UtcNow;
+                amenity.Status = "Inactive";
+            }
+            else
+            {
+               
+                // activar
+                amenity.DeletedAt = null;
+                amenity.Status = "Active";
             }
 
-            if (amenity.IsDeleted)
-            {
-                return true;
-            }
-
-            // Aplicar Baja Lógica
-            amenity.DeletedAt = DateTime.UtcNow;
-            amenity.Status = "Deleted";
-
-            // Auditoría de la baja
             amenity.LastModifiedBy = currentUserId.ToString();
             amenity.LastModifiedAt = DateTime.UtcNow;
 
             await _amenityRepository.UpdateAsync(amenity);
             await _unitOfWork.SaveChangesAsync();
 
-            return true;
+            return amenity.ToResponseDto();
         }
+
+
 
         // --- MÉTODOS DE LECTURA ---
 

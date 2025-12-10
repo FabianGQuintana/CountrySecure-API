@@ -77,6 +77,7 @@ namespace CountrySecure.Application.Mappers
             if (dto.Status != null)
             {
                 existingEntity.Status = dto.Status;
+                
             }
 
         }

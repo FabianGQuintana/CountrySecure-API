@@ -52,6 +52,34 @@ namespace CountrySecure.Infrastructure.Repositories
                                    .ToListAsync();
         }
 
+        public async Task<Lot?> SoftDeleteLotAsync(Guid lotId)
+        {
+            var lot = await _dbContext.Lots.FirstOrDefaultAsync(l => l.Id == lotId);
+
+            if (lot == null)
+                return null;
+
+            // Si está activo → desactivar
+            if (lot.DeletedAt == null)
+            {
+                lot.DeletedAt = DateTime.UtcNow;
+                lot.Status = "Inactive";
+                lot.LotState = LotStatus.Inactive;
+            }
+            else
+            {
+                // Si está inactivo → activar
+                lot.DeletedAt = null;
+                lot.Status = "Active";
+                lot.LotState = LotStatus.Available;
+                
+            }
+
+            lot.UpdatedAt = DateTime.UtcNow;
+
+            return lot;
+        }
+
 
     }
 }

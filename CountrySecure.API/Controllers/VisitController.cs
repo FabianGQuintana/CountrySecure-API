@@ -109,7 +109,7 @@ namespace CountrySecure.API.Controllers
             if (visit == null)
                 return NotFound(new { message = $"Visit with id {visitId} not found" });
 
-            return Ok(visit);
+            return Ok(visit); // Devuelve JSON con la visita actualizada
         }
 
         // VIEW ALL

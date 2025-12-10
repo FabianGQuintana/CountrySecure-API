@@ -79,18 +79,33 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
     public async Task<Property?> SoftDeleteAsync(Guid id)
     {
         var property = await _dbContext.Properties
-        .Include(p => p.Lot)
-        .Include(p => p.User)
-        .FirstOrDefaultAsync(p => p.Id == id);
+            .Include(p => p.Lot)
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.Id == id);
 
+        if (property == null)
+            return null;
 
-        if (property == null) return null;
+        // Si está activo → desactivar
+        if (property.DeletedAt == null)
+        {
+            property.DeletedAt = DateTime.UtcNow;
+            property.Status = "Inactive";
+            
+        }
+        else
+        {
+            // Si está inactivo → activar
+            property.DeletedAt = null;
+            property.Status = "Active";
+            
+        }
 
-        property.Status = "Inactive";
-        property.DeletedAt = DateTime.UtcNow;
         property.UpdatedAt = DateTime.UtcNow;
 
-        return property; // EF Core ya lo trackea como Update
+        return property; // EF lo trackea
     }
+
+
 
 }

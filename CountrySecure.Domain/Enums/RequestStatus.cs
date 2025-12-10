@@ -8,9 +8,10 @@ namespace CountrySecure.Domain.Enums
 {
     public enum RequestStatus
     {
+        Cancelled = 0,
         Pending = 1,
-        Completed = 2,
-        Canceled = 3
+        Completed = 2
+        
 
     }
 }

@@ -120,7 +120,7 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        [HttpDelete("{id}")]
+        [HttpPatch("{id:guid}/soft-delete")]
         public async Task<IActionResult> SoftDelete(Guid id)
         {
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -129,24 +129,15 @@ namespace CountrySecure.API.Controllers
                 return Unauthorized();
             }
 
-            try
-            {
-                bool deleted = await _lotService.SoftDeleteLotAsync(id, currentUserId);
+            var lot = await _lotService.SoftDeleteLotAsync(id, currentUserId);
 
-                if (!deleted)
-                {
-                    return NotFound();
-                }
-                return NoContent();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "An error occurred during deletion.");
-            }
+            if (lot == null)
+                return NotFound(new { message = $"Lot with id {id} not found" });
+
+            return Ok(lot); 
         }
+
+
+
     }
 }

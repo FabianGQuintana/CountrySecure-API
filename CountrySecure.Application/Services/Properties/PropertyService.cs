@@ -118,6 +118,7 @@ namespace CountrySecure.Application.Services.Properties
         }
 
 
+
         // --- MÉTODOS DE CONSULTA ---
 
         public async Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId)

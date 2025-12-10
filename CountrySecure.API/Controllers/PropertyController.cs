@@ -158,6 +158,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
+
         // --- MÉTODO DE UTILIDAD ---
 
         // Método consolidado para extraer y validar el ID del token

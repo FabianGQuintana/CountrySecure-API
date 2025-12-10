@@ -73,7 +73,7 @@ public class RequestRepository : GenericRepository<Request>, IRequestRepository
 
         // Lógica para alternar el estado (Eliminación Lógica/Cancelación)
 
-        if (request.RequestStatus == RequestStatus.Canceled)
+        if (request.RequestStatus == RequestStatus.Cancelled)
         {
             // Si está cancelada, la reactivamos (volver a Pendiente)
             request.RequestStatus = RequestStatus.Pending;
@@ -81,7 +81,7 @@ public class RequestRepository : GenericRepository<Request>, IRequestRepository
         }
         else // Si está Pendiente o en cualquier otro estado 'Activo', la cancelamos
         {
-            request.RequestStatus = RequestStatus.Canceled; // O RequestStatus.Deleted
+            request.RequestStatus = RequestStatus.Cancelled; // O RequestStatus.Deleted
             request.DeletedAt = DateTime.UtcNow; // Marcar la hora de la eliminación lógica
         }
 
