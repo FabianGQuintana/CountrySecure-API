@@ -11,7 +11,6 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         
         public string? QrCodeValue { get; set; }
 
-        // NOTA: Si el enum no es nulleable, debe ser la versión DTO que maneje la nulidad
         public PermissionType? PermissionType { get; set; }
 
         public string? Description { get; set; }
@@ -19,6 +18,7 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public DateTime? DepartureTime { get; set; }
         public PermissionStatus? Status { get; set; }
 
+        public string? BaseEntityStatus { get; set; }
 
         // Claves foráneas (FKs) que se podrían reasignar
         public Guid? VisitId { get; set; }

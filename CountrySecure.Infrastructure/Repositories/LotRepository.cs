@@ -46,7 +46,7 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<IEnumerable<Lot>> GetLotsByStatusAsync(LotStatus status, int pageNumber, int pageSize)
         {
             return await _dbContext.Lots
-                                   .Where(l => l.Status == status.ToString())
+                                   .Where(l => l.LotState == status)
                                    .Skip((pageNumber - 1) * pageSize)
                                    .Take(pageSize)
                                    .ToListAsync();

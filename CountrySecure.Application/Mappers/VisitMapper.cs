@@ -14,7 +14,7 @@ namespace CountrySecure.Application.Mappers
         // ============================================================
         public static VisitResponseDto ToResponseDto(this Visit visit)
         {
-            // Nota: Aquí estamos asumiendo que el Status es un string en la Entidad Base,
+            // Nota: Aquí estamos asumiendo que el EntryPermissionState es un string en la Entidad Base,
             // pero el DTO de respuesta de la visita puede requerir un tipo diferente
             return new VisitResponseDto
             {
@@ -61,7 +61,7 @@ namespace CountrySecure.Application.Mappers
                 NameVisit = dto.NameVisit,
                 LastNameVisit = dto.LastNameVisit,
                 DniVisit = dto.DniVisit,
-                // Status y CreatedBy se asignarán en el servicio o la Entidad Base
+                // EntryPermissionState y CreatedBy se asignarán en el servicio o la Entidad Base
             };
         }
 
@@ -108,7 +108,7 @@ namespace CountrySecure.Application.Mappers
             {
                 QrCodeValue = permission.QrCodeValue,
                 Type = permission.PermissionType,
-                Status = permission.Status,
+                Status = permission.EntryPermissionState,
                 ValidFrom = permission.ValidFrom,
                 EntryTime = permission.EntryTime,
                 DepartureTime = permission.DepartureTime

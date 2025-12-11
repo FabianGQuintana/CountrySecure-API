@@ -42,7 +42,7 @@ namespace CountrySecure.Application.Services.EntryPermission
             newPermissionEntity.LastModifiedAt = DateTime.UtcNow;
 
             // c. Estado Funcional (Defensivo)
-            newPermissionEntity.Status = PermissionStatus.Pending;
+            newPermissionEntity.EntryPermissionState = PermissionStatus.Pending;
 
             // 4. Guardar en Repositorio (Solo inserta la fila, NO carga User/Visit)
             var addedPermission = await _entryPermissionRepository.AddAsync(newPermissionEntity);
@@ -67,44 +67,71 @@ namespace CountrySecure.Application.Services.EntryPermission
 
             if (existingEntity == null)
             {
-                // Devolvemos NULL para que el controlador retorne 404 Not Found
                 return null;
-            }
-
-            if (existingEntity.CreatedBy != currentUserId.ToString())
-            {
-                throw new UnauthorizedAccessException("User is not authorized to update this EntryPermission. Only the creator may modify it.");
             }
 
             dto.MapToEntity(existingEntity);
 
-           
             existingEntity.LastModifiedAt = DateTime.UtcNow;
             existingEntity.LastModifiedBy = currentUserId.ToString();
 
-            
             var updatedEntity = await _entryPermissionRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // NOTA: Para que ToResponseDto funcione correctamente, la entidad updatedEntity 
-            // debe tener sus propiedades de navegación (User, Visit) cargadas. 
-            // Si no lo están, la llamada al repositorio debe usar Eager Loading (Include()).
-            return updatedEntity.ToResponseDto();
-        }
+            // ---------------------------------------------------------------------------------
+            // APLICACIÓN DE LA CORRECCIÓN: Eager Loading 
+            // ---------------------------------------------------------------------------------
 
-        public async Task<bool> SoftDeleteEntryPermissionAsync(Guid entryPermissionId)
-        {
-            // 1. La eliminación se maneja en el Repositorio (marcando IsDeleted/DeletedAt)
-            bool marked = await _entryPermissionRepository.DeleteAsync(entryPermissionId);
+            // 1. Recargar la entidad usando el método con inclusiones.
+            var fullPermission = await _entryPermissionRepository.GetByIdWithIncludesAsync(updatedEntity.Id);
 
-            if (marked)
+            if (fullPermission == null)
             {
-                await _unitOfWork.SaveChangesAsync();
-                return true;
+                // Esto solo ocurriría en un error de concurrencia raro post-save
+                throw new InvalidOperationException("La entidad fue guardada, pero no pudo ser recuperada con las relaciones.");
             }
 
-            // Devuelve false si no se encontró la entidad con el ID
-            return false;
+            // 2. Devolver la entidad recargada. El mapeador ya no fallará.
+            return fullPermission.ToResponseDto();
+        }
+
+        public async Task<EntryPermissionResponseDto?> SoftDeleteEntryPermissionAsync(Guid entryPermissionId, Guid currentUserId)
+        {
+            
+            var entity = await _entryPermissionRepository.SoftDeleteToggleAsync(entryPermissionId);
+
+            if (entity == null)
+                return null; // No se encontró
+
+            // 2. Aplicar Auditoría:
+            entity.LastModifiedAt = DateTime.UtcNow;
+            entity.LastModifiedBy = currentUserId.ToString();
+
+            
+            if (entity.Status == "Inactive")
+            {
+                
+                entity.EntryPermissionState = PermissionStatus.Cancelled; 
+
+                
+            }
+            else
+            {
+                // Si se acaba de reactivar, debería volver al estado inicial (Pending)
+                entity.EntryPermissionState = PermissionStatus.Pending; // Usamos el enum para el estado funcional si existe
+                                                         
+            }
+
+            // 4. Persistencia
+            // Usamos UpdateAsync para guardar los cambios de auditoría y PermissionStatus.
+            var updatedEntity = await _entryPermissionRepository.UpdateAsync(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 5. Devolver el DTO con los detalles
+            // Necesitamos recargar con los includes si el DTO lo requiere (User/Visit)
+            var fullPermission = await _entryPermissionRepository.GetEntryPermissionWithDetailsAsync(updatedEntity.Id);
+
+            return fullPermission?.ToResponseDto();
         }
 
 
@@ -120,7 +147,7 @@ namespace CountrySecure.Application.Services.EntryPermission
             }
 
             // --- Validaciones de Reglas de Negocio ---
-            if (entity.Status != PermissionStatus.Pending)
+            if (entity.EntryPermissionState != PermissionStatus.Pending)
             {
                 // Si el estado es "Used", "Expired", etc.
                 return new GateCheckResponseDto
@@ -135,7 +162,7 @@ namespace CountrySecure.Application.Services.EntryPermission
                     VisitorDni = entity.Visit?.DniVisit ?? 0,
 
                     // Mapeo correcto según tu enum
-                    CheckResultStatus = entity.Status switch
+                    CheckResultStatus = entity.EntryPermissionState switch
                     {
                         PermissionStatus.Completed => "Permiso Completado",
                         PermissionStatus.Expired => "Permiso Expirado",
@@ -149,7 +176,7 @@ namespace CountrySecure.Application.Services.EntryPermission
             // --- Lógica de Uso Único (Si la validación es exitosa) ---
 
             // 2. Cambiar el estado a ENTERED (o el que corresponda)
-            entity.Status = PermissionStatus.Completed;
+            entity.EntryPermissionState = PermissionStatus.Completed;
             entity.LastModifiedAt = DateTime.UtcNow;
 
             // 3. Persistir el cambio de estado
@@ -181,19 +208,20 @@ namespace CountrySecure.Application.Services.EntryPermission
 
         public async Task<EntryPermissionResponseDto?> GetEntryPermissionByIdAsync(Guid entryPermissionId)
         {
-            var entity = await _entryPermissionRepository.GetByIdAsync(entryPermissionId);
+            var entity = await _entryPermissionRepository.GetByIdWithIncludesAsync(entryPermissionId);
 
             if (entity == null) return null;
 
-            // Mapeo de Entidad a DTO de Respuesta
-            return entity.ToResponseDto();
+            return entity.ToResponseDto(); 
         }
 
-        public async Task<IEnumerable<EntryPermissionResponseDto>> GetAllEntryPermissionsAsync(int pageNumber , int pageSize )
+        public async Task<IEnumerable<EntryPermissionResponseDto>> GetAllEntryPermissionsAsync(int pageNumber, int pageSize)
         {
-            var entities = await _entryPermissionRepository.GetAllAsync(pageNumber, pageSize);
-            // Mapeamos la colección a DTOs
-            return entities.ToResponseDto();
+           
+            var entities = await _entryPermissionRepository.GetAllWithIncludesAsync(pageNumber, pageSize);
+
+
+            return entities.ToResponseDto(); 
         }
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByUserIdAsync(Guid userId)
@@ -227,5 +255,7 @@ namespace CountrySecure.Application.Services.EntryPermission
             var entities = await _entryPermissionRepository.GetEntryPermissionsStatusAsync(status, pageNumber, pageSize);
             return entities.ToResponseDto();
         }
+
+
     }
 }

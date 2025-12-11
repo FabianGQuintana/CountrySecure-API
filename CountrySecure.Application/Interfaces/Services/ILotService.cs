@@ -13,10 +13,9 @@ namespace CountrySecure.Application.Interfaces.Services
 
         Task<IEnumerable<string>> GetAllBlockNamesAsync();
 
-        //Task UpdateLotAsync(UpdateLotDto updateLot, Guid currentId);
-        Task UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId);
+        Task<LotResponseDto> UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId);
 
-        Task<LotResponseDto?> SoftDeleteLotAsync(Guid lotId, Guid currentUserId);
+        Task<LotResponseDto?> SoftDeleteToggleAsync(Guid lotId, Guid currentUserId);
 
         Task<IEnumerable<LotResponseDto>> GetLotsByStatusAsync(LotStatus status, int pageNumber, int pageSize);
     }

@@ -77,61 +77,87 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        [HttpPut("{id}")]
+        // Dentro de TurnController.cs
+
+        [HttpPut("{id:guid}")] // Aseguramos la restricción de GUID en la ruta
         public async Task<IActionResult> Put(Guid id, [FromBody] UpdateTurnDto updateDto)
         {
+            // 1. Validar Data Annotations del DTO
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState); // 400 Bad Request
             }
 
+            // Extraemos el ID del usuario (asumiendo que GetCurrentUserId() devuelve Guid?)
             var currentUserId = GetCurrentUserId();
+
+            // 2. Validación de Autenticación (Si GetCurrentUserId devuelve Guid? y es null)
             if (!currentUserId.HasValue)
             {
+                // Esto captura la falta de token o un token inválido/vacío
                 return Unauthorized(); // 401 Unauthorized
             }
 
             try
             {
-                var updatedTurn = await _turnService.UpdateTurnAsync(id, updateDto, currentUserId.Value);
+                // 3. Llamada al servicio con la carga ansiosa para el retorno (200 OK)
+                var updatedTurnDto = await _turnService.UpdateTurnAsync(id, updateDto, currentUserId.Value);
 
-                if (updatedTurn == null)
+                // 4. Manejo de Recurso No Encontrado (Si el servicio devuelve null)
+                if (updatedTurnDto == null)
                 {
-                    return NotFound(); // 404 Not Found
+                    return NotFound($"Turno con ID {id} no encontrado."); // 404 Not Found
                 }
 
-                return NoContent(); // 204 No Content
+                // 5. Retorno de Éxito (200 OK con el cuerpo del objeto actualizado)
+                return Ok(updatedTurnDto);
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException) // Lógica de negocio del servicio (403 Forbidden)
             {
-                // Lanzado desde el servicio si el usuario no tiene permisos (403 Forbidden)
-                return Forbid(ex.Message);
+                // Capturado si el servicio determina que el usuario (currentUserId) no puede modificar este turno.
+                return Forbid();
+            }
+            catch (KeyNotFoundException ex) // Lógica de negocio (404 Not Found)
+            {
+                // Capturado si el ID del turno o una FK (AmenityId, UserId) no existe.
+                return NotFound(ex.Message);
             }
             catch (Exception)
             {
+                // Manejo de error genérico (ej. problemas de base de datos)
                 return StatusCode(500, "An unexpected error occurred during the update.");
             }
         }
 
-        [HttpDelete("{id}")]
+        [HttpPatch("{id:guid}/SoftDelete")]
         public async Task<IActionResult> SoftDelete(Guid id)
         {
+            // 2. Extraemos el ID del usuario
             var currentUserId = GetCurrentUserId();
             if (!currentUserId.HasValue)
             {
-                return Unauthorized(); // 401 Unauthorized
+                return Unauthorized();
             }
 
             try
             {
-                bool deleted = await _turnService.SoftDeleteTurnAsync(id, currentUserId.Value);
+                // 3. Llamada al servicio que ahora devuelve el DTO o null
+                var updatedTurnDto = await _turnService.SoftDeleteTurnAsync(id, currentUserId.Value);
 
-                if (!deleted)
+                if (updatedTurnDto == null)
                 {
-                    return NotFound(); // 404 Not Found (Turno no encontrado)
+                    return NotFound($"Turno con ID {id} no encontrado."); // 404 Not Found
                 }
 
-                return NoContent(); // 204 No Content
+                // 4. Retorno de éxito (200 OK y el DTO actualizado)
+                var action = updatedTurnDto.Status == "Active" ? "reactivado" : "desactivado";
+
+                return Ok(new
+                {
+                    Message = $"El Turno con ID {id} ha sido {action} exitosamente.",
+                    Turn = updatedTurnDto // Devuelve el DTO completo y actualizado
+                });
+
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -139,7 +165,7 @@ namespace CountrySecure.API.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, "An error occurred during deletion.");
+                return StatusCode(500, "Ocurrió un error inesperado durante el cambio de estado.");
             }
         }
 

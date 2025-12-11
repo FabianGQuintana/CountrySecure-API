@@ -66,7 +66,7 @@ namespace CountrySecure.Infrastructure.Repositories
                 throw new ArgumentException("Estado inválido", nameof(status));
 
             return await _dbContext.EntryPermissions
-                .Where(ep => ep.Status == statusEnum)
+                .Where(ep => ep.EntryPermissionState == statusEnum)
                 .OrderBy(ep => ep.Id)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
@@ -93,6 +93,27 @@ namespace CountrySecure.Infrastructure.Repositories
                 .Include(p => p.Visit)   // Requerido por el mapeador
                 .Include(p => p.Order)   // Opcional, pero bueno incluirlo si está en el DTO de respuesta
                 .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
+        public async Task<EntryPermission?> GetByIdWithIncludesAsync(Guid id)
+        {
+            return await _dbContext.EntryPermissions
+                .Include(p => p.User) // Necesario para Resident
+                .Include(p => p.Visit) // Necesario para Visitor
+                .Include(p => p.Order) // Necesario para Order (si no es null)
+                .FirstOrDefaultAsync(p => p.Id == id);
+        }
+
+        public async Task<IEnumerable<EntryPermission>> GetAllWithIncludesAsync(int pageNumber, int pageSize)
+        {
+            // Usar Queryable para aplicar la paginación y luego forzar la carga ansiosa.
+            return await _dbContext.EntryPermissions
+                .Include(p => p.User)
+                .Include(p => p.Visit)
+                .Include(p => p.Order)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
         }
     }
 }

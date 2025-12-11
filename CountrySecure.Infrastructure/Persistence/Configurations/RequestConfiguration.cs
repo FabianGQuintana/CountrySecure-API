@@ -22,7 +22,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
                    .IsRequired()
                    .HasMaxLength(300);  
 
-            // Configuración de la propiedad 'Status'
+            // Configuración de la propiedad 'EntryPermissionState'
             builder.Property(r => r.Status)
                    .HasConversion<string>()  
                    .IsRequired();

@@ -16,8 +16,6 @@ namespace CountrySecure.Application.Mappers
 
         public static EntryPermissionResponseDto ToResponseDto(this EntryPermission permission)
         {
-            // 1. Validar que las entidades requeridas estén cargadas (Eager Loading)
-            // NOTA: Se asume que ToEntryPermissionUserDto y ToEntryPermissionVisitDto están definidos en otro lugar
             if (permission.User == null || permission.Visit == null)
             {
                 throw new InvalidOperationException("Cannot map EntryPermission to Response DTO. Required navigation properties (User or Visit) were not loaded from the database.");
@@ -27,10 +25,12 @@ namespace CountrySecure.Application.Mappers
             {
                 // Propiedades principales
                 Id = permission.Id,
-                // QrCodeValue se mapea de la entidad (donde fue generado en el servicio)
                 QrCodeValue = permission.QrCodeValue,
                 Type = permission.PermissionType,
-                Status = permission.Status,
+
+                // El estado funcional de la entidad
+                Status = permission.EntryPermissionState,
+
                 ValidFrom = permission.ValidFrom,
                 EntryTime = permission.EntryTime,
                 DepartureTime = permission.DepartureTime,
@@ -40,13 +40,18 @@ namespace CountrySecure.Application.Mappers
                 CreatedAt = permission.CreatedAt,
                 CreatedBy = permission.CreatedBy,
 
+              
+                // Mapeamos BaseEntity.Status (el string "Active"/"Inactive") a la nueva propiedad del DTO
+                BaseEntityStatus = permission.Status,
+                // -------------------------
+
                 // Mapeo de DTOs Anidados
                 Resident = permission.User.ToEntryPermissionUserDto(),
                 Visitor = permission.Visit.ToEntryPermissionVisitDto(),
 
                 Order = permission.Order != null
-            ? permission.Order.ToEntryPermissionOrderDto() 
-            : null
+        ? permission.Order.ToEntryPermissionOrderDto()
+        : null
             };
         }
 
@@ -67,7 +72,7 @@ namespace CountrySecure.Application.Mappers
                 PermissionType = dto.PermissionType,
                 Description = dto.Description,
                 ValidFrom = dto.ValidFrom,
-                Status = dto.Status,
+                EntryPermissionState = dto.Status,
 
                 // Asignación de Claves Foráneas (FKs)
                 UserId = dto.UserId,
@@ -121,7 +126,7 @@ namespace CountrySecure.Application.Mappers
             }
             if (dto.Status.HasValue)
             {
-                existingEntity.Status = dto.Status.Value;
+                existingEntity.EntryPermissionState = dto.Status.Value;
             }
             // NOTA: Recuerda actualizar LastModifiedAt y LastModifiedBy en el Servicio después de llamar a MapToEntity
         }

@@ -67,16 +67,24 @@ namespace CountrySecure.Application.Services.Visits
 
 
 
-        public async Task<VisitResponseDto?> SoftDeleteVisitAsync(Guid visitId)
+        public async Task<VisitResponseDto?> SoftDeleteToggleAsync(Guid visitId, Guid currentUserId)
         {
-            var visit = await _visitRepository.SoftDeleteVisitAsync(visitId);
+            
+            var visit = await _visitRepository.SoftDeleteToggleAsync(visitId);
 
             if (visit == null)
-                return null;
+                return null; 
 
+            
+            visit.LastModifiedAt = DateTime.UtcNow;
+            visit.LastModifiedBy = currentUserId.ToString();
+
+            
+            var updatedEntity = await _visitRepository.UpdateAsync(visit);
             await _unitOfWork.SaveChangesAsync();
 
-            return visit.ToResponseDto();
+          
+            return updatedEntity.ToResponseDto();
         }
 
 
@@ -145,7 +153,7 @@ namespace CountrySecure.Application.Services.Visits
 
             // Tomamos todos los permisos válidos (Pending)
             var valid = permits
-                .Where(p => p.Status == PermissionStatus.Pending)
+                .Where(p => p.EntryPermissionState == PermissionStatus.Pending)
                 .Select(p => p.ToVisitEntryPermissionDto()) // ← tu mapper liviano
                 .ToList();
 

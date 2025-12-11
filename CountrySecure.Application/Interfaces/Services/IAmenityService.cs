@@ -10,7 +10,7 @@ namespace CountrySecure.Application.Interfaces.Services
     {
        
         Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto, Guid createdById);
-        Task<AmenityResponseDto?> ToggleActiveAsync(Guid id, Guid currentUserId); 
+        Task<AmenityResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId);
         Task<AmenityResponseDto?> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto, Guid currentUserId);
         Task<AmenityResponseDto?> GetByIdAsync(Guid id);
         Task<IEnumerable<AmenityResponseDto>> GetAllAsync(int page, int size);

@@ -106,15 +106,41 @@ namespace CountrySecure.Application.Services.Properties
             return updatedEntity.ToResponseDto();
         }
 
-        public async Task<PropertyResponseDto?> SoftDeleteAsync(Guid id)
+        // -------------------------------------------------------------------
+        // IMPLEMENTACIÓN ESTANDARIZADA DEL SOFT DELETE / TOGGLE
+        // -------------------------------------------------------------------
+
+        public async Task<PropertyResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId)
         {
-            var property = await _propertyRepository.SoftDeleteAsync(id);
+            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
+            var property = await _propertyRepository.SoftDeleteToggleAsync(id); // Asumo que el repositorio hereda el método.
 
-            if (property == null) return null;
+            if (property == null)
+                return null; // No se encontró
 
+            // 2. Aplicar Auditoría:
+            // **ESTO ES CRUCIAL Y FALTABA EN LA VERSIÓN ANTERIOR**
+            property.LastModifiedAt = DateTime.UtcNow;
+            property.LastModifiedBy = currentUserId.ToString();
+
+            // 3. Lógica Específica del Enum (PropertyStatus)
+            if (property.Status == "Inactive")
+            {
+                 property.PropertyStatus = PropertyStatus.Inactive; 
+            }
+            else
+            {
+                // Si se acaba de reactivar, marcamos el estado funcional como Available/Initial.
+                property.PropertyStatus = PropertyStatus.Available;
+            }
+
+            // 4. Persistencia (Guardar los cambios de Auditoría y PropertyStatus)
+            var updatedEntity = await _propertyRepository.UpdateAsync(property);
             await _unitOfWork.SaveChangesAsync();
 
-            return property.ToResponseDto();
+            // 5. Mapeo de Retorno
+            // Se asume que el DTO ya tiene la lógica para mapear correctamente BaseEntity.Status
+            return updatedEntity.ToResponseDto();
         }
 
 
@@ -136,7 +162,7 @@ namespace CountrySecure.Application.Services.Properties
         {
             var propertyEntities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
 
-            // OPTIONAL: If you want navigation props → load includes one by one (costly)
+            // OPTIONAL: If you want navigation props load includes one by one (costly)
             return propertyEntities.ToResponseDto();
         }
 

@@ -110,7 +110,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
-        // [Authorize]
+         [Authorize]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {

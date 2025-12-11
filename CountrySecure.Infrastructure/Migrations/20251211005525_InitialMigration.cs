@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -39,7 +39,7 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     LotName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    LotState = table.Column<int>(type: "integer", nullable: false),
+                    LotState = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     BlockName = table.Column<string>(type: "text", nullable: false),
                     Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -263,7 +263,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     QrCodeValue = table.Column<string>(type: "text", nullable: false),
                     PermissionType = table.Column<int>(type: "integer", nullable: false),
-                    Status = table.Column<int>(type: "integer", nullable: false),
+                    EntryPermissionState = table.Column<int>(type: "integer", nullable: false),
                     Description = table.Column<string>(type: "text", nullable: true),
                     ValidFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     EntryTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -271,6 +271,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     VisitId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     OrderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    Status = table.Column<string>(type: "text", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),

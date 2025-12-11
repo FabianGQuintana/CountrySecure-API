@@ -23,6 +23,6 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize);
 
         Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize);
-        Task<PropertyResponseDto?> SoftDeleteAsync(Guid id);
+        Task<PropertyResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId);
     }
 }

@@ -14,7 +14,7 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public DateTime EntryTime { get; set; }
         public DateTime DepartureTime { get; set; }
 
-
+        public required string BaseEntityStatus { get; set; }
         public DateTime CreatedAt { get; set; }
         public required string CreatedBy { get; set; }
 

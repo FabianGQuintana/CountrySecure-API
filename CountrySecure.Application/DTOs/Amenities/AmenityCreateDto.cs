@@ -21,7 +21,7 @@ namespace CountrySecure.Application.DTOs.Amenities
         [Range(1, 100)] 
         public int Capacity { get; set; }
 
-         [Required]
+         
          public ICollection<Turn> Turns { get; set; } = new List<Turn>();
     }
 }

@@ -72,34 +72,29 @@ namespace CountrySecure.Application.Services
             return amenity.ToResponseDto();
         }
 
-        // COINCIDENCIA DE FIRMA CON LA INTERFAZ: Se corrige para que reciba currentUserId
-        // AmenityService.ToggleActiveAsync (ejemplo)
-        public async Task<AmenityResponseDto?> ToggleActiveAsync(Guid id, Guid currentUserId)
+
+
+        // -------------------------------------------------------------------
+        // IMPLEMENTACIÓN ESTANDARIZADA DEL SOFT DELETE / TOGGLE
+        // -------------------------------------------------------------------
+        public async Task<AmenityResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId)
         {
-            var amenity = await _amenityRepository.GetByIdAsync(id);
-            if (amenity == null) return null;
+            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
+            var amenity = await _amenityRepository.SoftDeleteToggleAsync(id);
 
-            if (amenity.DeletedAt == null)
-            {
-                // desactivar
-                amenity.DeletedAt = DateTime.UtcNow;
-                amenity.Status = "Inactive";
-            }
-            else
-            {
-               
-                // activar
-                amenity.DeletedAt = null;
-                amenity.Status = "Active";
-            }
+            if (amenity == null)
+                return null; // No se encontró
 
+            // 2. Aplicar Auditoría:
             amenity.LastModifiedBy = currentUserId.ToString();
             amenity.LastModifiedAt = DateTime.UtcNow;
 
-            await _amenityRepository.UpdateAsync(amenity);
+            // 4. Persistencia (Guardar los cambios de Auditoría)
+            var updatedEntity = await _amenityRepository.UpdateAsync(amenity);
             await _unitOfWork.SaveChangesAsync();
 
-            return amenity.ToResponseDto();
+            // 5. Mapeo de Retorno
+            return updatedEntity.ToResponseDto();
         }
 
 

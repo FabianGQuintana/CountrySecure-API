@@ -88,7 +88,7 @@ namespace CountrySecure.Application.Mappers
                 existingEntity.Status = dto.StatusAuditoria;
             }
 
-            // Nota: La actualización del Status se manejará con métodos específicos (ej. SoftDelete)
+            // Nota: La actualización del EntryPermissionState se manejará con métodos específicos (ej. SoftDelete)
         }
     }
 }

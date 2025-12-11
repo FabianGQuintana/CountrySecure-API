@@ -128,23 +128,46 @@ namespace CountrySecure.API.Controllers
 
 
         // -------------------------------------------------------------------
-        // DELETE: Eliminación Lógica (204 No Content / 404 Not Found)
+        // PATCH: Toggle (Activación/Desactivación Lógica) (200 OK / 404 Not Found)
         // -------------------------------------------------------------------
-        [HttpPatch("{id}/soft-delete")]
-        public async Task<IActionResult> ToggleActive(Guid id)
+        [HttpPatch("{id:guid}/SoftDelete")] // Endpoint estandarizado
+        public async Task<IActionResult> SoftDeleteToggle(Guid id) // Nombre estandarizado
         {
+            // 1. Extraer ID del usuario
             var currentUserId = GetCurrentUserId();
             if (!currentUserId.HasValue)
-                return Unauthorized();
+            {
+                return Unauthorized(); // 401 Unauthorized
+            }
 
-            var updatedAmenity = await _amenityService.ToggleActiveAsync(id, currentUserId.Value);
+            try
+            {
+                // 2. Llama al servicio estandarizado
+                var updatedAmenityDto = await _amenityService.SoftDeleteToggleAsync(id, currentUserId.Value);
 
-            if (updatedAmenity == null)
-                return NotFound(new { message = $"Amenity with id {id} not found" });
+                if (updatedAmenityDto == null)
+                {
+                    return NotFound($"Amenity con Id '{id}' no encontrado."); // 404 Not Found
+                }
 
-            return Ok(updatedAmenity);
+                // 3. Retorno de éxito (200 OK y el DTO actualizado)
+                // Usamos la propiedad Status de la BaseEntity (string)
+                var action = updatedAmenityDto.Status == "Active" ? "reactivado" : "desactivado";
+
+                return Ok(new
+                {
+                    Message = $"La Amenity con ID {id} ha sido {action} exitosamente.",
+                    Amenity = updatedAmenityDto // Devuelve el DTO completo y actualizado
+                });
+
+            }
+            catch (Exception ex)
+            {
+                // Se deja manejo genérico, asumiendo que el servicio ya maneja Not Found (devolviendo null)
+                // y que no lanza UnauthorizedAccessException.
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
-
 
         // -------------------------------------------------------------------
         // GET: Consultas de Colección y Filtros

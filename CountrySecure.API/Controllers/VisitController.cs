@@ -99,17 +99,38 @@ namespace CountrySecure.API.Controllers
 
         }
 
-        //  SOFT DELETE
-        // eliminacion logica
-        [HttpPatch("{visitId:guid}/soft-delete")]
-        public async Task<IActionResult> SoftDeleteVisit(Guid visitId)
+        [HttpPatch("{visitId:guid}/SoftDelete")] 
+        public async Task<IActionResult> SoftDeleteToggle(Guid visitId)
         {
-            var visit = await _visitService.SoftDeleteVisitAsync(visitId);
+            try
+            {
 
-            if (visit == null)
-                return NotFound(new { message = $"Visit with id {visitId} not found" });
+                var currentUserId = GetCurrentUserId();
 
-            return Ok(visit); // Devuelve JSON con la visita actualizada
+              
+                var updatedVisitDto = await _visitService.SoftDeleteToggleAsync(visitId, currentUserId);
+
+                if (updatedVisitDto == null)
+                {
+                    return NotFound(new { message = $"Visit with ID {visitId} not found." });
+                }
+
+                var action = updatedVisitDto.VisitStatus == "Active" ? "reactivated" : "deactivated";
+
+                return Ok(new
+                {
+                    Message = $"The Visit with ID {visitId} has been {action} successfully.",
+                    Visit = updatedVisitDto
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Unexpected error while changing visit status.", detail = ex.Message });
+            }
         }
 
         // VIEW ALL

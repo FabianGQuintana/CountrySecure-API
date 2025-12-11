@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CountrySecure.Infrastructure.Migrations
 {
     [DbContext(typeof(CountrySecureDbContext))]
-    [Migration("20251210145140_Initial")]
-    partial class Initial
+    [Migration("20251211005525_InitialMigration")]
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -99,6 +99,9 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
+                    b.Property<int>("EntryPermissionState")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("EntryTime")
                         .HasColumnType("timestamp with time zone");
 
@@ -118,8 +121,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -175,8 +179,10 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<int>("LotState")
-                        .HasColumnType("integer");
+                    b.Property<string>("LotState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -646,21 +652,21 @@ namespace CountrySecure.Infrastructure.Migrations
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.Request", b =>
                 {
-                    b.HasOne("CountrySecure.Domain.Entities.Order", "OrderRequest")
+                    b.HasOne("CountrySecure.Domain.Entities.Order", "Order")
                         .WithMany("Requests")
                         .HasForeignKey("IdOrder")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CountrySecure.Domain.Entities.User", "UserRequest")
+                    b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("IdUser")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("OrderRequest");
+                    b.Navigation("Order");
 
-                    b.Navigation("UserRequest");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.Turn", b =>

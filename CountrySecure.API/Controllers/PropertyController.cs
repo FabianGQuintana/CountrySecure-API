@@ -146,15 +146,44 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        [HttpPatch("{id:guid}/soft-delete")]
-        public async Task<IActionResult> SoftDelete(Guid id)
+        [HttpPatch("{id:guid}/SoftDelete")]
+        public async Task<IActionResult> SoftDeleteToggle(Guid id)
         {
-            var property = await _propertyService.SoftDeleteAsync(id);
+            try
+            {
+                // 1. Get User ID (will throw if unauthorized/invalid GUID)
+                var currentUserId = GetCurrentUserId();
 
-            if (property == null)
-                return NotFound(new { message = $"Property with id {id} not found" });
+                // 2. Call standardized service method
+                var updatedPropertyDto = await _propertyService.SoftDeleteToggleAsync(id, currentUserId);
 
-            return Ok(property);
+                if (updatedPropertyDto == null)
+                {
+                    return NotFound($"Property with ID {id} not found.");
+                }
+
+                // 3. Return 200 OK and updated DTO
+                var action = updatedPropertyDto.StatusAuditoria == "Active" ? "reactivated" : "deactivated";
+
+                return Ok(new
+                {
+                    Message = $"The Property with ID {id} has been {action} successfully.",
+                    Property = updatedPropertyDto // Returns the full updated DTO
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound($"Property with ID {id} not found.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Captures if the token is invalid (thrown by GetCurrentUserId)
+                return Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Unexpected error while changing property status.", detail = ex.Message });
+            }
         }
 
 

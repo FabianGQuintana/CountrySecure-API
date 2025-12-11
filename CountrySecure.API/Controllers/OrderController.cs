@@ -1,6 +1,7 @@
 ﻿using CountrySecure.Application.DTOs.Order;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
@@ -68,16 +69,20 @@ namespace CountrySecure.API.Controllers
             {
                 var currentUserId = GetCurrentUserId();
 
-                await _orderService.UpdateOrderAsync(id, dto, currentUserId);
-                return NoContent(); // 204 No Content (Éxito sin devolver cuerpo)
+                // Capturamos el DTO de respuesta devuelto por el servicio
+                var updatedOrderDto = await _orderService.UpdateOrderAsync(id, dto, currentUserId);
+
+                //  Devolver 200 OK con el cuerpo de la orden actualizada.
+                return Ok(updatedOrderDto);
             }
-            catch (KeyNotFoundException)
+            catch (KeyNotFoundException ex)
             {
-                return NotFound($"Orden con ID {id} no encontrada."); // 404 Not Found
+                return NotFound(ex.Message); // 404 Not Found (Usamos el mensaje de la excepción)
             }
             catch (UnauthorizedAccessException)
             {
-                return Forbid(); // 403 Forbidden (Si la lógica de negocio prohíbe la modificación)
+                // Si GetCurrentUserId() lanza UnauthorizedAccessException
+                return Unauthorized();
             }
             catch (Exception ex)
             {
@@ -85,32 +90,46 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        [HttpDelete("{id:guid}")]
+        [HttpPatch("{id:guid}/SoftDelete")]
+        [Authorize]
         public async Task<IActionResult> SoftDeleteOrder(Guid id)
         {
+            // 1. Obtener el ID del usuario actual
+            Guid? currentUserId = GetCurrentUserId(); 
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             try
             {
-                var currentUserId = GetCurrentUserId(); 
+                // 2. Llamada al servicio que ahora devuelve el DTO o null
+                var updatedOrderDto = await _orderService.SoftDeleteOrderAsync(id, currentUserId.Value);
 
-               
-                var deleted = await _orderService.SoftDeleteOrderAsync(id, currentUserId); // <-- ¡CAMBIO APLICADO!
-
-                if (!deleted)
+                if (updatedOrderDto == null)
                 {
                     return NotFound($"Orden con ID {id} no encontrada."); // 404 Not Found
                 }
-                return NoContent(); // 204 No Content
+
+                // 3. Retorno de éxito (200 OK y el DTO actualizado)
+                var action = updatedOrderDto.Status == "Active" ? "reactivado" : "desactivado";
+
+                return Ok(new
+                {
+                    Message = $"La Orden con ID {id} ha sido {action} exitosamente.",
+                    Order = updatedOrderDto // Devuelve el DTO completo y actualizado
+                });
+
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
-                return Forbid(); // 403 Forbidden
+                return Forbid(ex.Message); // 403 Forbidden
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, new { message = "Error interno al eliminar la orden.", detail = ex.Message });
+                return StatusCode(500, "Ocurrió un error inesperado durante el cambio de estado de la Orden.");
             }
         }
-
 
         // -------------------------------------------------------------------
         // MÉTODOS DE LECTURA (GET)
@@ -134,8 +153,6 @@ namespace CountrySecure.API.Controllers
             }
         }
 
-        // Los métodos GetAll, GetPaged, GetByStatus, etc., son de lectura. 
-        // Si el servicio solo devuelve una lista o null, basta con manejar el 500.
 
         [HttpGet("paged")]
         public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int size = 100)

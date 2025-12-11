@@ -17,14 +17,16 @@ namespace CountrySecure.Application.Mappers
                 // Propiedades de datos
                 Details = request.Details,
                 Location = request.Location,
+
+                // Mapeo del estado funcional (Enum)
                 Status = request.RequestStatus,
+
+                BaseEntityStatus = request.Status,
 
                 CreatedAt = request.CreatedAt,
 
                 User = request.User.ToRequestUserDto(),
                 Order = request.Order.ToRequestOrderDto()
-
-
             };
         }
 
@@ -47,7 +49,7 @@ namespace CountrySecure.Application.Mappers
                 IdUser = dto.UserId,
                 IdOrder = dto.OrderId,
 
-                // Status (Se inicializa al valor del DTO o al defecto si no se requiere en DTO)
+                // EntryPermissionState (Se inicializa al valor del DTO o al defecto si no se requiere en DTO)
                 RequestStatus = dto.Status,
 
                 // Miembros requeridos de la Entidad (Relationships) para EF Core/Domain

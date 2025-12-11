@@ -9,6 +9,8 @@ public class UpdateRequestDto
     public string? Details { get; set; }  
     public string? Location { get; set; }  
     public RequestStatus? Status { get; set; }
+
+    public required string BaseEntityStatus { get; set; }
     public Guid? IdUser { get; set; }
     public Guid? IdOrder { get; set; }
 }

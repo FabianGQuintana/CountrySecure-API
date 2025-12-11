@@ -26,5 +26,10 @@ namespace CountrySecure.Application.Interfaces.Repositories
         Task<EntryPermission?> GetByQrCodeValueAsync(string qrCodeValue);
 
         Task<EntryPermission?> GetEntryPermissionWithDetailsAsync(Guid id);
+
+        Task<EntryPermission?> GetByIdWithIncludesAsync(Guid id);
+
+        // Modificar este método para que cargue las inclusiones necesarias para el mapeo
+        Task<IEnumerable<EntryPermission>> GetAllWithIncludesAsync(int pageNumber, int pageSize);
     }
 }

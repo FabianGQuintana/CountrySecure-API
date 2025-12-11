@@ -19,7 +19,7 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId);
         Task<IEnumerable<VisitEntryPermissionDto>> GetValidPermitsByVisitIdAsync(Guid visitId);
         Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto);
-        Task<VisitResponseDto?> SoftDeleteVisitAsync(Guid visitId);
+        Task<VisitResponseDto?> SoftDeleteToggleAsync(Guid visitId, Guid currentUserId);
 
     }
 }

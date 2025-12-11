@@ -33,7 +33,7 @@ namespace CountrySecure.Application.Services.Turns
             newTurnEntity.UserId = currentUserId; // El UserId viene del token
             newTurnEntity.CreatedBy = currentUserId.ToString();
             newTurnEntity.CreatedAt = DateTime.UtcNow;
-            //newTurnEntity.Status = TurnStatus.Pending; // Estado inicial
+            //newTurnEntity.EntryPermissionState = TurnStatus.Pending; // Estado inicial
 
             // 3. Persistencia
             var addedTurn = await _turnRepository.AddAsync(newTurnEntity);
@@ -53,17 +53,16 @@ namespace CountrySecure.Application.Services.Turns
                 return null; // El Controller devolverá 404 Not Found
             }
 
-            // 2. Aplicar la lógica de negocio/autorización
-            // Ejemplo: Solo el creador o un admin puede modificar.
+            // 2. Aplicar la lógica de negocio/autorización (OK)
             if (existingTurn.CreatedBy != currentUserId.ToString())
             {
                 throw new UnauthorizedAccessException("User is not authorized to update this Turn.");
             }
 
-            // 3. Mapear DTO -> Entidad Existente
-            //updateTurnDto.MapToEntity(existingTurn);
+            // 3. Mapear DTO -> Entidad Existente (DESCOMENTADO Y REQUERIDO)
+            updateTurnDto.MapToEntity(existingTurn);
 
-            // 4. Actualizar Auditoría
+            // 4. Actualizar Auditoría (OK)
             existingTurn.LastModifiedAt = DateTime.UtcNow;
             existingTurn.LastModifiedBy = currentUserId.ToString();
 
@@ -71,33 +70,52 @@ namespace CountrySecure.Application.Services.Turns
             var updatedTurn = await _turnRepository.UpdateAsync(existingTurn);
             await _unitOfWork.SaveChangesAsync();
 
-            // 6. Devolver DTO de Respuesta
-            return updatedTurn.ToResponseDto();
+            var fullTurn = await _turnRepository.GetByIdWithIncludesAsync(updatedTurn.Id);
+
+            if (fullTurn == null)
+            {
+                // En caso de fallo post-inserción/update
+                throw new InvalidOperationException("Turn was updated but could not be retrieved with full relations.");
+            }
+
+            return fullTurn.ToResponseDto();
+
+
         }
 
-        public async Task<bool> SoftDeleteTurnAsync(Guid turnId, Guid currentUserId)
+        public async Task<TurnResponseDto?> SoftDeleteTurnAsync(Guid turnId, Guid currentUserId)
         {
-            // 1. Buscar y validar
-            var existingTurn = await _turnRepository.GetByIdAsync(turnId);
+            var existingTurn = await _turnRepository.SoftDeleteToggleAsync(turnId);
 
             if (existingTurn == null)
             {
-                return false; // No se encontró
+                return null; // No se encontró.
             }
 
-            // 2. Lógica de Baja Lógica (Actualización de BaseEntity)
-            existingTurn.DeletedAt = DateTime.UtcNow;
+            // 1. Aplicar Auditoría
+            existingTurn.LastModifiedAt = DateTime.UtcNow;
             existingTurn.LastModifiedBy = currentUserId.ToString();
 
-            // Opcional: Podrías cambiar el estado del turno a Cancelled/Inactive si lo requieres.
-            //existingTurn.Status = TurnStatus.CancelledByAdmin; 
+            // 2. Lógica Específica de la Entidad (TurnStatus)
+            if (existingTurn.Status == "Inactive")
+            {
+                existingTurn.TurnStatus = TurnStatus.Cancelled;
+            }
+            else
+            {
+                existingTurn.TurnStatus = TurnStatus.Pending;
+            }
 
-            await _turnRepository.UpdateAsync(existingTurn);
+            await _turnRepository.UpdateAsync(existingTurn); // Asegura que auditoría y TurnStatus se persistan
             await _unitOfWork.SaveChangesAsync();
 
-            return true;
-        }
+            // 3. Devolver el DTO de Respuesta
+            // Se necesita una versión con includes para el DTO. Usaré GetByIdWithIncludesAsync
+            var fullTurn = await _turnRepository.GetByIdWithIncludesAsync(existingTurn.Id);
 
+            // Si la entidad se acaba de cargar (fullTurn), significa que la operación fue exitosa.
+            return fullTurn?.ToResponseDto();
+        }
         // --- MÉTODOS DE LECTURA (R) ---
 
         public async Task<TurnResponseDto?> GetTurnByIdAsync(Guid turnId)
