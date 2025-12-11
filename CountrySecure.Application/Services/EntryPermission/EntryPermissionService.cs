@@ -25,75 +25,63 @@ namespace CountrySecure.Application.Services.EntryPermission
 
         public async Task<EntryPermissionResponseDto> AddNewEntryPermissionAsync(CreateEntryPermissionDto dto, Guid currentUserId)
         {
-            // 1. Mapeo DTO a Entidad
-            var newPermissionEntity = dto.ToEntity();
+            var entity = dto.ToEntity();
 
-            // 2. GENERACIÓN DE VALOR CRÍTICO
-            // El campo QrCodeValue se genera en el servidor
-            newPermissionEntity.QrCodeValue = Guid.NewGuid().ToString();
+            entity.QrCodeValue = Guid.NewGuid().ToString();
+            entity.CreatedBy = currentUserId.ToString();
+            entity.CreatedAt = DateTime.UtcNow;
+            entity.LastModifiedAt = DateTime.UtcNow;
 
-            // 3. Asignación de Auditoría y Estado Inicial
+            entity.EntryPermissionState = PermissionStatus.Pending;
+            entity.EntryTime = null;
+            entity.DepartureTime = null;
 
-            // a. Creador
-            newPermissionEntity.CreatedBy = currentUserId.ToString();
-
-            // b. Fechas de Creación/Modificación (Auditoría)
-            newPermissionEntity.CreatedAt = DateTime.UtcNow;
-            newPermissionEntity.LastModifiedAt = DateTime.UtcNow;
-
-            // c. Estado Funcional (Defensivo)
-            newPermissionEntity.EntryPermissionState = PermissionStatus.Pending;
-
-            // 4. Guardar en Repositorio (Solo inserta la fila, NO carga User/Visit)
-            var addedPermission = await _entryPermissionRepository.AddAsync(newPermissionEntity);
+            await _entryPermissionRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
-            //Obtenemos la entidad Completa para que no lance error.
-            var fullPermission = await _entryPermissionRepository.GetEntryPermissionWithDetailsAsync(addedPermission.Id);
-
-            // Verificación defensiva (aunque no debería ser nulo)
-            if (fullPermission == null)
-            {
-                throw new InvalidOperationException("Permission was created but could not be retrieved for mapping.");
-            }
-
-            // 6. Mapeo de Entidad Completa a DTO de Respuesta
-            return fullPermission.ToResponseDto();
+            var full = await _entryPermissionRepository.GetEntryPermissionWithDetailsAsync(entity.Id);
+            return full!.ToResponseDto();
         }
 
-        public async Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid entryPermissionId, Guid currentUserId)
-        {
-            var existingEntity = await _entryPermissionRepository.GetByIdAsync(entryPermissionId);
 
-            if (existingEntity == null)
-            {
-                return null;
-            }
+        public async Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid id, Guid currentUserId)
+{
+    var entity = await _entryPermissionRepository.GetByIdAsync(id);
+    if (entity == null) return null;
 
-            dto.MapToEntity(existingEntity);
+    dto.MapToEntity(entity);
 
-            existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = currentUserId.ToString();
+    // --- LÓGICA DE NEGOCIO ---
 
-            var updatedEntity = await _entryPermissionRepository.UpdateAsync(existingEntity);
-            await _unitOfWork.SaveChangesAsync();
+    // 1. Si se setea la hora de ingreso
+    if (dto.EntryTime.HasValue && entity.EntryPermissionState == PermissionStatus.Pending)
+    {
+        entity.EntryPermissionState = PermissionStatus.Completed;
+    }
 
-            // ---------------------------------------------------------------------------------
-            // APLICACIÓN DE LA CORRECCIÓN: Eager Loading 
-            // ---------------------------------------------------------------------------------
+    // 2. Si se setea la hora de salida
+    if (dto.DepartureTime.HasValue)
+    {
+        entity.EntryPermissionState = PermissionStatus.Completed;
+    }
 
-            // 1. Recargar la entidad usando el método con inclusiones.
-            var fullPermission = await _entryPermissionRepository.GetByIdWithIncludesAsync(updatedEntity.Id);
+    // 3. Verificar expiración
+    if (DateTime.UtcNow > entity.ValidFrom && entity.EntryPermissionState == PermissionStatus.Pending)
+    {
+        entity.EntryPermissionState = PermissionStatus.Expired;
+    }
 
-            if (fullPermission == null)
-            {
-                // Esto solo ocurriría en un error de concurrencia raro post-save
-                throw new InvalidOperationException("La entidad fue guardada, pero no pudo ser recuperada con las relaciones.");
-            }
+    // Auditoría
+    entity.LastModifiedAt = DateTime.UtcNow;
+    entity.LastModifiedBy = currentUserId.ToString();
 
-            // 2. Devolver la entidad recargada. El mapeador ya no fallará.
-            return fullPermission.ToResponseDto();
-        }
+    await _entryPermissionRepository.UpdateAsync(entity);
+    await _unitOfWork.SaveChangesAsync();
+
+    var full = await _entryPermissionRepository.GetByIdWithIncludesAsync(id);
+    return full!.ToResponseDto();
+}
+
 
         public async Task<EntryPermissionResponseDto?> SoftDeleteEntryPermissionAsync(Guid entryPermissionId, Guid currentUserId)
         {
@@ -137,68 +125,62 @@ namespace CountrySecure.Application.Services.EntryPermission
 
         public async Task<GateCheckResponseDto> ValidateQrCodeAsync(string qrCode)
         {
-            // 1. Buscar la entidad con las propiedades de navegación cargadas (User, Visit)
+            // 1. Buscar la entidad con navegación incluida (User y Visit)
             var entity = await _entryPermissionRepository.GetByQrCodeValueAsync(qrCode);
 
-            // --- Manejo de Not Found ---
+            // 2. Manejo de Not Found
             if (entity == null)
-            {
-                throw new KeyNotFoundException("QR Code not found in the system.");
-            }
+                throw new KeyNotFoundException("QR Code no encontrado en el sistema.");
 
-            // --- Validaciones de Reglas de Negocio ---
-            if (entity.EntryPermissionState != PermissionStatus.Pending)
+            // 3. Validar si está dado de baja
+            if (entity.Status == "Baja")
+                throw new InvalidOperationException("El permiso asociado a este QR se encuentra dado de baja.");
+
+            // 4. Validar expiración (si aplica)
+            if (entity.ValidFrom < DateTime.UtcNow)
+                throw new InvalidOperationException("El QR ha expirado.");
+
+            // 5. Validar si ya se registró entrada y salida
+            var visit = entity.Visit;
+
+            if (visit != null)
             {
-                // Si el estado es "Used", "Expired", etc.
-                return new GateCheckResponseDto
+                // ya ingresó y salió
+                if (entity.EntryTime != null && entity.DepartureTime != null)
+                    throw new InvalidOperationException("El visitante ya registró ingreso y salida.");
+
+                // ya ingresó pero aún no salió (puede usarse para marcar salida)
+                if (entity.EntryTime != null && entity.DepartureTime == null)
                 {
-                    PermissionId = entity.Id,
-                    VisitorFullName = entity.Visit != null
-                        ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}"
-                        : string.Empty,
-                    ResidentFullName = entity.User != null
-                        ? $"{entity.User.Name} {entity.User.Lastname}"
-                        : string.Empty,
-                    VisitorDni = entity.Visit?.DniVisit ?? 0,
-
-                    // Mapeo correcto según tu enum
-                    CheckResultStatus = entity.EntryPermissionState switch
+                    return new GateCheckResponseDto
                     {
-                        PermissionStatus.Completed => "Permiso Completado",
-                        PermissionStatus.Expired => "Permiso Expirado",
-                        _ => "Permiso Inactivo"
-                    },
-
-                    Message = "El permiso ya fue consumido, utilizado o está inactivo."
-                };
+                        PermissionId = entity.Id,
+                        VisitorFullName = entity.Visit != null? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}": string.Empty,
+                        ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}": string.Empty,
+                        VisitorDni = entity.Visit?.DniVisit ?? 0,
+                        EntryTime = entity.EntryTime,
+                        DepartureTime = entity?.DepartureTime,
+                        CheckResultStatus = "Válido y Consumido",
+                        Message = "Acceso Autorizado. Datos corroborados."
+                    };
+                }
             }
 
-            // --- Lógica de Uso Único (Si la validación es exitosa) ---
-
-            // 2. Cambiar el estado a ENTERED (o el que corresponda)
-            entity.EntryPermissionState = PermissionStatus.Completed;
-            entity.LastModifiedAt = DateTime.UtcNow;
-
-            // 3. Persistir el cambio de estado
-            await _entryPermissionRepository.UpdateAsync(entity);
-            await _unitOfWork.SaveChangesAsync();
-
-            // 4. Mapear y devolver el DTO de ÉXITO
+            // 6. Si nunca ingresó → puede entrar
             return new GateCheckResponseDto
             {
                 PermissionId = entity.Id,
-                VisitorFullName = entity.Visit != null
-                    ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}"
-                    : string.Empty,
-                ResidentFullName = entity.User != null
-                    ? $"{entity.User.Name} {entity.User.Lastname}"
-                    : string.Empty,
+                VisitorFullName = entity.Visit != null ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}" : string.Empty,
+                ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}" : string.Empty,
                 VisitorDni = entity.Visit?.DniVisit ?? 0,
-
-                CheckResultStatus = "Válido y Consumido",
-                Message = "Acceso Autorizado. Datos corroborados."
+                CheckResultStatus = "Válido y Sin Consumido",
+                Message = "QR válido. El visitante puede registrar su entrada.",
+                EntryTime = entity?.EntryTime,
+                DepartureTime = entity?.DepartureTime
             };
         }
+            // 4. Mapear y devolver el DTO de ÉXITO
+            
 
 
 

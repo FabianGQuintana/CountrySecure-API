@@ -69,42 +69,34 @@ namespace CountrySecure.Application.Services.Properties
         {
             var existingEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
 
-
             if (existingEntity == null)
-            {
-                return null; // Devuelve null para que el controlador devuelva 404 Not Found
-            }
+                return null;
 
-            // REGLA DE NEGOCIO: Validar Autorización
             if (existingEntity.CreatedBy != currentId.ToString())
-            {
-                throw new UnauthorizedAccessException("User is not authorized to update this property. Only the creator may modify it.");
-            }
+                throw new UnauthorizedAccessException("User is not authorized to update this property.");
 
-            // Validar FK LotId si se está actualizando (opcional, pero seguro)
+            // Validar lot
             if (updateProperty.LotId.HasValue)
             {
                 var lotExists = await _lotRepository.GetByIdAsync(updateProperty.LotId.Value);
                 if (lotExists == null || lotExists.IsDeleted)
-                {
-                    throw new KeyNotFoundException($"El Lote con ID {updateProperty.LotId.Value} no existe o está inactivo/eliminado.");
-                }
+                    throw new KeyNotFoundException($"El Lote con ID {updateProperty.LotId.Value} no existe o está inactivo.");
             }
 
-            // Aplicar Mapeo de Cambios
+            // Aplicar cambios
             updateProperty.MapToEntity(existingEntity);
 
-            // Actualizar Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
             existingEntity.LastModifiedBy = currentId.ToString();
 
-            // Guardar Cambios
-            var updatedEntity = await _propertyRepository.UpdateAsync(existingEntity);
+            await _propertyRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // Retorno
-            return updatedEntity.ToResponseDto();
+            var fullEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+
+            return fullEntity!.ToResponseDto();
         }
+
 
         // -------------------------------------------------------------------
         // IMPLEMENTACIÓN ESTANDARIZADA DEL SOFT DELETE / TOGGLE

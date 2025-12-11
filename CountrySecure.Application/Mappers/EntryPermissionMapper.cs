@@ -32,8 +32,7 @@ namespace CountrySecure.Application.Mappers
                 Status = permission.EntryPermissionState,
 
                 ValidFrom = permission.ValidFrom,
-                EntryTime = permission.EntryTime,
-                DepartureTime = permission.DepartureTime,
+                
 
 
                 // Propiedades de Auditoría (Mapeadas de la Entidad Base)

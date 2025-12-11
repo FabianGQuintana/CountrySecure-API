@@ -24,15 +24,31 @@ namespace CountrySecure.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
         {
-            var userId = GetCurrentUserId();
+            try
+            {
+                var userId = GetCurrentUserId();
 
-            var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, userId);
+                var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, userId);
 
-            return CreatedAtAction(nameof(GetVisitById),
-                new { visitId = createdVisit.VisitId },
-                createdVisit);
+                return CreatedAtAction(nameof(GetVisitById),
+                    new { visitId = createdVisit.VisitId },
+                    createdVisit);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { message = "User not authenticated." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Unexpected error while creating the visit.",
+                    detail = ex.Message
+                });
+            }
         }
-        
+
+
         //  GET BY ID
         [HttpGet("{visitId:guid}")]
         public async Task<IActionResult> GetVisitById(Guid visitId)

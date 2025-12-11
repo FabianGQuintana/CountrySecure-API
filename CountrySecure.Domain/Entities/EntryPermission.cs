@@ -10,8 +10,8 @@ namespace CountrySecure.Domain.Entities
         public PermissionStatus EntryPermissionState { get; set; }
         public string? Description { get; set; }
         public DateTime ValidFrom { get; set; }
-        public DateTime EntryTime { get; set; }
-        public DateTime DepartureTime { get; set; }
+        public DateTime? EntryTime { get; set; }
+        public DateTime? DepartureTime { get; set; }
 
         //Relationships FK
         public Guid VisitId { get; set; }

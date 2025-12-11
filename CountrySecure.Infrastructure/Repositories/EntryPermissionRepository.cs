@@ -21,6 +21,9 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<EntryPermission?> GetEntryPermissionByQrCodeValueAsync(string qrCodeValue)
         {
             return await _dbContext.EntryPermissions
+                .Include(p => p.User)    // El Residente/Creador
+                .Include(p => p.Visit)   // El Visitante
+                .Include(p => p.Order)
                 .FirstOrDefaultAsync(ep => ep.QrCodeValue == qrCodeValue);
         }
 
@@ -28,6 +31,9 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByUserIdAsync(Guid userId)
         {
             return await _dbContext.EntryPermissions
+                .Include(p => p.User)    // El Residente/Creador
+                .Include(p => p.Visit)   // El Visitante
+                .Include(p => p.Order)
                 .Where(ep => ep.UserId == userId)
                 .ToListAsync();
         }
@@ -35,6 +41,9 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByVisitIdAsync(Guid visitId)
         {
             return await _dbContext.EntryPermissions
+                .Include(p => p.User)    // El Residente/Creador
+                .Include(p => p.Visit)   // El Visitante
+                .Include(p => p.Order)
                 .Where(ep => ep.VisitId == visitId)
                 .ToListAsync();
         }
@@ -42,6 +51,9 @@ namespace CountrySecure.Infrastructure.Repositories
         public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByServiceIdAsync(Guid OrderId)
         {
             return await _dbContext.EntryPermissions
+                .Include(p => p.User)    // El Residente/Creador
+                .Include(p => p.Visit)   // El Visitante
+                .Include(p => p.Order)
                 .Where(ep => ep.OrderId == OrderId)
                 .ToListAsync();
         }
@@ -50,7 +62,7 @@ namespace CountrySecure.Infrastructure.Repositories
         //Obtener todos los permisos en base al tipo de permiso.
         public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByTypeAsync(PermissionType permissionType, int pageNumber, int pageSize)
         {
-            return await _dbContext.EntryPermissions
+            return await _dbContext.EntryPermissions.Include(p => p.User).Include(p => p.Visit).Include(p => p.Order)
                 .Where(ep => ((int)ep.PermissionType) == ((int)permissionType))
                 .OrderBy(ep => ep.Id)
                 .Skip((pageNumber - 1) * pageSize)
@@ -65,7 +77,7 @@ namespace CountrySecure.Infrastructure.Repositories
             if (!Enum.TryParse<PermissionStatus>(status, true, out var statusEnum))
                 throw new ArgumentException("Estado inválido", nameof(status));
 
-            return await _dbContext.EntryPermissions
+            return await _dbContext.EntryPermissions.Include(p => p.User).Include(p => p.Visit).Include(p => p.Order)
                 .Where(ep => ep.EntryPermissionState == statusEnum)
                 .OrderBy(ep => ep.Id)
                 .Skip((pageNumber - 1) * pageSize)
