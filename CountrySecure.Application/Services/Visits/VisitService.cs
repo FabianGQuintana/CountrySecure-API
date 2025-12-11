@@ -46,41 +46,48 @@ namespace CountrySecure.Application.Services.Visits
             return addedVisit.ToResponseDto();
         }
 
-        public async Task UpdateVisitAsync(UpdateVisitDto updateVisitDto)
+        public async Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto)
         {
-            var existingEntity = await _visitRepository.GetByIdAsync(updateVisitDto.VisitId);
+            var existingEntity = await _visitRepository.GetByIdWithoutFiltersAsync(visitId);
 
-            if (existingEntity == null || existingEntity.DeletedAt != null)
-            {
-                throw new KeyNotFoundException($"Visit with ID {updateVisitDto.VisitId} not found.");
-            }
 
-            // Aplicar cambios utilizando el mapper
+            if (existingEntity == null )
+                throw new KeyNotFoundException($"Visit with ID {visitId} not found.");
+
             updateVisitDto.MapToEntity(existingEntity);
 
-            // Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
-          
 
             await _visitRepository.UpdateAsync(existingEntity);
             await _unitOfWork.SaveChangesAsync();
+
+            // Volver a cargar si necesitás incluir permisos
+            return existingEntity.ToResponseDto();
         }
 
-        public async Task<bool> SoftDeleteVisitAsync(Guid visitId)
+
+
+        public async Task<VisitResponseDto?> SoftDeleteToggleAsync(Guid visitId, Guid currentUserId)
         {
-            var existingEntity = await _visitRepository.GetByIdAsync(visitId);
+            
+            var visit = await _visitRepository.SoftDeleteToggleAsync(visitId);
 
-            if (existingEntity == null || existingEntity.DeletedAt != null)
-                return false;
+            if (visit == null)
+                return null; 
 
-            existingEntity.DeletedAt = DateTime.UtcNow;
-            existingEntity.Status = "Inactive";
+            
+            visit.LastModifiedAt = DateTime.UtcNow;
+            visit.LastModifiedBy = currentUserId.ToString();
 
-            await _visitRepository.UpdateAsync(existingEntity);
+            
+            var updatedEntity = await _visitRepository.UpdateAsync(visit);
             await _unitOfWork.SaveChangesAsync();
 
-            return true;
+          
+            return updatedEntity.ToResponseDto();
         }
+
+
 
         // ============================================================
         // MÉTODOS DE CONSULTA
@@ -109,9 +116,9 @@ namespace CountrySecure.Application.Services.Visits
         {
             var visits = await _visitRepository.GetAllAsync(pageNumber, pageSize);
 
-            var filtered = visits.Where(v => v.DeletedAt == null);
+            
 
-            return filtered.ToResponseDto();
+            return visits.ToResponseDto();
         }
 
         public async Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync()
@@ -123,15 +130,16 @@ namespace CountrySecure.Application.Services.Visits
         }
 
 
-         public async Task<VisitResponseDto?> GetVisitWithPermitsAsync(Guid visitId)
-         {
-             var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
+        public async Task<VisitWithPermitsDto?> GetVisitWithPermitsAsync(Guid visitId)
+        {
+            var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
 
-             if (visitEntity == null || visitEntity.DeletedAt != null)
-                 return null;
+            if (visitEntity == null || visitEntity.DeletedAt != null)
+                return null;
 
-             return visitEntity.ToResponseDto();
-         }
+            return visitEntity.ToVisitWithPermitsDto();
+        }
+
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
         {
@@ -139,17 +147,21 @@ namespace CountrySecure.Application.Services.Visits
             return permits.ToResponseDto();
         }
 
-        public async Task<EntryPermissionResponseDto?> GetValidPermitByVisitIdAsync(Guid visitId)
+        public async Task<IEnumerable<VisitEntryPermissionDto>> GetValidPermitsByVisitIdAsync(Guid visitId)
         {
-            var permit = await _entryPermissionRepository
-                .GetEntryPermissionsByVisitIdAsync(visitId);
+            var permits = await _entryPermissionRepository.GetEntryPermissionsByVisitIdAsync(visitId);
 
-            var valid = permit
-                .Where(p => p.Status == PermissionStatus.Pending)
-                .FirstOrDefault();
+            // Tomamos todos los permisos válidos (Pending)
+            var valid = permits
+                .Where(p => p.EntryPermissionState == PermissionStatus.Pending)
+                .Select(p => p.ToVisitEntryPermissionDto()) // ← tu mapper liviano
+                .ToList();
 
-            return valid?.ToResponseDto();
+            return valid;
         }
+
+
+
 
     }
 }

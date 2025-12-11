@@ -35,7 +35,7 @@ namespace CountrySecure.Application.Services.Lots
             // Asignación del Creador
             newLotEntity.CreatedBy = currentUserId.ToString();
 
-            //  Asignamos el Status de la BaseEntity (string) a "Active"
+            //  Asignamos el EntryPermissionState de la BaseEntity (string) a "Active"
             newLotEntity.Status = "Active";
 
             // El LotState (el enum que vino del DTO) ya está asignado.
@@ -49,17 +49,20 @@ namespace CountrySecure.Application.Services.Lots
             return addedLot.ToResponseDto();
         }
 
-        public async Task UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId)
+        public async Task<LotResponseDto> UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId)
         {
             // 1. Buscar la entidad existente por ID
             var lotToUpdate = await _lotRepository.GetByIdAsync(lotId);
 
-            // 2. Manejar el caso de no encontrado
+            // 2. Manejar el caso de no encontrado (Termina aquí si no existe)
             if (lotToUpdate == null)
             {
                 throw new KeyNotFoundException($"El Lote con ID {lotId} no fue encontrado.");
             }
 
+            // 3. Aplicar mapeo manual de los campos
+
+            // El método String.IsNullOrWhiteSpace es robusto para validar la entrada
             if (!string.IsNullOrWhiteSpace(updateLot.LotName))
             {
                 lotToUpdate.LotName = updateLot.LotName;
@@ -70,9 +73,10 @@ namespace CountrySecure.Application.Services.Lots
                 lotToUpdate.BlockName = updateLot.BlockName;
             }
 
+            // Los tipos de valor nulleables (Enum?) requieren chequeo HasValue
             if (updateLot.Status.HasValue)
             {
-                // Asignamos el valor del DTO al nuevo campo LotState de la entidad
+                // Asignamos el valor del DTO al campo LotState de la entidad
                 lotToUpdate.LotState = updateLot.Status.Value;
             }
 
@@ -81,29 +85,47 @@ namespace CountrySecure.Application.Services.Lots
             lotToUpdate.LastModifiedBy = currentUserId.ToString();
 
             // 5. Persistencia
-            await _lotRepository.UpdateAsync(lotToUpdate);
+            // Es buena práctica capturar el resultado de UpdateAsync (aunque puede ser el mismo objeto)
+            var updatedEntity = await _lotRepository.UpdateAsync(lotToUpdate);
             await _unitOfWork.SaveChangesAsync();
+
+            // 6. Retorno (Garantizado: Siempre devuelve un DTO si la ejecución llega aquí)
+            return updatedEntity.ToResponseDto();
         }
-        public async Task<bool> SoftDeleteLotAsync(Guid lotId, Guid currentUserId)
+        public async Task<LotResponseDto?> SoftDeleteToggleAsync(Guid lotId, Guid currentUserId)
         {
+            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
+            var lot = await _lotRepository.SoftDeleteToggleAsync(lotId);
 
-            var existingLot = await _lotRepository.GetByIdAsync(lotId);
-            if (existingLot == null)
+            if (lot == null)
+                return null; // Not found
+
+            // 2. Aplicar Auditoría:
+            lot.LastModifiedAt = DateTime.UtcNow;
+            lot.LastModifiedBy = currentUserId.ToString();
+
+            // 3. Lógica Específica del Enum (LotState)
+            if (lot.Status == "Inactive")
             {
-                return false;
+                // Si se acaba de desactivar, marcamos el estado funcional (Enum) como Inactive.
+                lot.LotState = LotStatus.Inactive;
+            }
+            else
+            {
+                // Si se acaba de reactivar, marcamos el estado funcional (Enum) como Available.
+                lot.LotState = LotStatus.Available;
             }
 
-            // Llama al repositorio para marcar el estado como "Inactive"
-            bool marked = await _lotRepository.DeleteAsync(lotId);
+            // 4. Persistencia (Guardar los cambios de Auditoría y LotState)
+            var updatedEntity = await _lotRepository.UpdateAsync(lot);
+            await _unitOfWork.SaveChangesAsync();
 
-            if (marked)
-            {
-                await _unitOfWork.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
+            // 5. Mapeo de Retorno
+            return updatedEntity.ToResponseDto();
         }
+
+
+
 
         // --- MÉTODOS DE CONSULTA ---
 

@@ -41,7 +41,7 @@ public class VisitRepository : GenericRepository<Visit>, IVisitRepository
      {
          return await _dbContext.EntryPermissions
              .Where(ep => ep.VisitId == visitId &&
-                          ep.Status == PermissionStatus.Pending &&
+                          ep.EntryPermissionState == PermissionStatus.Pending &&
                          ep.ValidFrom.Date >= DateTime.UtcNow.Date)
              .FirstOrDefaultAsync();
      }
@@ -51,6 +51,37 @@ public class VisitRepository : GenericRepository<Visit>, IVisitRepository
         return await _dbContext.Visits
             .OrderBy(v => v.CreatedAt)
             .ToListAsync();
+    }
+    public async Task<Visit?> GetByIdWithoutFiltersAsync(Guid id)
+    {
+        return await _dbContext.Visits
+            .FirstOrDefaultAsync(v => v.Id == id);
+    }
+
+    public async Task<Visit?> SoftDeleteVisitAsync(Guid visitId)
+    {
+        var visit = await _dbContext.Visits
+            .FirstOrDefaultAsync(v => v.Id == visitId);
+
+        if (visit == null)
+            return null;
+
+        if (visit.DeletedAt == null)
+        {
+            // DESACTIVAR
+            visit.DeletedAt = DateTime.UtcNow;
+            visit.Status = "Inactive";
+        }
+        else
+        {
+            // ACTIVAR
+            visit.DeletedAt = null;
+            visit.Status = "Active";
+        }
+
+        visit.UpdatedAt = DateTime.UtcNow;
+
+        return visit; // EF lo trackea
     }
 
 

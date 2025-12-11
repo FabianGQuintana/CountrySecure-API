@@ -7,7 +7,7 @@ public class Property : BaseEntity
 	public required string Street { get; set; }
 	public int PropertyNumber { get; set; }
 
-    public PropertyStatus PropertyType { get; set; }
+    public PropertyStatus PropertyStatus { get; set; }
 
     //Relationships FK
     public Guid? UserId { get; set; }

@@ -74,7 +74,7 @@ namespace CountrySecure.Application.Services.Orders
             var all = await _orderRepository.GetAllAsync();
 
             return all
-                .Where(o => !o.IsDeleted)
+              //  .Where(o => !o.IsDeleted)
                 .ToResponseDto();
         }
 
@@ -128,42 +128,53 @@ namespace CountrySecure.Application.Services.Orders
         // ============================================================
         // 9. Actualizar Orden
         // ============================================================
-        public async Task UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto, Guid currentUserId)
+        public async Task<OrderResponseDto> UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto, Guid currentUserId)
         {
             var existing = await _orderRepository.GetByIdAsync(orderId);
 
             if (existing == null || existing.IsDeleted)
-                throw new KeyNotFoundException("Order not found."); 
+                throw new KeyNotFoundException($"Order with ID {orderId} not found or is deleted.");
 
-
+            // 1. Aplicar mapeo y auditoría (OK)
             updateOrderDto.MapToEntity(existing);
 
             existing.LastModifiedAt = DateTime.UtcNow;
-            existing.LastModifiedBy = currentUserId.ToString(); 
-                                                               
+            existing.LastModifiedBy = currentUserId.ToString();
 
-            await _orderRepository.UpdateAsync(existing);
+            // 2. Persistencia (OK)
+            var updatedEntity = await _orderRepository.UpdateAsync(existing); // Capturamos la entidad actualizada
             await _unitOfWork.SaveChangesAsync();
+
+            // 3. Mapeo de Retorno 
+            // Si OrderResponseDto solo usa campos escalares de Order (que es la forma más limpia):
+            return updatedEntity.ToResponseDto();
+
         }
 
         // ============================================================
-        // 10. Soft Delete
+        // 10. Soft Delete (Toggle)
         // ============================================================
-        public async Task<bool> SoftDeleteOrderAsync(Guid orderId, Guid currentUserId)
+        public async Task<OrderResponseDto?> SoftDeleteOrderAsync(Guid orderId, Guid currentUserId)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId);
+         
+            var order = await _orderRepository.SoftDeleteToggleAsync(orderId);
 
-            if (order == null || order.IsDeleted)
-                return false;
+            if (order == null)
+                return null; // No se encontró
 
-            order.Status = "Inactive";
-            order.DeletedAt = DateTime.UtcNow;
+            // 2. Aplicar Auditoría (Única lógica específica requerida en el Service)
             order.LastModifiedAt = DateTime.UtcNow;
+            order.LastModifiedBy = currentUserId.ToString();
 
-            await _orderRepository.UpdateAsync(order);
+           
+
+            // 3. Persistencia
+            // Usamos UpdateAsync para guardar los cambios de auditoría.
+            var updatedEntity = await _orderRepository.UpdateAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
-            return true;
+            // 4. Mapeo de Retorno
+            return updatedEntity.ToResponseDto();
         }
     }
 }

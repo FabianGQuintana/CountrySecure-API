@@ -63,7 +63,7 @@ namespace CountrySecure.Infrastructure.Repositories
         //     if (user == null) return false;
 
         //     user.DeletedAt = DateTime.UtcNow;
-        //     user.Status = "Inactive"; // soft delete
+        //     user.EntryPermissionState = "Inactive"; // soft delete
         //     user.Active = false;
         //     _context.Users.Update(user);
 

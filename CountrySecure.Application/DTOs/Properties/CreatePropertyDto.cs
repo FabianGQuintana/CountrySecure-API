@@ -4,14 +4,9 @@ namespace CountrySecure.Application.DTOs.Properties
 {
     public class CreatePropertyDto
     {
-        [Required]
-        [StringLength(150)]
         public required string Street { get; set; }
-
-        [Required]
-        public int PropertyNumber { get; set; }
-
-        [Required]
-        public Guid LotId { get; set; }
+        public required int PropertyNumber { get; set; }
+        public required Guid LotId { get; set; }
     }
+
 }

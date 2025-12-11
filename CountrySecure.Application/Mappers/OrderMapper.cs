@@ -16,6 +16,7 @@ namespace CountrySecure.Application.Mappers
         {
             return new OrderResponseDto
             {
+                Id = order.Id,
                 Description = order.Description,
                 SupplierName = order.SupplierName,
                 OrderType = order.OrderType,
@@ -68,7 +69,7 @@ namespace CountrySecure.Application.Mappers
                 existing.OrderType = dto.OrderType.Value;
             }
 
-            // Si querés permitir actualizar Status
+            // Si querés permitir actualizar EntryPermissionState
             if (!string.IsNullOrWhiteSpace(dto.Status))
             {
                 existing.Status = dto.Status;

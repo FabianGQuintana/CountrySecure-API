@@ -31,113 +31,136 @@ namespace CountrySecure.Application.Services.Properties
             // 1. Mapeo de DTO a Entidad
             var newPropertyEntity = newPropertyDto.ToEntity();
 
-            // Forzamos la asignación del LotId para asegurar que la FK se envíe correctamente.
-            newPropertyEntity.LotId = newPropertyDto.LotId;
-
+            // 2. Validar la existencia del Lote
+            // Asumo que GetByIdAsync del LotRepository obtiene la entidad si existe.
             var lotExists = await _lotRepository.GetByIdAsync(newPropertyDto.LotId);
 
-            if (lotExists == null || lotExists.IsDeleted) // Verifica que exista Y no esté eliminado
+            // CRÍTICO: Corrección de lógica para validar existencia/borrado.
+            if (lotExists == null || lotExists.IsDeleted)
             {
-                // Esto lanzará la excepción que tu controlador debe atrapar para devolver 404/400
                 throw new KeyNotFoundException($"El Lote con ID {newPropertyDto.LotId} no existe o está inactivo/eliminado.");
             }
 
-            // 2. CONFIGURACIÓN DE ESTADO INICIAL Y AUDITORÍA
+            // 3. Auditoría y Estado Inicial
             newPropertyEntity.CreatedBy = currentUserId.ToString();
-            newPropertyEntity.PropertyType = PropertyStatus.NewBrand;
-            newPropertyEntity.Status = "Active";
+            newPropertyEntity.PropertyStatus = PropertyStatus.NewBrand; // Estado funcional inicial
+            newPropertyEntity.Status = "Active"; // Estado de auditoría inicial
             newPropertyEntity.CreatedAt = DateTime.UtcNow;
             newPropertyEntity.LastModifiedAt = DateTime.UtcNow;
 
-            // 3. Persistencia
+            // 4. Persistencia (Guardar la entidad)
             var addedProperty = await _propertyRepository.AddAsync(newPropertyEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            return addedProperty.ToResponseDto();
+
+            var fullProperty = await _propertyRepository.GetByIdWithIncludesAsync(addedProperty.Id);
+
+            if (fullProperty == null)
+            {
+                // En caso de fallo raro post-inserción
+                throw new InvalidOperationException("La propiedad fue creada, pero no se pudo recuperar para el mapeo completo.");
+            }
+
+            // 6. Mapeo de la entidad completa (con Lot y User cargados)
+            return fullProperty.ToResponseDto();
         }
 
         public async Task<PropertyResponseDto?> UpdatePropertyAsync(Guid propertyId, UpdatePropertyDto updateProperty, Guid currentId)
         {
-            // 1. Validar la existencia: Usamos el ID de la propiedad que viene en el parámetro (de la URL)
-            var existingEntity = await _propertyRepository.GetByIdAsync(propertyId);
+            var existingEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
 
-            // Manejo de 404 Not Found (Devolver null al controlador)
             if (existingEntity == null)
-            {
                 return null;
-            }
 
-            // 2. REGLA DE NEGOCIO: Validar Autorización
-            // Solo el creador (o un rol superior, si lo implementas) puede modificar.
             if (existingEntity.CreatedBy != currentId.ToString())
+                throw new UnauthorizedAccessException("User is not authorized to update this property.");
+
+            // Validar lot
+            if (updateProperty.LotId.HasValue)
             {
-                // Lanza una excepción que será capturada por el controlador para devolver 403 Forbidden.
-                throw new UnauthorizedAccessException("User is not authorized to update this property. Only the creator may modify it.");
+                var lotExists = await _lotRepository.GetByIdAsync(updateProperty.LotId.Value);
+                if (lotExists == null || lotExists.IsDeleted)
+                    throw new KeyNotFoundException($"El Lote con ID {updateProperty.LotId.Value} no existe o está inactivo.");
             }
 
-            // 3. Mapeo y Aplicación de Cambios
-            // Aplica solo los campos no nulos del DTO a la entidad existente.
+            // Aplicar cambios
             updateProperty.MapToEntity(existingEntity);
 
-            // 4. Actualizar Auditoría
             existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = currentId.ToString(); // Registra quién realizó la modificación
+            existingEntity.LastModifiedBy = currentId.ToString();
 
-            // 5. Guardar Cambios
-            var updatedEntity = await _propertyRepository.UpdateAsync(existingEntity);
-            await _unitOfWork.SaveChangesAsync(); // Persiste la transacción
+            await _propertyRepository.UpdateAsync(existingEntity);
+            await _unitOfWork.SaveChangesAsync();
 
-            // 6. Mapeo de Salida y Retorno
-            // Devuelve el objeto actualizado al controlador.
+            var fullEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+
+            return fullEntity!.ToResponseDto();
+        }
+
+
+        // -------------------------------------------------------------------
+        // IMPLEMENTACIÓN ESTANDARIZADA DEL SOFT DELETE / TOGGLE
+        // -------------------------------------------------------------------
+
+        public async Task<PropertyResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId)
+        {
+            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
+            var property = await _propertyRepository.SoftDeleteToggleAsync(id); // Asumo que el repositorio hereda el método.
+
+            if (property == null)
+                return null; // No se encontró
+
+            // 2. Aplicar Auditoría:
+            // **ESTO ES CRUCIAL Y FALTABA EN LA VERSIÓN ANTERIOR**
+            property.LastModifiedAt = DateTime.UtcNow;
+            property.LastModifiedBy = currentUserId.ToString();
+
+            // 3. Lógica Específica del Enum (PropertyStatus)
+            if (property.Status == "Inactive")
+            {
+                 property.PropertyStatus = PropertyStatus.Inactive; 
+            }
+            else
+            {
+                // Si se acaba de reactivar, marcamos el estado funcional como Available/Initial.
+                property.PropertyStatus = PropertyStatus.Available;
+            }
+
+            // 4. Persistencia (Guardar los cambios de Auditoría y PropertyStatus)
+            var updatedEntity = await _propertyRepository.UpdateAsync(property);
+            await _unitOfWork.SaveChangesAsync();
+
+            // 5. Mapeo de Retorno
+            // Se asume que el DTO ya tiene la lógica para mapear correctamente BaseEntity.Status
             return updatedEntity.ToResponseDto();
         }
 
-        public async Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId)
-        {
-            var existingProperty = await _propertyRepository.GetByIdAsync(propertyId);
-            if (existingProperty == null)
-            {
-                return false;
-            }
 
-            // REGLA DE NEGOCIO: Solo el creador o un Admin pueden eliminar
-            if (existingProperty.CreatedBy != currentUserId.ToString())
-            {
-                throw new UnauthorizedAccessException("User is not authorized to delete this property.");
-            }
-
-            bool marked = await _propertyRepository.DeleteAsync(propertyId);
-
-            if (marked)
-            {
-                await _unitOfWork.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
-        }
 
         // --- MÉTODOS DE CONSULTA ---
 
         public async Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId)
         {
-            var propertyEntity = await _propertyRepository.GetByIdAsync(propertyId);
-            if (propertyEntity == null) return null;
+            var propertyEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+
+            if (propertyEntity == null)
+                return null;
 
             return propertyEntity.ToResponseDto();
         }
+
 
         public async Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize)
         {
             var propertyEntities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
 
+            // OPTIONAL: If you want navigation props load includes one by one (costly)
             return propertyEntities.ToResponseDto();
         }
 
         public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
         {
             var propertyEntities = await _propertyRepository.GetPropertiesByStatusAsync(status, pageNumber, pageSize);
-
             return propertyEntities.ToResponseDto();
         }
 

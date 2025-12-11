@@ -23,7 +23,7 @@ namespace CountrySecure.API.Controllers
         // --- MÉTODOS DE CONSULTA (GET) ---
 
         [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var lotsDto = await _lotService.GetAllLotsAsync(pageNumber, pageSize);
             return Ok(lotsDto);
@@ -48,14 +48,11 @@ namespace CountrySecure.API.Controllers
         }
 
         [HttpGet("status")]
-        public async Task<IActionResult> GetLotsByStatus([FromQuery] LotStatus status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetLotsByStatus([FromQuery] LotStatus status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
             var lotsDto = await _lotService.GetLotsByStatusAsync(status, pageNumber, pageSize);
-            // La verificación de null es innecesaria si el servicio devuelve una lista vacía, pero la mantendremos si la interfaz lo requiere.
-            if (lotsDto == null)
-            {
-                return NotFound();
-            }
+
+          
             return Ok(lotsDto);
         }
 
@@ -82,10 +79,10 @@ namespace CountrySecure.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = lotDto.LotId }, lotDto);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> put(Guid id, [FromBody] UpdateLotDto updatedto) // 1. Usar 'id' de la ruta
+        [HttpPut("{id:guid}")] // Añadir restricción :guid
+        public async Task<IActionResult> put(Guid id, [FromBody] UpdateLotDto updatedto)
         {
-            // 2. Extracción y validación del ID del usuario del token (Patrón 'EntryPermissionsController')
+            // 1. Extracción y validación del ID del usuario del token
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
             {
@@ -99,15 +96,16 @@ namespace CountrySecure.API.Controllers
 
             try
             {
-                // 3. Llamada al servicio con los 3 argumentos: DTO, ID del Lote (de la URL) e ID del Usuario
-                await _lotService.UpdateAsync(updatedto, id, currentUserId);
+               
+                var updatedLotDto = await _lotService.UpdateAsync(updatedto, id, currentUserId);
 
-                // Si el servicio no devuelve un objeto, 204 No Content es la respuesta estándar para PUT/DELETE exitosos.
-                return NoContent();
+               
+                return Ok(updatedLotDto);
             }
-            catch (KeyNotFoundException)
+            catch (KeyNotFoundException ex)
             {
-                return NotFound($"Lote con ID {id} no encontrado.");
+                // El servicio ahora lanza la excepción si no encuentra el Lote.
+                return NotFound(ex.Message);
             }
             catch (UnauthorizedAccessException)
             {
@@ -115,14 +113,13 @@ namespace CountrySecure.API.Controllers
             }
             catch (Exception)
             {
-                // Manejo de error genérico (ej. problemas de base de datos)
                 return StatusCode(500, "Ocurrió un error interno al actualizar el lote.");
             }
         }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> SoftDelete(Guid id)
+        [HttpPatch("{id:guid}/SoftDelete")] 
+        public async Task<IActionResult> SoftDeleteToggle(Guid id)
         {
+            
             var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
             {
@@ -131,22 +128,31 @@ namespace CountrySecure.API.Controllers
 
             try
             {
-                bool deleted = await _lotService.SoftDeleteLotAsync(id, currentUserId);
+                
+                var updatedLotDto = await _lotService.SoftDeleteToggleAsync(id, currentUserId);
 
-                if (!deleted)
+                if (updatedLotDto == null)
                 {
-                    return NotFound();
+                   
+                    return NotFound(new { message = $"Lot with ID {id} not found." });
                 }
-                return NoContent();
+
+              
+                var action = updatedLotDto.Status == "Active" ? "reactivated" : "deactivated"; 
+
+                return Ok(new
+                {
+                    Message = $"The Lot with ID {id} has been {action} successfully.",
+                    Lot = updatedLotDto 
+                });
             }
-            catch (UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                return Forbid();
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "An error occurred during deletion.");
+                return StatusCode(500, new { message = "An internal error occurred while updating the lot status.", detail = ex.Message });
             }
         }
+
+
+
     }
 }

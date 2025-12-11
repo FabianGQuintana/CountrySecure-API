@@ -31,7 +31,7 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid entryPermissionId,Guid currentUserId);
 
         //Eliminación lógica de permiso de entrada
-        Task<bool> SoftDeleteEntryPermissionAsync(Guid entryPermissionId);
+        Task<EntryPermissionResponseDto?> SoftDeleteEntryPermissionAsync(Guid entryPermissionId, Guid currentUserId);
 
         //Obtención de permisos por tipo de permiso.
         Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByTypeAsync(PermissionType permissionType, int pageNumber, int pageSize);
@@ -41,5 +41,7 @@ namespace CountrySecure.Application.Interfaces.Services
 
         // Manejo de QRCode.
         Task<GateCheckResponseDto> ValidateQrCodeAsync(string qrCodeValue);
+
+
     }
 }

@@ -54,7 +54,7 @@ namespace CountrySecure.Application.Services
         {
             var amenity = await _amenityRepository.GetByIdAsync(id);
 
-            if (amenity == null || amenity.IsDeleted)
+            if (amenity == null)
             {
                 return null; // Devuelve null si no se encuentra (para el 404 del Controller)
             }
@@ -72,34 +72,32 @@ namespace CountrySecure.Application.Services
             return amenity.ToResponseDto();
         }
 
-        // COINCIDENCIA DE FIRMA CON LA INTERFAZ: Se corrige para que reciba currentUserId
-        public async Task<bool> DeleteAmenityAsync(Guid id, Guid currentUserId)
+
+
+        // -------------------------------------------------------------------
+        // IMPLEMENTACIÓN ESTANDARIZADA DEL SOFT DELETE / TOGGLE
+        // -------------------------------------------------------------------
+        public async Task<AmenityResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId)
         {
-            var amenity = await _amenityRepository.GetByIdAsync(id);
+            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
+            var amenity = await _amenityRepository.SoftDeleteToggleAsync(id);
 
             if (amenity == null)
-            {
-                throw new KeyNotFoundException($"Amenity with Id '{id}' not found");
-            }
+                return null; // No se encontró
 
-            if (amenity.IsDeleted)
-            {
-                return true;
-            }
-
-            // Aplicar Baja Lógica
-            amenity.DeletedAt = DateTime.UtcNow;
-            amenity.Status = "Deleted";
-
-            // Auditoría de la baja
+            // 2. Aplicar Auditoría:
             amenity.LastModifiedBy = currentUserId.ToString();
             amenity.LastModifiedAt = DateTime.UtcNow;
 
-            await _amenityRepository.UpdateAsync(amenity);
+            // 4. Persistencia (Guardar los cambios de Auditoría)
+            var updatedEntity = await _amenityRepository.UpdateAsync(amenity);
             await _unitOfWork.SaveChangesAsync();
 
-            return true;
+            // 5. Mapeo de Retorno
+            return updatedEntity.ToResponseDto();
         }
+
+
 
         // --- MÉTODOS DE LECTURA ---
 

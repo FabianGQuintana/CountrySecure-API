@@ -9,7 +9,7 @@ namespace CountrySecure.Application.Interfaces.Services
     {
 
 
-        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto,Guid currentUserId);
+        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto, Guid currentUserId);
 
         Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId);
 
@@ -19,11 +19,10 @@ namespace CountrySecure.Application.Interfaces.Services
 
         Task<PropertyResponseDto?> UpdatePropertyAsync(Guid propertyId, UpdatePropertyDto updateProperty, Guid currentId);
 
-        Task<bool> SoftDeletePropertyAsync(Guid propertyId, Guid currentUserId);
-
+        
         Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize);
 
-        Task <IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize);
-        
+        Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize);
+        Task<PropertyResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId);
     }
 }

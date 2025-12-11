@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using CountrySecure.Domain.Entities;
+using System.ComponentModel.DataAnnotations;
 
 namespace CountrySecure.Application.DTOs.Amenities
 {
@@ -20,7 +21,5 @@ namespace CountrySecure.Application.DTOs.Amenities
         [Range(1, 100)] 
         public int Capacity { get; set; }
 
-        // [Required]
-        // public ICollection<TurnDto> Turns { get; set; } = new List<TurnDto>();
     }
 }

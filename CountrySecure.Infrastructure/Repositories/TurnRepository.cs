@@ -37,14 +37,33 @@ namespace CountrySecure.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        // public async Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status)
-        // {
-        //     return await _dbContext.Turns
-        //         .Where(t => t.Status == status)
-        //         .ToListAsync();
-        // }
+        public async Task<IEnumerable<Turn>> GetTurnsByStatus(TurnStatus status)
+        {
+            return await _dbContext.Turns
+                .Where(t => t.TurnStatus == status)
+                .ToListAsync();
+        }
 
-       
+
+        public async Task<Turn?> GetByIdWithIncludesAsync(Guid id)
+        {
+            return await _dbContext.Turns
+                .Include(t => t.User)     // Para Resident/Owner
+                .Include(t => t.Amenity)  // Para la Amenity
+                .FirstOrDefaultAsync(t => t.Id == id);
+        }
+
+
+        public async Task<IEnumerable<Turn>> GetAllWithIncludesAsync(int pageNumber, int pageSize)
+        {
+            return await _dbContext.Set<Turn>()
+                .Include(t => t.User)     // Carga la relación con User
+                .Include(t => t.Amenity)  // Carga la relación con Amenity
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
 
     }
 }

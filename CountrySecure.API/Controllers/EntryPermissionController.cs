@@ -117,32 +117,45 @@ namespace CountrySecure.API.Controllers
         }
 
         // -------------------------------------------------------------------
-        // DELETE: Eliminación Lógica (204 No Content / 404 Not Found)
+        // DELETE: Eliminación Lógica 
         // -------------------------------------------------------------------
 
-        [HttpDelete("{entryPermissionId}")]
-        public async Task<IActionResult> Delete(Guid entryPermissionId)
+        [HttpPatch("{id:guid}/SoftDelete")]
+        public async Task<IActionResult> SoftDelete(Guid id)
         {
+        // 1. Obtener el ID del usuario actual
+            Guid? currentUserId = GetCurrentUserId();
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             try
             {
-                // NOTA: Para implementar la lógica de "Solo el creador puede borrar",
-                // la firma del servicio SoftDeleteEntryPermissionAsync también debería recibir el currentUserId.
-                var deleted = await _entryPermissionService.SoftDeleteEntryPermissionAsync(entryPermissionId);
+                // 2. Llamada al servicio que ahora devuelve el DTO o null
+                var updatedPermissionDto = await _entryPermissionService.SoftDeleteEntryPermissionAsync(id, currentUserId.Value);
 
-                if (!deleted)
+                if (updatedPermissionDto == null)
                 {
-                    return NotFound($"EntryPermission with ID {entryPermissionId} not found.");
+                    return NotFound($"Permiso de Entrada con ID {id} no encontrado."); // 404 Not Found
                 }
 
-                return NoContent(); // 204 No Content
+                // 3. Retorno de éxito (200 OK y el DTO actualizado)
+                var action = updatedPermissionDto.BaseEntityStatus == "Active" ? "reactivado" : "desactivado";
+
+                return Ok(new
+                {
+                    Message = $"El Permiso de Entrada con ID {id} ha sido {action} exitosamente.",
+                    Permission = updatedPermissionDto // Devuelve el DTO completo y actualizado
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
-                return StatusCode(403, ex.Message); // 403 Forbidden
+                return Forbid(ex.Message); // 403 Forbidden
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                return StatusCode(500, "Ocurrió un error inesperado durante el cambio de estado del Permiso de Entrada.");
             }
         }
 

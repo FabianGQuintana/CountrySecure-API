@@ -24,7 +24,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
-        [Authorize(Roles = "Admin")]
+       //[Authorize(Roles = "Admin")]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)
         {
@@ -110,7 +110,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
-        // [Authorize]
+         [Authorize]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUserById(Guid id)
         {

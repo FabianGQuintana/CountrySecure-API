@@ -6,6 +6,8 @@ namespace CountrySecure.Application.DTOs.EntryPermission
     public class GateCheckResponseDto
     {
         public Guid PermissionId { get; set; }
+        public DateTime? EntryTime { get; set; }
+        public DateTime? DepartureTime { get; set; }
 
         // 1. Datos del Visitante (Para corroborar la identificación)
         public required string VisitorFullName { get; set; }

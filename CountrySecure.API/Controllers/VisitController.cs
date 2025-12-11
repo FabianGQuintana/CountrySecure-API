@@ -24,15 +24,31 @@ namespace CountrySecure.API.Controllers
         [HttpPost]
         public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
         {
-            var userId = GetCurrentUserId();
+            try
+            {
+                var userId = GetCurrentUserId();
 
-            var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, userId);
+                var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, userId);
 
-            return CreatedAtAction(nameof(GetVisitById),
-                new { visitId = createdVisit.VisitId },
-                createdVisit);
+                return CreatedAtAction(nameof(GetVisitById),
+                    new { visitId = createdVisit.VisitId },
+                    createdVisit);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized(new { message = "User not authenticated." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Unexpected error while creating the visit.",
+                    detail = ex.Message
+                });
+            }
         }
-        
+
+
         //  GET BY ID
         [HttpGet("{visitId:guid}")]
         public async Task<IActionResult> GetVisitById(Guid visitId)
@@ -60,62 +76,77 @@ namespace CountrySecure.API.Controllers
             return Ok(visits);
         }
 
-      // // GET VISIT + PERMITS
-      //// Obtiene la visita completa(sus datos) junto con todos sus permisos asociados.
+        // // GET VISIT + PERMITS
+        //// Obtiene la visita completa(sus datos) junto con todos sus permisos asociados.
 
-      // [HttpGet("{visitId:guid}/with-permits")]
-      //   public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
-      //  {
-      //      var visit = await _visitService.GetVisitWithPermitsAsync(visitId);
+        [HttpGet("{visitId:guid}/with-permits")]
+           public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
+          {
+              var visit = await _visitService.GetVisitWithPermitsAsync(visitId);
 
-      //      if (visit == null) return NotFound("Visit not found");
+              if (visit == null) return NotFound("Visit not found");
 
-      //      return Ok(visit);
-      //  }
-
-      //  GET PERMITS BY VISIT ID
-      // Cuando necesitás ver toda la información de la visita y sus permisos en una sola llamada.
-
-      // [HttpGet("{visitId:guid}/permits")]
-      //   public async Task<IActionResult> GetPermitsByVisitId(Guid visitId)
-      //  {
-      //      var permits = await _visitService.GetPermitsByVisitIdAsync(visitId);
-      //      return Ok(permits);
-      //  }
+              return Ok(visit);
+          }
 
 
-      //  GET VALID PERMIT
-      // Devuelve todos los permisos asociados a esa visita, solo los permisos, sin los datos de la visita.
+        //  GET VALID PERMIT
+        // Devuelve todos los permisos validos asociados a esa visita, solo los permisos, sin los datos de la visita.
 
-      // [HttpGet("{visitId:guid}/permits/valid")]
-      //   public async Task<IActionResult> GetValidPermit(Guid visitId)
-      //  {
-      //      var permit = await _visitService.GetValidPermitByVisitIdAsync(visitId);
-
-      //      if (permit == null) return NotFound("No valid permit found");
-
-      //      return Ok(permit);
-      //  }
-
-
-        //  UPDATE
-        [HttpPut]
-        public async Task<IActionResult> UpdateVisit(UpdateVisitDto updateVisitDto)
+        [HttpGet("{visitId:guid}/permits/valid")]
+        public async Task<IActionResult> GetValidPermits(Guid visitId)
         {
-            await _visitService.UpdateVisitAsync(updateVisitDto);
-            return NoContent();
+            var permits = await _visitService.GetValidPermitsByVisitIdAsync(visitId);
+
+            
+
+            return Ok(permits);
         }
 
-        //  SOFT DELETE
-        // eliminacion logica
-        [HttpDelete("{visitId:guid}")]
-        public async Task<IActionResult> SoftDeleteVisit(Guid visitId)
+        
+
+        //  UPDATE
+        [HttpPut("{visitId:guid}")]
+        public async Task<IActionResult> UpdateVisit(Guid visitId, [FromBody] UpdateVisitDto updateVisitDto)
         {
-            var result = await _visitService.SoftDeleteVisitAsync(visitId);
+            
+            var updatedVisit = await _visitService.UpdateVisitAsync(visitId, updateVisitDto);
+            return Ok(updatedVisit);
 
-            if (!result) return NotFound("Visit not found");
+        }
 
-            return NoContent();
+        [HttpPatch("{visitId:guid}/SoftDelete")] 
+        public async Task<IActionResult> SoftDeleteToggle(Guid visitId)
+        {
+            try
+            {
+
+                var currentUserId = GetCurrentUserId();
+
+              
+                var updatedVisitDto = await _visitService.SoftDeleteToggleAsync(visitId, currentUserId);
+
+                if (updatedVisitDto == null)
+                {
+                    return NotFound(new { message = $"Visit with ID {visitId} not found." });
+                }
+
+                var action = updatedVisitDto.VisitStatus == "Active" ? "reactivated" : "deactivated";
+
+                return Ok(new
+                {
+                    Message = $"The Visit with ID {visitId} has been {action} successfully.",
+                    Visit = updatedVisitDto
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Unexpected error while changing visit status.", detail = ex.Message });
+            }
         }
 
         // VIEW ALL

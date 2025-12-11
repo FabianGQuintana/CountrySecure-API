@@ -48,30 +48,43 @@ namespace CountrySecure.Infrastructure.Repositories
             return Task.FromResult(entity);
         }
 
-        public virtual async Task<bool> DeleteAsync(Guid id)
+        public virtual async Task<T?> SoftDeleteToggleAsync(Guid id)
         {
             // 1. Encontrar la entidad (usando T)
-            var entityToDelete = await _dbContext.Set<T>().FindAsync(id);
+            var entityToToggle = await _dbContext.Set<T>().FindAsync(id);
 
-            if (entityToDelete == null)
+            if (entityToToggle == null)
             {
-                return false;
+                return null;
             }
 
-            
-            if (entityToDelete is BaseEntity baseEntity)
+            // 2. Verificar que sea una BaseEntity (para poder acceder a EntryPermissionState y DeletedAt)
+            if (entityToToggle is BaseEntity baseEntity)
             {
-                baseEntity.Status = "Inactive";
+                if (baseEntity.IsDeleted) // Equivalente a: baseEntity.DeletedAt.HasValue
+                {
+                    // Caso: Inactivo → Activo (Reactivar)
+                    baseEntity.DeletedAt = null;
+                    baseEntity.Status = "Active";
+                }
+                else
+                {
+                    // Caso: Activo → Inactivo (Baja Lógica)
+                    baseEntity.DeletedAt = DateTime.UtcNow;
+                    baseEntity.Status = "Inactive";
+                }
 
-                // Marcar el estado de la entidad en el DbContext para que EF Core la rastree como UPDATE
-                _dbContext.Entry(baseEntity).State = EntityState.Modified;
+                // Auditoría
+                baseEntity.UpdatedAt = DateTime.UtcNow;
+               
+                _dbContext.Set<T>().Update(entityToToggle);
 
                 // El SaveChanges lo hará la Unidad de Trabajo
-                return true;
+                return entityToToggle;
             }
 
-            // Si la entidad no es una BaseEntity (no debería pasar si se sigue la arquitectura)
-            return false;
+            // Si la entidad no es una BaseEntity, no se puede realizar el Soft Delete/Toggle
+            return null;
         }
 
     }

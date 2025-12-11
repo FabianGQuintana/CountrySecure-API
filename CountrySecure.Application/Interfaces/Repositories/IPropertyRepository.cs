@@ -15,4 +15,6 @@ public interface IPropertyRepository : IGenericRepository<Property>
 
     Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status,int pageNumber,int pageSize);
 
+    Task<Property?> GetByIdWithIncludesAsync(Guid id);
+    Task<Property?> SoftDeleteAsync(Guid id);
 }

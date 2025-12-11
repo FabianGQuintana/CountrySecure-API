@@ -17,5 +17,6 @@ namespace CountrySecure.Application.Interfaces.Repositories
         Task<IEnumerable<string>> GetDistinctBlockNamesAsync();
 
         Task<IEnumerable<Lot>> GetLotsByStatusAsync(Domain.Enums.LotStatus status, int pageNumber, int pageSize);
+        Task<Lot?> SoftDeleteLotAsync(Guid lotId);
     }
 }

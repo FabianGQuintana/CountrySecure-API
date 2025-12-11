@@ -74,34 +74,45 @@ namespace CountrySecure.Application.Mappers
                 StartTime = dto.StartTime,
                 EndTime = dto.EndTime,
 
-                // Nota: UserId, CreatedBy, CreatedAt y Status serán asignados en el servicio
-                // (UserId viene del token, Status se asigna a TurnStatus.Pending)
+                // Nota: UserId, CreatedBy, CreatedAt y EntryPermissionState serán asignados en el servicio
+                // (UserId viene del token, EntryPermissionState se asigna a TurnStatus.Pending)
             };
         }
 
-        // -------------------------------------------------------------------
-        // Mapeo de ACTUALIZACIÓN (Actualización: Update DTO -> Entidad Existente)
-        // -------------------------------------------------------------------
+        //-------------------------------------------------------------------
+        //Mapeo de ACTUALIZACIÓN(Actualización: Update DTO -> Entidad Existente)
+        //-------------------------------------------------------------------
 
-        // public static void MapToEntity(this UpdateTurnDto dto, Turn existingEntity)
-        // {
-        //     // Solo actualiza si el valor del DTO no es null
+        public static void MapToEntity(this UpdateTurnDto dto, Turn existingEntity)
+        {
+            // Actualización de Tiempos
+            if (dto.StartTime.HasValue)
+            {
+                existingEntity.StartTime = dto.StartTime.Value;
+            }
 
-        //     // Actualización de DateTime (usamos .HasValue si fueran nulleables)
-        //     if (dto.StartTime.HasValue)
-        //     {
-        //         existingEntity.StartTime = dto.StartTime.Value;
-        //     }
-        //     if (dto.EndTime.HasValue)
-        //     {
-        //         existingEntity.EndTime = dto.EndTime.Value;
-        //     }
+            if (dto.EndTime.HasValue)
+            {
+                existingEntity.EndTime = dto.EndTime.Value;
+            }
 
-        //     // Actualización del Status (Mapeo de String a Enum)
-        //     if (!string.IsNullOrEmpty(dto.Status) && Enum.TryParse<TurnStatus>(dto.Status, true, out var newStatus))
-        //     {
-        //         existingEntity.Status = newStatus;
-        //     }
-        // }
+            // Actualización del Estado Funcional
+            if (dto.TurnStatus.HasValue)
+            {
+                existingEntity.TurnStatus = dto.TurnStatus.Value;
+            }
+
+            // Actualización de FKs (Ahora que existen en el DTO)
+            if (dto.AmenityId.HasValue)
+            {
+                existingEntity.AmenityId = dto.AmenityId.Value;
+            }
+            if (dto.UserId.HasValue)
+            {
+                existingEntity.UserId = dto.UserId.Value;
+            }
+
+
+        }
     }
 }

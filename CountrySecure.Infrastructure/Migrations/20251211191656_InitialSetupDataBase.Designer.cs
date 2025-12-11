@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CountrySecure.Infrastructure.Migrations
 {
     [DbContext(typeof(CountrySecureDbContext))]
-    [Migration("20251207235947_AddRefreshTokenToUser")]
-    partial class AddRefreshTokenToUser
+    [Migration("20251211191656_InitialSetupDataBase")]
+    partial class InitialSetupDataBase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -93,13 +93,18 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("DepartureTime")
+                    b.Property<DateTime?>("DepartureTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("EntryPermissionState")
+                        .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateTime>("EntryTime")
+                    b.Property<DateTime?>("EntryTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -111,20 +116,26 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<Guid?>("OrderId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("PermissionType")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("QrCodeValue")
+                    b.Property<string>("PermissionType")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<string>("QrCodeValue")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UserId1")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("ValidFrom")
@@ -138,6 +149,8 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("UserId1");
 
                     b.HasIndex("VisitId");
 
@@ -174,6 +187,11 @@ namespace CountrySecure.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LotState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -258,9 +276,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("IdLot")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -273,8 +288,9 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<int>("PropertyNumber")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PropertyType")
-                        .HasColumnType("integer");
+                    b.Property<string>("PropertyStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -288,12 +304,12 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IdLot");
+                    b.HasIndex("LotId");
 
                     b.HasIndex("UserId");
 
@@ -309,6 +325,16 @@ namespace CountrySecure.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("Expires")
                         .HasColumnType("timestamp with time zone");
 
@@ -318,9 +344,22 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<bool>("IsUsed")
                         .HasColumnType("boolean");
 
+                    b.Property<DateTime?>("LastModifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Token")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -370,8 +409,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<int>("RequestStatus")
-                        .HasColumnType("integer");
+                    b.Property<string>("RequestStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -396,9 +436,6 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("AmenityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("AmenityId1")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
@@ -439,8 +476,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AmenityId");
-
-                    b.HasIndex("AmenityId1");
 
                     b.HasIndex("UserId");
 
@@ -498,12 +533,6 @@ namespace CountrySecure.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)");
-
-                    b.Property<string>("RefreshToken")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("RefreshTokenExpiration")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Role")
                         .IsRequired()
@@ -585,10 +614,14 @@ namespace CountrySecure.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
-                        .WithMany("EntryPermissions")
+                        .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("CountrySecure.Domain.Entities.User", null)
+                        .WithMany("EntryPermissions")
+                        .HasForeignKey("UserId1");
 
                     b.HasOne("Visit", "Visit")
                         .WithMany("EntryPermissions")
@@ -607,15 +640,14 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     b.HasOne("CountrySecure.Domain.Entities.Lot", "Lot")
                         .WithMany("Properties")
-                        .HasForeignKey("IdLot")
+                        .HasForeignKey("LotId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("Properties")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Lot");
 
@@ -625,7 +657,7 @@ namespace CountrySecure.Infrastructure.Migrations
             modelBuilder.Entity("CountrySecure.Domain.Entities.RefreshToken", b =>
                 {
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
-                        .WithMany()
+                        .WithMany("RefreshTokens")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -635,39 +667,35 @@ namespace CountrySecure.Infrastructure.Migrations
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.Request", b =>
                 {
-                    b.HasOne("CountrySecure.Domain.Entities.Order", "OrderRequest")
+                    b.HasOne("CountrySecure.Domain.Entities.Order", "Order")
                         .WithMany("Requests")
                         .HasForeignKey("IdOrder")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("CountrySecure.Domain.Entities.User", "UserRequest")
+                    b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("IdUser")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("OrderRequest");
+                    b.Navigation("Order");
 
-                    b.Navigation("UserRequest");
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.Turn", b =>
                 {
-                    b.HasOne("CountrySecure.Domain.Entities.Amenity", null)
+                    b.HasOne("CountrySecure.Domain.Entities.Amenity", "Amenity")
                         .WithMany("Turns")
                         .HasForeignKey("AmenityId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("CountrySecure.Domain.Entities.Amenity", "Amenity")
-                        .WithMany()
-                        .HasForeignKey("AmenityId1");
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany("Turns")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Amenity");
@@ -697,6 +725,8 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Navigation("EntryPermissions");
 
                     b.Navigation("Properties");
+
+                    b.Navigation("RefreshTokens");
 
                     b.Navigation("Turns");
                 });

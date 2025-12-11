@@ -8,7 +8,8 @@ namespace CountrySecure.Domain.Enums;
 
 public enum PermissionStatus
 {
+    Cancelled = 0,
     Pending = 1,
     Completed = 2,
-    Expirado = 3
+    Expired = 3
 }

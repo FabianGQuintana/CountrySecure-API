@@ -18,7 +18,7 @@ namespace CountrySecure.Application.Mappers
                 LotName = lot.LotName,
                 BlockName = lot.BlockName,
                 LotState = lot.LotState,
-                // Status en la Entidad (BaseEntity) es string ("Active", "Inactive").
+                // EntryPermissionState en la Entidad (BaseEntity) es string ("Active", "Inactive").
                 Status = lot.Status,
 
                 CreatedAt = lot.CreatedAt,
@@ -46,14 +46,15 @@ namespace CountrySecure.Application.Mappers
         // 4. Mapeo de Actualización (Actualización Parcial PUT/PATCH)
         public static void MapToEntity(this UpdateLotDto dto, Lot existingEntity)
         {
-            // Solo sobrescribe si el valor del DTO NO es nulo
+            // Solo sobrescribe si el valor del DTO NO es nulo o vacío (Patrón ?? para strings)
             existingEntity.LotName = dto.LotName ?? existingEntity.LotName;
             existingEntity.BlockName = dto.BlockName ?? existingEntity.BlockName;
 
             // Los campos de enum deben manejarse con cuidado (asumiendo que LotStatus es nullable en el DTO)
             if (dto.Status.HasValue)
             {
-                existingEntity.Status = dto.Status.ToString()!; // Convertir el Enum a string para la DB
+              
+                existingEntity.LotState = dto.Status.Value;
             }
         }
     }

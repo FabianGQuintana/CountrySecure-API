@@ -107,20 +107,17 @@ namespace CountrySecure.API.Controllers
 
             try
             {
-                // Llama al servicio, pasando el ID de la URL y el ID del usuario
                 var result = await _amenityService.AmenityUpdateAsync(id, updateDto, currentUserId.Value);
 
                 if (result == null)
                 {
-                    // El servicio devuelve null si la Amenity no se encontró o está eliminada (404)
                     return NotFound($"Amenity with Id '{id}' not found.");
                 }
 
-                return NoContent(); // 204 No Content (Actualización exitosa sin necesidad de devolver el objeto)
+                return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
-                // Captura el error si el recurso a actualizar no existe
                 return NotFound(ex.Message);
             }
             catch (Exception ex)
@@ -129,38 +126,45 @@ namespace CountrySecure.API.Controllers
             }
         }
 
+
         // -------------------------------------------------------------------
-        // DELETE: Eliminación Lógica (204 No Content / 404 Not Found)
+        // PATCH: Toggle (Activación/Desactivación Lógica) (200 OK / 404 Not Found)
         // -------------------------------------------------------------------
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(Guid id)
+        [HttpPatch("{id:guid}/SoftDelete")] // Endpoint estandarizado
+        public async Task<IActionResult> SoftDeleteToggle(Guid id) // Nombre estandarizado
         {
+            // 1. Extraer ID del usuario
             var currentUserId = GetCurrentUserId();
             if (!currentUserId.HasValue)
             {
-                return Unauthorized();
+                return Unauthorized(); // 401 Unauthorized
             }
 
             try
             {
-                // Llama al servicio, pasando el ID para la auditoría
-                var deleted = await _amenityService.DeleteAmenityAsync(id, currentUserId.Value);
+                // 2. Llama al servicio estandarizado
+                var updatedAmenityDto = await _amenityService.SoftDeleteToggleAsync(id, currentUserId.Value);
 
-                if (!deleted)
+                if (updatedAmenityDto == null)
                 {
-                    // Si el servicio devuelve 'false' (aunque el servicio lanza KeyNotFoundException)
-                    return NotFound($"Amenity with Id '{id}' not found.");
+                    return NotFound($"Amenity con Id '{id}' no encontrado."); // 404 Not Found
                 }
 
-                return NoContent(); // 204 No Content
-            }
-            catch (KeyNotFoundException ex)
-            {
-                // Captura la excepción de 'no encontrado' que lanza el servicio
-                return NotFound(ex.Message);
+                // 3. Retorno de éxito (200 OK y el DTO actualizado)
+                // Usamos la propiedad Status de la BaseEntity (string)
+                var action = updatedAmenityDto.Status == "Active" ? "reactivado" : "desactivado";
+
+                return Ok(new
+                {
+                    Message = $"La Amenity con ID {id} ha sido {action} exitosamente.",
+                    Amenity = updatedAmenityDto // Devuelve el DTO completo y actualizado
+                });
+
             }
             catch (Exception ex)
             {
+                // Se deja manejo genérico, asumiendo que el servicio ya maneja Not Found (devolviendo null)
+                // y que no lanza UnauthorizedAccessException.
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
