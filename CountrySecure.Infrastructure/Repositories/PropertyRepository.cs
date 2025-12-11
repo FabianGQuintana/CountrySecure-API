@@ -69,7 +69,7 @@ public class PropertyRepository : GenericRepository<Property>, IPropertyReposito
     public async Task<IEnumerable<Property>> GetAllAsync(int pageNumber, int pageSize)
     {
         return await _dbContext.Properties
-            .Include(p => p.Lot) // <---- ESTO ES LO QUE FALTABA
+            .Include(p => p.Lot)
             .Include(p => p.User)
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)

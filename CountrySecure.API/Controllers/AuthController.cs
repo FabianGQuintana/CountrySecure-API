@@ -24,7 +24,7 @@ namespace CountrySecure.API.Controllers
         }
 
 
-       [Authorize(Roles = "Admin")]
+       //[Authorize(Roles = "Admin")]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)
         {

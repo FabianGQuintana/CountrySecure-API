@@ -19,7 +19,7 @@ public class PropertyConfiguration : IEntityTypeConfiguration<Property>
               builder.Property(p => p.PropertyNumber)
                      .IsRequired();
 
-              builder.Property(p => p.Status)
+              builder.Property(p => p.PropertyStatus)
                   .HasConversion<string>() // <- Instruye a EF Core a guardar el Enum como string ("Occupied", "NewBrand")
                   .IsRequired();
 

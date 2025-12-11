@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class MigracionConCorrecciones : Migration
+    public partial class InitialSetupDataBase : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -129,7 +129,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Street = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
                     PropertyNumber = table.Column<int>(type: "integer", nullable: false),
-                    PropertyStatus = table.Column<int>(type: "integer", nullable: false),
+                    PropertyStatus = table.Column<string>(type: "text", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: true),
                     LotId = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
@@ -193,7 +193,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Details = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     Location = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: false),
-                    RequestStatus = table.Column<int>(type: "integer", nullable: false),
+                    RequestStatus = table.Column<string>(type: "text", nullable: false),
                     IdUser = table.Column<Guid>(type: "uuid", nullable: false),
                     IdOrder = table.Column<Guid>(type: "uuid", nullable: false),
                     Status = table.Column<string>(type: "text", nullable: false),
@@ -261,16 +261,17 @@ namespace CountrySecure.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    QrCodeValue = table.Column<string>(type: "text", nullable: false),
-                    PermissionType = table.Column<int>(type: "integer", nullable: false),
-                    EntryPermissionState = table.Column<int>(type: "integer", nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true),
+                    QrCodeValue = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    PermissionType = table.Column<string>(type: "text", nullable: false),
+                    EntryPermissionState = table.Column<string>(type: "text", nullable: false),
+                    Description = table.Column<string>(type: "character varying(300)", maxLength: 300, nullable: true),
                     ValidFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EntryTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    DepartureTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EntryTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DepartureTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     VisitId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     OrderId = table.Column<Guid>(type: "uuid", nullable: true),
+                    UserId1 = table.Column<Guid>(type: "uuid", nullable: true),
                     Status = table.Column<string>(type: "text", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DeletedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
@@ -295,6 +296,11 @@ namespace CountrySecure.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "FK_EntryPermissions_Users_UserId1",
+                        column: x => x.UserId1,
+                        principalTable: "Users",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_EntryPermissions_Visits_VisitId",
                         column: x => x.VisitId,
                         principalTable: "Visits",
@@ -311,6 +317,11 @@ namespace CountrySecure.Infrastructure.Migrations
                 name: "IX_EntryPermissions_UserId",
                 table: "EntryPermissions",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EntryPermissions_UserId1",
+                table: "EntryPermissions",
+                column: "UserId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EntryPermissions_VisitId",

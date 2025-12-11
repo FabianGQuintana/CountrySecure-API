@@ -11,6 +11,7 @@ namespace CountrySecure.Application.DTOs.Request;
 
 public class RequestResponseDto
 {
+    public required Guid Id { get; set; }
     public  required string Details { get; set; }
     public  required string Location { get; set; }  
     public RequestStatus Status { get; set; }

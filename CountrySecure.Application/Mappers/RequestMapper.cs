@@ -15,6 +15,7 @@ namespace CountrySecure.Application.Mappers
             return new RequestResponseDto
             {
                 // Propiedades de datos
+                Id = request.Id,
                 Details = request.Details,
                 Location = request.Location,
 

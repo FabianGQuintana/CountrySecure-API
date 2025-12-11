@@ -1,4 +1,5 @@
 ﻿using CountrySecure.Application.DTOs.Turns;
+using CountrySecure.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +23,9 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<TurnResponseDto?> SoftDeleteTurnAsync(Guid turnId, Guid currentUserId);
 
         Task<IEnumerable<TurnResponseDto>> GetTurnsByDateRangeAsync(DateTime startDate, DateTime endDate);
+
+        Task<IEnumerable<TurnResponseDto>> GetAllTurnsAsync(int pageNumber, int pageSize);
+
 
     }
 }

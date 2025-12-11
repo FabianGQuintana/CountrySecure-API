@@ -3,6 +3,7 @@ using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
+using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
 
 
@@ -26,21 +27,31 @@ namespace CountrySecure.Application.Services.Turns
 
         public async Task<TurnResponseDto> AddNewTurnAsync(CreateTurnDto newTurnDto, Guid currentUserId)
         {
-            // 1. Mapeo DTO -> Entidad (solo mapea FKs, Start/End Time)
+            // 1. Mapeo DTO -> Entidad
             var newTurnEntity = newTurnDto.ToEntity();
 
             // 2. Asignación de campos de auditoría y de negocio
-            newTurnEntity.UserId = currentUserId; // El UserId viene del token
+            newTurnEntity.UserId = currentUserId;
             newTurnEntity.CreatedBy = currentUserId.ToString();
             newTurnEntity.CreatedAt = DateTime.UtcNow;
-            //newTurnEntity.EntryPermissionState = TurnStatus.Pending; // Estado inicial
+            newTurnEntity.Status = "Active"; // Asignar estado de BaseEntity (string)
 
-            // 3. Persistencia
+
+            // 3. Persistencia inicial
             var addedTurn = await _turnRepository.AddAsync(newTurnEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // 4. Devolver DTO de Respuesta
-            return addedTurn.ToResponseDto();
+            //Eager Loading de las propiedades de navegación necesarias para el DTO
+            var fullTurn = await _turnRepository.GetByIdWithIncludesAsync(addedTurn.Id);
+
+            if (fullTurn == null)
+            {
+                // Esto no debería suceder, pero es defensivo
+                throw new InvalidOperationException("Turn was created but could not be retrieved with details.");
+            }
+
+            // 5. Devolver DTO de Respuesta (usando la entidad completa)
+            return fullTurn.ToResponseDto();
         }
 
         public async Task<TurnResponseDto?> UpdateTurnAsync(Guid turnId, UpdateTurnDto updateTurnDto, Guid currentUserId)
@@ -120,9 +131,8 @@ namespace CountrySecure.Application.Services.Turns
 
         public async Task<TurnResponseDto?> GetTurnByIdAsync(Guid turnId)
         {
-            // Nota: Se debe asegurar que el repositorio cargue las propiedades de navegación (User, Amenity)
-            // para que ToResponseDto no lance la excepción InvalidOperationException.
-            var turn = await _turnRepository.GetByIdAsync(turnId);
+
+            var turn = await _turnRepository.GetByIdWithIncludesAsync(turnId);
 
             return turn?.ToResponseDto();
         }
@@ -143,6 +153,19 @@ namespace CountrySecure.Application.Services.Turns
         {
             var turns = await _turnRepository.GetTurnsByDateRange(startDate, endDate);
             return turns.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<TurnResponseDto>> GetAllTurnsAsync(int pageNumber, int pageSize)
+        {
+            // 1. Obtener la colección con las relaciones cargadas
+            var turns = await _turnRepository.GetAllWithIncludesAsync(pageNumber, pageSize);
+
+            // 2. Filtrar los turnos que tienen baja lógica (IsDeleted)
+            // Usamos el filtro explícito en LINQ para excluir los soft-deleted
+            var filteredTurns = turns.Where(t => !t.IsDeleted);
+
+            // 3. Mapeo a DTOs
+            return filteredTurns.ToResponseDto();
         }
 
 

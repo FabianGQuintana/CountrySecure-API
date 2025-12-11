@@ -17,6 +17,8 @@ namespace CountrySecure.Application.Interfaces.Repositories
 
         Task<Turn?> GetByIdWithIncludesAsync(Guid id);
 
+        Task<IEnumerable<Turn>> GetAllWithIncludesAsync(int pageNumber, int pageSize);
+
 
     }
 }

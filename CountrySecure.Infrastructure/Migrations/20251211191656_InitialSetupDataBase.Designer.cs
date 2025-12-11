@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CountrySecure.Infrastructure.Migrations
 {
     [DbContext(typeof(CountrySecureDbContext))]
-    [Migration("20251211035222_MigracionConCorrecciones")]
-    partial class MigracionConCorrecciones
+    [Migration("20251211191656_InitialSetupDataBase")]
+    partial class InitialSetupDataBase
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -93,16 +93,18 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime>("DepartureTime")
+                    b.Property<DateTime?>("DepartureTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("EntryPermissionState")
+                        .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("EntryPermissionState")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("EntryTime")
+                    b.Property<DateTime?>("EntryTime")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("LastModifiedAt")
@@ -114,12 +116,14 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<Guid?>("OrderId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("PermissionType")
-                        .HasColumnType("integer");
+                    b.Property<string>("PermissionType")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("QrCodeValue")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -129,6 +133,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("UserId1")
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("ValidFrom")
@@ -142,6 +149,8 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.HasIndex("OrderId");
 
                     b.HasIndex("UserId");
+
+                    b.HasIndex("UserId1");
 
                     b.HasIndex("VisitId");
 
@@ -279,8 +288,9 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<int>("PropertyNumber")
                         .HasColumnType("integer");
 
-                    b.Property<int>("PropertyStatus")
-                        .HasColumnType("integer");
+                    b.Property<string>("PropertyStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -399,8 +409,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<int>("RequestStatus")
-                        .HasColumnType("integer");
+                    b.Property<string>("RequestStatus")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -603,10 +614,14 @@ namespace CountrySecure.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
-                        .WithMany("EntryPermissions")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("CountrySecure.Domain.Entities.User", null)
+                        .WithMany("EntryPermissions")
+                        .HasForeignKey("UserId1");
 
                     b.HasOne("Visit", "Visit")
                         .WithMany("EntryPermissions")

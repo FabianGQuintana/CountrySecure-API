@@ -54,5 +54,16 @@ namespace CountrySecure.Infrastructure.Repositories
         }
 
 
+        public async Task<IEnumerable<Turn>> GetAllWithIncludesAsync(int pageNumber, int pageSize)
+        {
+            return await _dbContext.Set<Turn>()
+                .Include(t => t.User)     // Carga la relación con User
+                .Include(t => t.Amenity)  // Carga la relación con Amenity
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
+
     }
 }
