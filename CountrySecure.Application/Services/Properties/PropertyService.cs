@@ -72,15 +72,22 @@ namespace CountrySecure.Application.Services.Properties
             if (existingEntity == null)
                 return null;
 
-            if (existingEntity.CreatedBy != currentId.ToString())
-                throw new UnauthorizedAccessException("User is not authorized to update this property.");
+            
+            if (!string.Equals(existingEntity.CreatedBy, currentId.ToString(), StringComparison.OrdinalIgnoreCase))
+            {
+                
+                throw new UnauthorizedAccessException("User is not authorized to update this property. Only the creator may modify it.");
+            }
 
-            // Validar lot
+
             if (updateProperty.LotId.HasValue)
             {
                 var lotExists = await _lotRepository.GetByIdAsync(updateProperty.LotId.Value);
                 if (lotExists == null || lotExists.IsDeleted)
-                    throw new KeyNotFoundException($"El Lote con ID {updateProperty.LotId.Value} no existe o está inactivo.");
+                {
+                    
+                    throw new KeyNotFoundException($"The Lot with ID {updateProperty.LotId.Value} does not exist or is inactive/deleted.");
+                }
             }
 
             // Aplicar cambios

@@ -45,7 +45,7 @@ namespace CountrySecure.Application.Services.Orders
         {
             var order = await _orderRepository.GetByIdAsync(orderId);
 
-            if (order == null || order.IsDeleted)
+            if (order == null)
                 return null;
 
             return order.ToResponseDto();
