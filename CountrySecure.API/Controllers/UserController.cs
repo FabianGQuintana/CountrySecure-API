@@ -26,7 +26,7 @@ namespace CountrySecure.API.Controllers
         }
 
         [Authorize]
-        [HttpGet("{id}")]      
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var user = await _userService.GetByIdAsync(id);
@@ -42,7 +42,7 @@ namespace CountrySecure.API.Controllers
 
 
         [Authorize(Roles = "Admin,Resident")]
-        [HttpPut("{id}")] 
+        [HttpPut("{id}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
         {
             try
@@ -64,7 +64,7 @@ namespace CountrySecure.API.Controllers
 
             if (updatedUser == null)
             {
-                return NotFound(new {message = $"User with id {id} not found"});
+                return NotFound(new { message = $"User with id {id} not found" });
             }
 
             return Ok(updatedUser);
@@ -80,6 +80,25 @@ namespace CountrySecure.API.Controllers
 
         //     return NoContent();
         // }
+
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMe()
+        {
+            var userIdClaim = User.FindFirst("id")?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(new { message = "Invalid token." });
+
+            var userId = Guid.Parse(userIdClaim);
+
+            var user = await _userService.GetByIdAsync(userId);
+
+            if (user == null)
+                return NotFound();
+
+            return Ok(user);
+        }
 
     }
 }
