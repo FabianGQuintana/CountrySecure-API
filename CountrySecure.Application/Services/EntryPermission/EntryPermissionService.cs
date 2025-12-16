@@ -45,42 +45,42 @@ namespace CountrySecure.Application.Services.EntryPermission
 
 
         public async Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid id, Guid currentUserId)
-{
-    var entity = await _entryPermissionRepository.GetByIdAsync(id);
-    if (entity == null) return null;
+        {
+            var entity = await _entryPermissionRepository.GetByIdAsync(id);
+            if (entity == null) return null;
 
-    dto.MapToEntity(entity);
+            dto.MapToEntity(entity);
 
-    // --- LÓGICA DE NEGOCIO ---
+            // --- LÓGICA DE NEGOCIO ---
 
-    // 1. Si se setea la hora de ingreso
-    if (dto.EntryTime.HasValue && entity.EntryPermissionState == PermissionStatus.Pending)
-    {
-        entity.EntryPermissionState = PermissionStatus.Completed;
-    }
+            // 1. Si se setea la hora de ingreso
+            if (dto.EntryTime.HasValue && entity.EntryPermissionState == PermissionStatus.Pending)
+            {
+                entity.EntryPermissionState = PermissionStatus.Completed;
+            }
 
-    // 2. Si se setea la hora de salida
-    if (dto.DepartureTime.HasValue)
-    {
-        entity.EntryPermissionState = PermissionStatus.Completed;
-    }
+            // 2. Si se setea la hora de salida
+            if (dto.DepartureTime.HasValue)
+            {
+                entity.EntryPermissionState = PermissionStatus.Completed;
+            }
 
-    // 3. Verificar expiración
-    if (DateTime.UtcNow > entity.ValidFrom && entity.EntryPermissionState == PermissionStatus.Pending)
-    {
-        entity.EntryPermissionState = PermissionStatus.Expired;
-    }
+            // 3. Verificar expiración
+            if (DateTime.UtcNow > entity.ValidFrom && entity.EntryPermissionState == PermissionStatus.Pending)
+            {
+                entity.EntryPermissionState = PermissionStatus.Expired;
+            }
 
-    // Auditoría
-    entity.LastModifiedAt = DateTime.UtcNow;
-    entity.LastModifiedBy = currentUserId.ToString();
+            // Auditoría
+            entity.LastModifiedAt = DateTime.UtcNow;
+            entity.LastModifiedBy = currentUserId.ToString();
 
-    await _entryPermissionRepository.UpdateAsync(entity);
-    await _unitOfWork.SaveChangesAsync();
+            await _entryPermissionRepository.UpdateAsync(entity);
+            await _unitOfWork.SaveChangesAsync();
 
-    var full = await _entryPermissionRepository.GetByIdWithIncludesAsync(id);
-    return full!.ToResponseDto();
-}
+            var full = await _entryPermissionRepository.GetByIdWithIncludesAsync(id);
+            return full!.ToResponseDto();
+        }
 
 
         public async Task<EntryPermissionResponseDto?> SoftDeleteEntryPermissionAsync(Guid entryPermissionId, Guid currentUserId)
@@ -132,57 +132,47 @@ namespace CountrySecure.Application.Services.EntryPermission
             if (entity == null)
                 throw new KeyNotFoundException("QR Code no encontrado en el sistema.");
 
-            // 3. Validar si está dado de baja
-            if (entity.Status == "Baja")
-                throw new InvalidOperationException("El permiso asociado a este QR se encuentra dado de baja.");
+            // 3. Validar si está cancelado
+            if ( entity.Status == "Cancelled")
+                throw new InvalidOperationException("El permiso asociado a este QR se encuentra cancelado o dado de baja.");
 
             // 4. Validar expiración (si aplica)
-            if (entity.ValidFrom < DateTime.UtcNow)
-                throw new InvalidOperationException("El QR ha expirado.");
+            if (entity.ValidTo.HasValue && entity.ValidTo.Value < DateTime.UtcNow)
+                throw new InvalidOperationException("El QR ha caducado. La fecha límite de uso ha pasado.");
 
-            // 5. Validar si ya se registró entrada y salida
-            var visit = entity.Visit;
+            // 5. Validar si ya se registró entrada y salida (Luz Roja)
+            if (entity.EntryTime != null && entity.DepartureTime != null)
+                throw new InvalidOperationException("El visitante ya registró ingreso y salida. El permiso está consumido.");
 
-            if (visit != null)
+            // 6. Si ya ingresó (EntryTime != null) pero AÚN no salió (DepartureTime == null) -> MARCAR SALIDA (Luz Amarilla)
+            if (entity.EntryTime != null && entity.DepartureTime == null)
             {
-                // ya ingresó y salió
-                if (entity.EntryTime != null && entity.DepartureTime != null)
-                    throw new InvalidOperationException("El visitante ya registró ingreso y salida.");
-
-                // ya ingresó pero aún no salió (puede usarse para marcar salida)
-                if (entity.EntryTime != null && entity.DepartureTime == null)
+                return new GateCheckResponseDto
                 {
-                    return new GateCheckResponseDto
-                    {
-                        PermissionId = entity.Id,
-                        VisitorFullName = entity.Visit != null? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}": string.Empty,
-                        ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}": string.Empty,
-                        VisitorDni = entity.Visit?.DniVisit ?? 0,
-                        EntryTime = entity.EntryTime,
-                        DepartureTime = entity?.DepartureTime,
-                        CheckResultStatus = "Válido y Consumido",
-                        Message = "Acceso Autorizado. Datos corroborados."
-                    };
-                }
+                    PermissionId = entity.Id,
+                    VisitorFullName = entity.Visit != null ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}" : string.Empty,
+                    ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}" : string.Empty,
+                    VisitorDni = entity.Visit?.DniVisit ?? 0,
+                    EntryTime = entity.EntryTime,
+                    DepartureTime = null,
+                    CheckResultStatus = "Dentro - Marcar Salida", // Estado clave para el Front-end
+                    Message = "Visitante actualmente dentro. Datos corroborados. Proceder a registrar SALIDA."
+                };
             }
 
-            // 6. Si nunca ingresó → puede entrar
+            // 7. Válido y listo para ingresar (EntryTime == null) -> MARCAR ENTRADA (Luz Verde)
             return new GateCheckResponseDto
             {
                 PermissionId = entity.Id,
                 VisitorFullName = entity.Visit != null ? $"{entity.Visit.NameVisit} {entity.Visit.LastNameVisit}" : string.Empty,
                 ResidentFullName = entity.User != null ? $"{entity.User.Name} {entity.User.Lastname}" : string.Empty,
                 VisitorDni = entity.Visit?.DniVisit ?? 0,
-                CheckResultStatus = "Válido y Sin Consumido",
-                Message = "QR válido. El visitante puede registrar su entrada.",
-                EntryTime = entity?.EntryTime,
-                DepartureTime = entity?.DepartureTime
+                EntryTime = null,
+                DepartureTime = null,
+                CheckResultStatus = "Autorizado - Marcar Entrada", // Estado clave para el Front-end
+                Message = "Permiso Válido. Datos corroborados. Proceder a registrar ENTRADA."
             };
         }
-            // 4. Mapear y devolver el DTO de ÉXITO
-            
-
-
 
         // -------------------------------------------------------------------
         // MÉTODOS DE LECTURA
@@ -235,6 +225,99 @@ namespace CountrySecure.Application.Services.EntryPermission
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByStatusAsync(string status, int pageNumber, int pageSize)
         {
             var entities = await _entryPermissionRepository.GetEntryPermissionsStatusAsync(status, pageNumber, pageSize);
+            return entities.ToResponseDto();
+        }
+        public async Task<IEnumerable<EntryPermissionResponseDto>> GetActivePermissionsForDateAsync(DateTime date, int pageNumber, int pageSize)
+        {
+            // Sanitización básica de parámetros
+            pageNumber = pageNumber > 0 ? pageNumber : 1;
+            pageSize = pageSize > 0 ? pageSize : 100; // Asumo un valor por defecto de 10
+
+            var startOfDay = date.Date;
+            var endOfDay = date.Date.AddDays(1).AddSeconds(-1);
+
+            // 1. Llamada al repositorio, PASANDO LOS PARÁMETROS DE PAGINACIÓN
+            var entities = await _entryPermissionRepository.GetByDateRangeWithDetailsAsync(
+                startOfDay,
+                endOfDay,
+                pageNumber, // <--- Parámetro pasado
+                pageSize    // <--- Parámetro pasado
+            );
+
+            // 2. Filtrar por estado: Solo Pendientes o que hayan ingresado pero no hayan salido
+            // NOTA: Este filtro ahora se aplica sobre el conjunto PAGINADO.
+            var activeEntities = entities.Where(e =>
+                e.EntryPermissionState == PermissionStatus.Pending ||
+                (e.EntryPermissionState == PermissionStatus.Completed && e.EntryTime.HasValue && !e.DepartureTime.HasValue)
+            );
+
+            // 3. Mapear y devolver
+            return activeEntities.ToResponseDto();
+        }
+
+        public async Task<EntryPermissionResponseDto> RegisterCheckInAsync(Guid permissionId, Guid currentUserId)
+        {
+            var entity = await _entryPermissionRepository.GetByIdWithIncludesAsync(permissionId);
+
+            if (entity == null)
+                throw new KeyNotFoundException($"Permiso de Entrada con ID {permissionId} no encontrado.");
+
+            if (entity.EntryPermissionState != PermissionStatus.Pending)
+                throw new InvalidOperationException($"El permiso ID {permissionId} ya tiene un registro de entrada o está cancelado.");
+
+            // Aplicar Check-In
+            entity.EntryTime = DateTime.UtcNow;
+            entity.EntryPermissionState = PermissionStatus.Completed;
+
+
+            entity.CheckInGuardId = currentUserId;
+
+            // Auditoría
+            entity.LastModifiedAt = DateTime.UtcNow;
+            entity.LastModifiedBy = currentUserId.ToString();
+
+            await _entryPermissionRepository.UpdateAsync(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            // El DTO se generará con los datos de auditoría del guardia (CheckInGuardId)
+            return entity.ToResponseDto();
+        }
+
+        public async Task<EntryPermissionResponseDto> RegisterCheckOutAsync(Guid permissionId, Guid currentUserId)
+        {
+            var entity = await _entryPermissionRepository.GetByIdWithIncludesAsync(permissionId);
+
+            if (entity == null)
+                throw new KeyNotFoundException($"Permiso de Entrada con ID {permissionId} no encontrado.");
+
+            if (entity.EntryTime == null)
+                throw new InvalidOperationException($"No se puede registrar la salida del permiso ID {permissionId}. La entrada no fue registrada.");
+
+            if (entity.DepartureTime.HasValue)
+                throw new InvalidOperationException($"La salida del permiso ID {permissionId} ya fue registrada.");
+
+            // Aplicar Check-Out
+            entity.DepartureTime = DateTime.UtcNow;
+
+            
+            entity.CheckOutGuardId = currentUserId;
+
+            // Auditoría
+            entity.LastModifiedAt = DateTime.UtcNow;
+            entity.LastModifiedBy = currentUserId.ToString();
+
+            await _entryPermissionRepository.UpdateAsync(entity);
+            await _unitOfWork.SaveChangesAsync();
+
+            return entity.ToResponseDto();
+        }
+
+        public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryLogsAsync(int pageNumber, int pageSize, string? search)
+        {
+            // Asumimos que GetAllHistoryWithDetailsAsync en el repo será modificado para aceptar 'search'
+            var entities = await _entryPermissionRepository.GetAllHistoryWithDetailsAsync(pageNumber, pageSize, search);
+
+            // Utilizamos el mapeador ToResponseDto() existente
             return entities.ToResponseDto();
         }
 

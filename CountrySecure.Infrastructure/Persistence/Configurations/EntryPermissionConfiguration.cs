@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using CountrySecure.Domain.Enums;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion; // Necesario para EnumToStringConverter
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CountrySecure.Infrastructure.Persistence.Configurations
 {
@@ -10,52 +10,68 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
     {
         public void Configure(EntityTypeBuilder<EntryPermission> builder)
         {
-            // 1. Clave Primaria (Heredada de BaseEntity)
+            // 1. Clave Primaria
             builder.HasKey(ep => ep.Id);
 
-            // 2. Mapeo de Enums a String (para legibilidad en la DB)
-
-            // a) PermissionType (Tipo de permiso: Visitante, Servicio, etc.)
+            // 2. Mapeo de Enums a String
             builder.Property(ep => ep.PermissionType)
                 .HasConversion<string>()
                 .IsRequired();
 
-            // b) EntryPermissionState (Estado del permiso: Pending, Used, Cancelled)
             builder.Property(ep => ep.EntryPermissionState)
                 .HasConversion<string>()
                 .IsRequired();
 
             // 3. Configuración de Propiedades Propias
-
-            // QrCodeValue es requerido por 'required'
             builder.Property(ep => ep.QrCodeValue)
-                .HasMaxLength(100) // Valor razonable para un GUID/código QR
+                .HasMaxLength(100)
                 .IsRequired();
 
             builder.Property(ep => ep.Description)
-                .HasMaxLength(300); // Descripción es opcional
+                .HasMaxLength(300);
+
+            
+            // Se puede dejar como nullable (el valor por defecto de DateTime?)
+            builder.Property(ep => ep.ValidTo)
+                   .IsRequired(false);
+
 
             // 4. Configuración de Relaciones (FKs)
 
-            // Relación con Visit (Obligatoria: Creado para un visitante)
+            // Relación con Visit (Obligatoria)
             builder.HasOne(ep => ep.Visit)
-                .WithMany() // Assuming Visit doesn't have a collection back to EntryPermission
+                .WithMany()
                 .HasForeignKey(ep => ep.VisitId)
-                .OnDelete(DeleteBehavior.Restrict) // No borrar Visit si tiene permisos asociados
+                .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired();
 
-            // Relación con User (Obligatoria: Creado por un residente)
+            // Relación con User (Residente - Obligatoria)
             builder.HasOne(ep => ep.User)
-                .WithMany() // Assuming User doesn't have a collection back to EntryPermission
+                .WithMany()
                 .HasForeignKey(ep => ep.UserId)
-                .OnDelete(DeleteBehavior.Restrict) // No borrar User si tiene permisos asociados
+                .OnDelete(DeleteBehavior.Restrict)
                 .IsRequired();
 
-            // Relación con Order (Opcional: Asociado a un servicio)
+            // Relación con Order (Opcional)
             builder.HasOne(ep => ep.Order)
-                .WithMany(o => o.EntryPermissions) // Assuming Order has a collection property called EntryPermissions
+                .WithMany(o => o.EntryPermissions)
                 .HasForeignKey(ep => ep.OrderId)
-                .OnDelete(DeleteBehavior.SetNull); // Si la Orden es eliminada, el OrderId en el permiso se pone a NULL
+                .OnDelete(DeleteBehavior.SetNull);
+
+
+            // Relación con el Guardia de Check-In (Opcional, puede ser null)
+            builder.HasOne(ep => ep.CheckInGuard)
+                .WithMany() // Asumimos que User no tiene una colección para CheckInGuard
+                .HasForeignKey(ep => ep.CheckInGuardId)
+                .OnDelete(DeleteBehavior.Restrict) // No borrar guardias si tienen logs
+                .IsRequired(false); // Puede ser null
+
+            // Relación con el Guardia de Check-Out (Opcional, puede ser null)
+            builder.HasOne(ep => ep.CheckOutGuard)
+                .WithMany() // Asumimos que User no tiene una colección para CheckOutGuard
+                .HasForeignKey(ep => ep.CheckOutGuardId)
+                .OnDelete(DeleteBehavior.Restrict) // No borrar guardias si tienen logs
+                .IsRequired(false); // Puede ser null
 
             // 5. Configuración de Auditoría (BaseEntity.Status, CreatedAt, etc. no requieren configuración adicional)
         }

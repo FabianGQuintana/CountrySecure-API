@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class initialSetupDB : Migration
+    public partial class InitialSetupDB : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -268,8 +268,11 @@ namespace CountrySecure.Infrastructure.Migrations
                     ValidFrom = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     EntryTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     DepartureTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ValidTo = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     VisitId = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CheckInGuardId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CheckOutGuardId = table.Column<Guid>(type: "uuid", nullable: true),
                     OrderId = table.Column<Guid>(type: "uuid", nullable: true),
                     UserId1 = table.Column<Guid>(type: "uuid", nullable: true),
                     Status = table.Column<string>(type: "text", nullable: false),
@@ -290,6 +293,18 @@ namespace CountrySecure.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
+                        name: "FK_EntryPermissions_Users_CheckInGuardId",
+                        column: x => x.CheckInGuardId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_EntryPermissions_Users_CheckOutGuardId",
+                        column: x => x.CheckOutGuardId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
                         name: "FK_EntryPermissions_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
@@ -307,6 +322,16 @@ namespace CountrySecure.Infrastructure.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EntryPermissions_CheckInGuardId",
+                table: "EntryPermissions",
+                column: "CheckInGuardId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_EntryPermissions_CheckOutGuardId",
+                table: "EntryPermissions",
+                column: "CheckOutGuardId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_EntryPermissions_OrderId",

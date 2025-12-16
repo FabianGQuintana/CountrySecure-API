@@ -80,6 +80,12 @@ namespace CountrySecure.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CheckInGuardId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CheckOutGuardId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -138,10 +144,17 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime>("ValidFrom")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ValidTo")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid>("VisitId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CheckInGuardId");
+
+                    b.HasIndex("CheckOutGuardId");
 
                     b.HasIndex("OrderId");
 
@@ -605,6 +618,16 @@ namespace CountrySecure.Infrastructure.Migrations
 
             modelBuilder.Entity("CountrySecure.Domain.Entities.EntryPermission", b =>
                 {
+                    b.HasOne("CountrySecure.Domain.Entities.User", "CheckInGuard")
+                        .WithMany()
+                        .HasForeignKey("CheckInGuardId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("CountrySecure.Domain.Entities.User", "CheckOutGuard")
+                        .WithMany()
+                        .HasForeignKey("CheckOutGuardId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("CountrySecure.Domain.Entities.Order", "Order")
                         .WithMany("EntryPermissions")
                         .HasForeignKey("OrderId")
@@ -625,6 +648,10 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasForeignKey("VisitId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("CheckInGuard");
+
+                    b.Navigation("CheckOutGuard");
 
                     b.Navigation("Order");
 

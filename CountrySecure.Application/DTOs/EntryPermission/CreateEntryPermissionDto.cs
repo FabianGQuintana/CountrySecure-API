@@ -14,8 +14,11 @@ namespace CountrySecure.Application.DTOs.EntryPermission
 
         [Required]
         public DateTime ValidFrom { get; set; }
-        public DateTime? EntryTime { get; set; }
-        public DateTime? DepartureTime { get; set; }
+
+        [Required]
+        public DateTime ValidTo { get; set; }
+        public DateTime? EntryTime { get; set; } = null;
+        public DateTime? DepartureTime { get; set; } = null;
 
         public PermissionStatus Status { get; set; } = PermissionStatus.Pending;
 

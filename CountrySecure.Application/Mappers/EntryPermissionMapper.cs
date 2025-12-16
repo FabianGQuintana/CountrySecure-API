@@ -1,9 +1,10 @@
-﻿using CountrySecure.Domain.Entities;
-using CountrySecure.Application.DTOs.EntryPermission;
+﻿using CountrySecure.Application.DTOs.EntryPermission;
+using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
+using System.Security;
 
 namespace CountrySecure.Application.Mappers
 {
@@ -32,8 +33,9 @@ namespace CountrySecure.Application.Mappers
                 Status = permission.EntryPermissionState,
 
                 ValidFrom = permission.ValidFrom,
-                
-
+                EntryTime = permission.EntryTime,
+                DepartureTime = permission.DepartureTime,
+                ValidTo = permission.ValidTo,
 
                 // Propiedades de Auditoría (Mapeadas de la Entidad Base)
                 CreatedAt = permission.CreatedAt,
@@ -71,6 +73,7 @@ namespace CountrySecure.Application.Mappers
                 PermissionType = dto.PermissionType,
                 Description = dto.Description,
                 ValidFrom = dto.ValidFrom,
+                ValidTo = dto.ValidTo,
                 EntryPermissionState = dto.Status,
 
                 // Asignación de Claves Foráneas (FKs)

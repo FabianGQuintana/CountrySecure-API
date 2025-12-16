@@ -233,5 +233,160 @@ namespace CountrySecure.API.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
+        // -------------------------------------------------------------------
+        // GET: Permisos del Día (La consulta que usa el MainView)
+        // -------------------------------------------------------------------
+
+        [HttpGet("today")] // GET /api/entrypermissions/today?pageNumber=1&pageSize=10
+        public async Task<IActionResult> GetTodayPermissions(
+        [FromQuery] int pageNumber = 1, 
+        [FromQuery] int pageSize = 100) 
+        {
+            try
+            {
+                var today = DateTime.UtcNow.Date;
+                // Pasa los parámetros al servicio
+                var results = await _entryPermissionService.GetActivePermissionsForDateAsync(today, pageNumber, pageSize);
+
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                // En un entorno real, es mejor loguear la excepción y devolver un error genérico
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+
+        // -------------------------------------------------------------------
+        // PATCH: Registro de Entrada (Check-In)
+        // -------------------------------------------------------------------
+
+        [HttpPatch("{permissionId:guid}/checkin")]
+        public async Task<IActionResult> RegisterCheckIn(Guid permissionId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                if (currentUserId == Guid.Empty) return Unauthorized();
+
+                var updatedPermission = await _entryPermissionService.RegisterCheckInAsync(permissionId, currentUserId);
+
+                return Ok(new
+                {
+                    Message = "Entrada registrada exitosamente.",
+                    Permission = updatedPermission
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("Permiso no encontrado.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message); // 400 Bad Request
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al registrar la entrada: {ex.Message}");
+            }
+        }
+
+
+        // -------------------------------------------------------------------
+        // PATCH: Registro de Salida (Check-Out)
+        // -------------------------------------------------------------------
+
+        [HttpPatch("{permissionId:guid}/checkout")]
+        public async Task<IActionResult> RegisterCheckOut(Guid permissionId)
+        {
+            try
+            {
+                var currentUserId = GetCurrentUserId();
+                if (currentUserId == Guid.Empty) return Unauthorized();
+
+                var updatedPermission = await _entryPermissionService.RegisterCheckOutAsync(permissionId, currentUserId);
+
+                return Ok(new
+                {
+                    Message = "Salida registrada exitosamente.",
+                    Permission = updatedPermission
+                });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("Permiso no encontrado.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message); // 400 Bad Request
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al registrar la salida: {ex.Message}");
+            }
+        }
+
+        // -------------------------------------------------------------------
+        // GET: Historial de Entradas/Salidas
+        // -------------------------------------------------------------------
+
+        [HttpGet("history")]
+        public async Task<IActionResult> GetEntryHistory(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null) 
+        {
+            try
+            {
+                var results = await _entryPermissionService.GetEntryLogsAsync(pageNumber, pageSize, search);
+
+                return Ok(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        [HttpPost("register-movement")]
+        public async Task<IActionResult> RegisterMovement([FromBody] RegisterMovementDto dto)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            try
+            {
+                if (dto.IsEntry)
+                {
+                    // Llama a la lógica de Check-In
+                    await _entryPermissionService.RegisterCheckInAsync(dto.PermissionId, dto.GuardId);
+                    return Ok(new { Message = "Entrada registrada con éxito." });
+                }
+                else
+                {
+                    // Llama a la lógica de Check-Out
+                    await _entryPermissionService.RegisterCheckOutAsync(dto.PermissionId, dto.GuardId);
+                    return Ok(new { Message = "Salida registrada con éxito." });
+                }
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Maneja casos como "Ya ingresó y salió" o "Entrada no registrada"
+                return Conflict(new { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 }
