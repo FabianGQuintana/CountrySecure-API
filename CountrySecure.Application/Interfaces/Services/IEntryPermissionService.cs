@@ -42,7 +42,7 @@ namespace CountrySecure.Application.Interfaces.Services
         // Manejo de QRCode.
         Task<GateCheckResponseDto> ValidateQrCodeAsync(string qrCodeValue);
 
-        Task<IEnumerable<EntryPermissionResponseDto>> GetActivePermissionsForDateAsync(DateTime date,int pageNumber, int pageSize);
+        Task<PaginatedResult<EntryPermissionResponseDto>> GetActivePermissionsForDateAsync(DateTime date, int pageNumber, int pageSize);
 
         Task<EntryPermissionResponseDto> RegisterCheckInAsync(Guid permissionId, Guid currentUserId);
 

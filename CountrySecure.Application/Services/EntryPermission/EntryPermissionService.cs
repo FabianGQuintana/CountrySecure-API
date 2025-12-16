@@ -227,32 +227,32 @@ namespace CountrySecure.Application.Services.EntryPermission
             var entities = await _entryPermissionRepository.GetEntryPermissionsStatusAsync(status, pageNumber, pageSize);
             return entities.ToResponseDto();
         }
-        public async Task<IEnumerable<EntryPermissionResponseDto>> GetActivePermissionsForDateAsync(DateTime date, int pageNumber, int pageSize)
+        public async Task<PaginatedResult<EntryPermissionResponseDto>> GetActivePermissionsForDateAsync(
+            DateTime date,
+            int pageNumber,
+            int pageSize)
         {
-            // Sanitización básica de parámetros
+            // 1. Sanitización básica de parámetros
             pageNumber = pageNumber > 0 ? pageNumber : 1;
-            pageSize = pageSize > 0 ? pageSize : 100; // Asumo un valor por defecto de 10
+            pageSize = pageSize > 0 ? pageSize : 100;
 
-            var startOfDay = date.Date;
-            var endOfDay = date.Date.AddDays(1).AddSeconds(-1);
+            // AVISO: Eliminamos startOfDay/endOfDay para no confundir con el filtro interno.
+            // Usamos la fecha original del Controller.
+            var dateFilter = date.Date;
 
-            // 1. Llamada al repositorio, PASANDO LOS PARÁMETROS DE PAGINACIÓN
-            var entities = await _entryPermissionRepository.GetByDateRangeWithDetailsAsync(
-                startOfDay,
-                endOfDay,
-                pageNumber, // <--- Parámetro pasado
-                pageSize    // <--- Parámetro pasado
+            // 2. Llamada al repositorio (Obtenemos datos paginados y el TotalCount)
+            var paginatedEntities = await _entryPermissionRepository.GetByDateRangeWithDetailsAsync(
+                dateFilter, // Usamos dateFilter como inicio
+                dateFilter, // Usamos dateFilter como fin (para el rango de un día)
+                pageNumber,
+                pageSize
             );
 
-            // 2. Filtrar por estado: Solo Pendientes o que hayan ingresado pero no hayan salido
-            // NOTA: Este filtro ahora se aplica sobre el conjunto PAGINADO.
-            var activeEntities = entities.Where(e =>
-                e.EntryPermissionState == PermissionStatus.Pending ||
-                (e.EntryPermissionState == PermissionStatus.Completed && e.EntryTime.HasValue && !e.DepartureTime.HasValue)
-            );
+            // 3. Mapear SOLO los ítems de la página actual
+            var mappedItems = paginatedEntities.Items.ToResponseDto();
 
-            // 3. Mapear y devolver
-            return activeEntities.ToResponseDto();
+            // 4. Devolver el resultado paginado con el mapeo y el conteo total
+            return new PaginatedResult<EntryPermissionResponseDto>(mappedItems, paginatedEntities.TotalCount);
         }
 
         public async Task<EntryPermissionResponseDto> RegisterCheckInAsync(Guid permissionId, Guid currentUserId)

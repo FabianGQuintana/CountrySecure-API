@@ -32,7 +32,7 @@ namespace CountrySecure.Application.Interfaces.Repositories
         // Modificar este método para que cargue las inclusiones necesarias para el mapeo
         Task<IEnumerable<EntryPermission>> GetAllWithIncludesAsync(int pageNumber, int pageSize);
 
-        Task<IEnumerable<EntryPermission>> GetByDateRangeWithDetailsAsync(DateTime startDate, DateTime endDate,int pageNumber,int pageSize);
+        Task<PaginatedResult<EntryPermission>> GetByDateRangeWithDetailsAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize);
 
         Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(int pageNumber, int pageSize, string? searchTerm);
     }

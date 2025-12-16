@@ -238,22 +238,30 @@ namespace CountrySecure.API.Controllers
         // GET: Permisos del Día (La consulta que usa el MainView)
         // -------------------------------------------------------------------
 
-        [HttpGet("today")] // GET /api/entrypermissions/today?pageNumber=1&pageSize=10
+        [HttpGet("today")]
         public async Task<IActionResult> GetTodayPermissions(
-        [FromQuery] int pageNumber = 1, 
-        [FromQuery] int pageSize = 100) 
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 100)
         {
             try
             {
-                var today = DateTime.UtcNow.Date;
-                // Pasa los parámetros al servicio
-                var results = await _entryPermissionService.GetActivePermissionsForDateAsync(today, pageNumber, pageSize);
+                // 1. Obtener la fecha de HOY en la zona horaria local del servidor
+                var todayLocal = DateTime.Today;
+
+                // 2. CONVERSIÓN CRÍTICA: Convertir la fecha local a UTC para que PostgreSQL la acepte.
+                // Asumimos que quieres consultar el día que acaba de empezar en la hora local.
+                var todayUtc = todayLocal.ToUniversalTime();
+
+                // Puedes optar por usar DateTime.UtcNow.Date para forzar UTC desde el inicio si prefieres,
+                // pero usar todayLocal y luego convertir ayuda a respetar el cambio de día local.
+
+                // Pasa el valor UTC al servicio
+                var results = await _entryPermissionService.GetActivePermissionsForDateAsync(todayUtc, pageNumber, pageSize);
 
                 return Ok(results);
             }
             catch (Exception ex)
             {
-                // En un entorno real, es mejor loguear la excepción y devolver un error genérico
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }

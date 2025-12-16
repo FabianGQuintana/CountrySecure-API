@@ -128,29 +128,49 @@ namespace CountrySecure.Infrastructure.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<EntryPermission>> GetByDateRangeWithDetailsAsync(
-         DateTime startDate,
-         DateTime endDate,
-         int pageNumber, // <--- Parámetro agregado
-         int pageSize)   // <--- Parámetro agregado
+        public async Task<PaginatedResult<EntryPermission>> GetByDateRangeWithDetailsAsync(
+        DateTime startDate,
+        DateTime endDate, // Este parámetro se ignora en este método simplificado para "hoy"
+         int pageNumber,
+        int pageSize)
         {
-            // Cálculo para el Skip
-            var skip = (pageNumber - 1) * pageSize;
+            // NOTA: Se asume que 'startDate' viene del Controller como el inicio del día local,
+            // ya convertido a UTC (ej: 2025-12-16 00:00:00Z).
 
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)    // El Residente
-                .Include(p => p.Visit)   // El Visitante
-                .Include(p => p.Order)   // El Servicio
-                                         // Filtramos por la fecha de validez (ValidFrom) que esté dentro del rango del día
-                .Where(ep => ep.ValidFrom.Date >= startDate.Date && ep.ValidFrom.Date <= endDate.Date)
-                // Opcional: ordenar por hora de entrada esperada
-                .OrderBy(ep => ep.ValidFrom)
-                // -----------------------------------------------------------------
-                // APLICACIÓN DE PAGINACIÓN EN LA BASE DE DATOS (EFICIENTE)
-                .Skip(skip)       // Saltar los registros de las páginas anteriores
-                .Take(pageSize)  // Tomar solo la cantidad de registros por página
-                                 // -----------------------------------------------------------------
-                .ToListAsync();
+            // 1. Definir el rango del día completo en UTC.
+            // Usamos el inicio del día que se pasó:
+            var startOfDayUtc = startDate;
+            // Calculamos el inicio del día siguiente (es el límite exclusivo superior <)
+            var endOfNextDayUtc = startOfDayUtc.AddDays(1);
+
+            // 1. Crear el IQueryable base
+            var query = _dbContext.EntryPermissions
+            .Include(p => p.User)
+            .Include(p => p.Visit)
+            .Include(p => p.Order)
+        // ⚠️ CAMBIO CLAVE: Usamos un rango (>= inicio del día y < inicio del día siguiente)
+        // Esto consulta el rango completo de 24 horas sin usar la función .Date() de SQL.
+                .Where(ep => ep.ValidFrom >= startOfDayUtc && ep.ValidFrom < endOfNextDayUtc);
+
+            // 2. APLICAR FILTRO DE ESTADO EN LA BASE DE DATOS (Este filtro ya era correcto)
+            var activeQuery = query.Where(e =>
+            e.EntryPermissionState == PermissionStatus.Pending ||
+            (e.EntryPermissionState == PermissionStatus.Completed && e.EntryTime.HasValue && !e.DepartureTime.HasValue)
+          );
+
+            // 3. CONTEO TOTAL
+            var totalCount = await activeQuery.CountAsync();
+
+            // 4. Aplicar ordenación y paginación
+            var skip = (pageNumber - 1) * pageSize;
+            var pagedEntities = await activeQuery
+              .OrderBy(ep => ep.ValidFrom)
+              .Skip(skip)
+              .Take(pageSize)
+              .ToListAsync();
+
+            // 5. Devolver el resultado paginado
+            return new PaginatedResult<EntryPermission>(pagedEntities, totalCount);
         }
 
         public async Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(int pageNumber, int pageSize, string? searchTerm)
