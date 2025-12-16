@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CountrySecure.Infrastructure.Migrations
 {
     [DbContext(typeof(CountrySecureDbContext))]
-    [Migration("20251214083152_InitialSetupDB")]
-    partial class InitialSetupDB
+    [Migration("20251216043601_MigracionUltima")]
+    partial class MigracionUltima
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CountrySecure.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSetupDB : Migration
+    public partial class MigracionUltima : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

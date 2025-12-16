@@ -48,7 +48,7 @@ namespace CountrySecure.Application.Interfaces.Services
 
         Task<EntryPermissionResponseDto> RegisterCheckOutAsync(Guid permissionId, Guid currentUserId);
 
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryLogsAsync(int pageNumber, int pageSize, string? search);
+        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryLogsAsync(int pageNumber, int pageSize, string? search, string? type);
 
     }
 }

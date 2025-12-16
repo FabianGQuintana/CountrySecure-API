@@ -173,7 +173,12 @@ namespace CountrySecure.Infrastructure.Repositories
             return new PaginatedResult<EntryPermission>(pagedEntities, totalCount);
         }
 
-        public async Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(int pageNumber, int pageSize, string? searchTerm)
+        public async Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(
+    int pageNumber,
+    int pageSize,
+    string? searchTerm,
+    string? type
+)
         {
             var query = _dbContext.EntryPermissions
                 .Include(p => p.User)
@@ -181,42 +186,42 @@ namespace CountrySecure.Infrastructure.Repositories
                 .Include(p => p.Order)
                 .Include(p => p.CheckInGuard)
                 .Include(p => p.CheckOutGuard)
-                // Filtramos para incluir solo aquellos que al menos tienen registro de entrada
                 .Where(ep => ep.EntryTime.HasValue);
 
-            // -------------------------------------------------------------------
-            // LÓGICA DE FILTRADO (si searchTerm no es nulo o vacío)
-            // -------------------------------------------------------------------
+            // 🔥 FILTRO POR TIPO
+            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<PermissionType>(type, true, out var parsedType))
+            {
+                query = query.Where(ep => ep.PermissionType == parsedType);
+            }
+
+
+            // 🔍 FILTRO SEARCH
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                // Convertimos a minúsculas una vez para usarlo en la consulta
-                var lowerSearchTerm = searchTerm.ToLower();
-
-                // Aplicamos el filtro OR a todas las columnas buscables
+                var lower = searchTerm.ToLower();
                 query = query.Where(ep =>
-                    // 1. Por Visitante (Nombre y Apellido)
-                    (ep.Visit != null && (ep.Visit.NameVisit.ToLower().Contains(lowerSearchTerm) || ep.Visit.LastNameVisit.ToLower().Contains(lowerSearchTerm))) ||
+                    (ep.Visit != null &&
+                     (ep.Visit.NameVisit.ToLower().Contains(lower) ||
+                      ep.Visit.LastNameVisit.ToLower().Contains(lower))) ||
 
-                    // 2. Por Residente (Nombre y Apellido)
-                    (ep.User != null && (ep.User.Name.ToLower().Contains(lowerSearchTerm) || ep.User.Lastname.ToLower().Contains(lowerSearchTerm))) ||
+                    (ep.User != null &&
+                     (ep.User.Name.ToLower().Contains(lower) ||
+                      ep.User.Lastname.ToLower().Contains(lower))) ||
 
-                    // 3. Por Compañía de Servicio (si aplica)
-                    (ep.Order != null && ep.Order.SupplierName.ToLower().Contains(lowerSearchTerm)) ||
+                    (ep.Order != null &&
+                     ep.Order.SupplierName.ToLower().Contains(lower)) ||
 
-                    // 4. Por DNI (ej. DNI del Visitante) - Requiere conversión a string
-                    (ep.Visit != null && ep.Visit.DniVisit.ToString().Contains(lowerSearchTerm)) // Asumiendo que DniVisit es int
-
-                // Puedes añadir más campos como la placa del vehículo aquí si existe en Visit
+                    (ep.Visit != null &&
+                     ep.Visit.DniVisit.ToString().Contains(lower))
                 );
             }
-            // -------------------------------------------------------------------
 
-            // Aplicar ordenación y paginación
             return await query
                 .OrderByDescending(ep => ep.EntryTime)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
         }
+
     }
 }

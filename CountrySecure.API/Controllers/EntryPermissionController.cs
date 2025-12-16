@@ -341,22 +341,15 @@ namespace CountrySecure.API.Controllers
         // -------------------------------------------------------------------
 
         [HttpGet("history")]
-        public async Task<IActionResult> GetEntryHistory(
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10,
-            [FromQuery] string? search = null) 
+        public async Task<IActionResult> GetEntryHistory( [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null, [FromQuery] string? type = null
+        )
         {
-            try
-            {
-                var results = await _entryPermissionService.GetEntryLogsAsync(pageNumber, pageSize, search);
+            var results = await _entryPermissionService
+                .GetEntryLogsAsync(pageNumber, pageSize, search, type);
 
-                return Ok(results);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            return Ok(results);
         }
+
 
         [HttpPost("register-movement")]
         public async Task<IActionResult> RegisterMovement([FromBody] RegisterMovementDto dto)

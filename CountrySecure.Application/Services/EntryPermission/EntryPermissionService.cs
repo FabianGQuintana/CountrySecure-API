@@ -312,14 +312,19 @@ namespace CountrySecure.Application.Services.EntryPermission
             return entity.ToResponseDto();
         }
 
-        public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryLogsAsync(int pageNumber, int pageSize, string? search)
+        public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryLogsAsync(
+    int pageNumber,
+    int pageSize,
+    string? search,
+    string? type
+)
         {
-            // Asumimos que GetAllHistoryWithDetailsAsync en el repo será modificado para aceptar 'search'
-            var entities = await _entryPermissionRepository.GetAllHistoryWithDetailsAsync(pageNumber, pageSize, search);
+            var entities = await _entryPermissionRepository
+                .GetAllHistoryWithDetailsAsync(pageNumber, pageSize, search, type);
 
-            // Utilizamos el mapeador ToResponseDto() existente
             return entities.ToResponseDto();
         }
+
 
 
     }

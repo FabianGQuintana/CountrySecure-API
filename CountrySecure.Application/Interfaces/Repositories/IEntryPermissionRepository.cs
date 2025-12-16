@@ -34,6 +34,6 @@ namespace CountrySecure.Application.Interfaces.Repositories
 
         Task<PaginatedResult<EntryPermission>> GetByDateRangeWithDetailsAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize);
 
-        Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(int pageNumber, int pageSize, string? searchTerm);
+        Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(int pageNumber, int pageSize, string? search, string? type);
     }
 }
