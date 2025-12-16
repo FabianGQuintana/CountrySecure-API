@@ -264,6 +264,12 @@ namespace CountrySecure.Application.Services.EntryPermission
 
             if (entity.EntryPermissionState != PermissionStatus.Pending)
                 throw new InvalidOperationException($"El permiso ID {permissionId} ya tiene un registro de entrada o está cancelado.");
+            // ⛔ VALIDACIÓN CRÍTICA
+            if (entity.ValidTo.HasValue && entity.ValidTo.Value < DateTime.UtcNow)
+                throw new InvalidOperationException(
+                    "El permiso está vencido y no permite check-in."
+                );
+
 
             // Aplicar Check-In
             entity.EntryTime = DateTime.UtcNow;
