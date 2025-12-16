@@ -65,28 +65,28 @@ namespace CountrySecure.Application.Mappers
         // Mapeo de ENTRADA (Escritura: Create DTO -> Entidad)
         // -------------------------------------------------------------------
 
-        public static EntryPermission ToEntity(this CreateEntryPermissionDto dto)
-        {
-            return new EntryPermission
-            {
-                QrCodeValue = string.Empty,
-                PermissionType = dto.PermissionType,
-                Description = dto.Description,
-                ValidFrom = dto.ValidFrom,
-                ValidTo = dto.ValidTo,
-                EntryPermissionState = dto.Status,
+        // public static EntryPermission ToEntity(this CreateEntryPermissionDto dto)
+        // {
+        //     return new EntryPermission
+        //     {
+        //         QrCodeValue = string.Empty,
+        //         PermissionType = dto.PermissionType,
+        //         Description = dto.Description,
+        //         ValidFrom = dto.ValidFrom,
+        //         ValidTo = dto.ValidTo,
+        //         // EntryPermissionState = dto.Status,
 
-                // Asignación de Claves Foráneas (FKs)
-                UserId = dto.UserId,
-                VisitId = dto.VisitId,
-                OrderId = dto.OrderId,
+        //         // Asignación de Claves Foráneas (FKs)
+        //         // UserId = dto.UserId,
+        //         // VisitId = dto.VisitId,
+        //         // OrderId = dto.OrderId,
 
-                // **INICIALIZACIÓN CRÍTICA DE PROPIEDADES DE NAVEGACIÓN A NULL**
-                Visit = null,
-                User = null,
-                Order = null
-            };
-        }
+        //         // **INICIALIZACIÓN CRÍTICA DE PROPIEDADES DE NAVEGACIÓN A NULL**
+        //         Visit = null,
+        //         User = null,
+        //         Order = null
+        //     };
+        // }
 
         // -------------------------------------------------------------------
         // Mapeo de ACTUALIZACIÓN (Actualización: Update DTO -> Entidad Existente)

@@ -7,9 +7,9 @@ namespace CountrySecure.Application.DTOs.EntryPermission
     {
 
         [Required]
-        public  PermissionType PermissionType { get; set; }
+        public PermissionType PermissionType { get; set; }
 
-        [StringLength(600)]
+        [StringLength(300)]
         public string? Description { get; set; }
 
         [Required]
@@ -20,16 +20,15 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public DateTime? EntryTime { get; set; } = null;
         public DateTime? DepartureTime { get; set; } = null;
 
-        public PermissionStatus Status { get; set; } = PermissionStatus.Pending;
-
-        
+        // 🔽 DATOS DEL VISITANTE
         [Required]
-        public required Guid VisitId { get; set; }
+        public required string NameVisit { get; set; }
 
         [Required]
-        public required Guid UserId { get; set; }
+        public required string LastNameVisit { get; set; }
 
-        public Guid? OrderId { get; set; }
+        [Required]
+        public required int DniVisit { get; set; }
 
     }
 }

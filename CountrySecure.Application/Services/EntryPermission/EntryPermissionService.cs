@@ -2,20 +2,23 @@
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Application.Mappers; 
+using CountrySecure.Application.Mappers;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
+
 
 namespace CountrySecure.Application.Services.EntryPermission
 {
     public class EntryPermissionService : IEntryPermissionService
     {
         private readonly IEntryPermissionRepository _entryPermissionRepository;
+        private readonly IVisitRepository _visitRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        public EntryPermissionService(IEntryPermissionRepository entryPermissionRepository, IUnitOfWork unitOfWork)
+        public EntryPermissionService(IEntryPermissionRepository entryPermissionRepository, IUnitOfWork unitOfWork, IVisitRepository visitRepository)
         {
             _entryPermissionRepository = entryPermissionRepository;
+            _visitRepository = visitRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -23,25 +26,53 @@ namespace CountrySecure.Application.Services.EntryPermission
         // MÉTODOS DE ESCRITURA
         // -------------------------------------------------------------------
 
-        public async Task<EntryPermissionResponseDto> AddNewEntryPermissionAsync(CreateEntryPermissionDto dto, Guid currentUserId)
+        public async Task<EntryPermissionResponseDto> AddNewEntryPermissionAsync(
+    CreateEntryPermissionDto dto,
+    Guid currentUserId)
         {
-            var entity = dto.ToEntity();
+            // 1️⃣ Crear VISIT
+            var visit = new Visit
+            {
+                NameVisit = dto.NameVisit,
+                LastNameVisit = dto.LastNameVisit,
+                DniVisit = dto.DniVisit,
+                CreatedAt = DateTime.UtcNow
+            };
 
-            entity.QrCodeValue = Guid.NewGuid().ToString();
-            entity.CreatedBy = currentUserId.ToString();
-            entity.CreatedAt = DateTime.UtcNow;
-            entity.LastModifiedAt = DateTime.UtcNow;
+            await _visitRepository.AddAsync(visit);
 
-            entity.EntryPermissionState = PermissionStatus.Pending;
-            entity.EntryTime = null;
-            entity.DepartureTime = null;
+            // 2️⃣ Crear ENTRY PERMISSION
+            var entity = new CountrySecure.Domain.Entities.EntryPermission
+            {
+                QrCodeValue = Guid.NewGuid().ToString(),
+                PermissionType = dto.PermissionType,
+                Description = dto.Description,
+                ValidFrom = DateTime.SpecifyKind(dto.ValidFrom, DateTimeKind.Utc),
+                ValidTo = DateTime.SpecifyKind(dto.ValidTo, DateTimeKind.Utc),
+
+                EntryPermissionState = PermissionStatus.Pending,
+                EntryTime = null,
+                DepartureTime = null,
+
+                VisitId = visit.Id,
+                UserId = currentUserId,
+                // OrderId = dto.OrderId,
+
+                CreatedBy = currentUserId.ToString(),
+                CreatedAt = DateTime.UtcNow,
+                LastModifiedAt = DateTime.UtcNow
+            };
 
             await _entryPermissionRepository.AddAsync(entity);
             await _unitOfWork.SaveChangesAsync();
 
-            var full = await _entryPermissionRepository.GetEntryPermissionWithDetailsAsync(entity.Id);
+            // 3️⃣ Traer completo y mapear response
+            var full = await _entryPermissionRepository
+                .GetEntryPermissionWithDetailsAsync(entity.Id);
+
             return full!.ToResponseDto();
         }
+
 
 
         public async Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid id, Guid currentUserId)
@@ -85,7 +116,7 @@ namespace CountrySecure.Application.Services.EntryPermission
 
         public async Task<EntryPermissionResponseDto?> SoftDeleteEntryPermissionAsync(Guid entryPermissionId, Guid currentUserId)
         {
-            
+
             var entity = await _entryPermissionRepository.SoftDeleteToggleAsync(entryPermissionId);
 
             if (entity == null)
@@ -95,19 +126,19 @@ namespace CountrySecure.Application.Services.EntryPermission
             entity.LastModifiedAt = DateTime.UtcNow;
             entity.LastModifiedBy = currentUserId.ToString();
 
-            
+
             if (entity.Status == "Inactive")
             {
-                
-                entity.EntryPermissionState = PermissionStatus.Cancelled; 
 
-                
+                entity.EntryPermissionState = PermissionStatus.Cancelled;
+
+
             }
             else
             {
                 // Si se acaba de reactivar, debería volver al estado inicial (Pending)
                 entity.EntryPermissionState = PermissionStatus.Pending; // Usamos el enum para el estado funcional si existe
-                                                         
+
             }
 
             // 4. Persistencia
@@ -133,7 +164,7 @@ namespace CountrySecure.Application.Services.EntryPermission
                 throw new KeyNotFoundException("QR Code no encontrado en el sistema.");
 
             // 3. Validar si está cancelado
-            if ( entity.Status == "Cancelled")
+            if (entity.Status == "Cancelled")
                 throw new InvalidOperationException("El permiso asociado a este QR se encuentra cancelado o dado de baja.");
 
             // 4. Validar expiración (si aplica)
@@ -184,16 +215,16 @@ namespace CountrySecure.Application.Services.EntryPermission
 
             if (entity == null) return null;
 
-            return entity.ToResponseDto(); 
+            return entity.ToResponseDto();
         }
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetAllEntryPermissionsAsync(int pageNumber, int pageSize)
         {
-           
+
             var entities = await _entryPermissionRepository.GetAllWithIncludesAsync(pageNumber, pageSize);
 
 
-            return entities.ToResponseDto(); 
+            return entities.ToResponseDto();
         }
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByUserIdAsync(Guid userId)
@@ -210,14 +241,14 @@ namespace CountrySecure.Application.Services.EntryPermission
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByVisitIdAsync(Guid visitId)
         {
-            
+
             var entities = await _entryPermissionRepository.GetEntryPermissionsByVisitIdAsync(visitId);
             return entities.ToResponseDto();
         }
 
         public async Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByTypeAsync(PermissionType permissionType, int pageNumber, int pageSize)
         {
-            
+
             var entities = await _entryPermissionRepository.GetEntryPermissionsByTypeAsync(permissionType, pageNumber, pageSize);
             return entities.ToResponseDto();
         }
@@ -299,7 +330,7 @@ namespace CountrySecure.Application.Services.EntryPermission
             // Aplicar Check-Out
             entity.DepartureTime = DateTime.UtcNow;
 
-            
+
             entity.CheckOutGuardId = currentUserId;
 
             // Auditoría

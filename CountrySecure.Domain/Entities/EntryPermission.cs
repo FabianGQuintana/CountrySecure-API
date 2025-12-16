@@ -7,7 +7,7 @@ namespace CountrySecure.Domain.Entities
         public required string QrCodeValue { get; set; }
 
         public PermissionType PermissionType { get; set; }
-        public PermissionStatus EntryPermissionState { get; set; }
+        public PermissionStatus EntryPermissionState { get; set; } = PermissionStatus.Pending;
         public string? Description { get; set; }
         public DateTime ValidFrom { get; set; }
         public DateTime? EntryTime { get; set; }
