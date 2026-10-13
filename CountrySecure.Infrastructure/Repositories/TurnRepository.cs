@@ -64,6 +64,20 @@ namespace CountrySecure.Infrastructure.Repositories
                 .ToListAsync();
         }
 
+        public async Task<List<Turn>> GetActiveOverlappingTurnsAsync(Guid amenityId, DateTime start, DateTime end, Guid? excludeTurnId = null)
+        {
+            // Dos intervalos [a,b) y [c,d) se solapan si a < d && c < b
+            return await _dbContext.Turns
+                .AsNoTracking()
+                .Where(t => t.AmenityId == amenityId
+                            && t.DeletedAt == null
+                            && t.TurnStatus != TurnStatus.Cancelled
+                            && t.StartTime < end
+                            && start < t.EndTime
+                            && (excludeTurnId == null || t.Id != excludeTurnId))
+                .ToListAsync();
+        }
+
 
     }
 }

@@ -5,6 +5,7 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers; 
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
+using CountrySecure.Domain.Exceptions;
 
 namespace CountrySecure.Application.Services.EntryPermission
 {
@@ -26,6 +27,8 @@ namespace CountrySecure.Application.Services.EntryPermission
         public async Task<EntryPermissionResponseDto> AddNewEntryPermissionAsync(CreateEntryPermissionDto dto, Guid currentUserId)
         {
             var entity = dto.ToEntity();
+
+            EnsureValidWindow(entity.ValidFrom, entity.ValidTo);
 
             entity.QrCodeValue = Guid.NewGuid().ToString();
             entity.CreatedBy = currentUserId.ToString();
@@ -65,8 +68,10 @@ namespace CountrySecure.Application.Services.EntryPermission
                 entity.EntryPermissionState = PermissionStatus.Completed;
             }
 
-            // 3. Verificar expiración
-            if (DateTime.UtcNow > entity.ValidFrom && entity.EntryPermissionState == PermissionStatus.Pending)
+            EnsureValidWindow(entity.ValidFrom, entity.ValidTo);
+
+            // 3. Verificar expiración (vence al pasar ValidTo, no ValidFrom)
+            if (entity.ValidTo.HasValue && DateTime.UtcNow > entity.ValidTo.Value && entity.EntryPermissionState == PermissionStatus.Pending)
             {
                 entity.EntryPermissionState = PermissionStatus.Expired;
             }
@@ -132,17 +137,17 @@ namespace CountrySecure.Application.Services.EntryPermission
             if (entity == null)
                 throw new KeyNotFoundException("QR Code no encontrado en el sistema.");
 
-            // 3. Validar si está cancelado
-            if ( entity.Status == "Cancelled")
-                throw new InvalidOperationException("El permiso asociado a este QR se encuentra cancelado o dado de baja.");
+            // 3. Cancelado o dado de baja (el estado funcional vive en EntryPermissionState) -> 409
+            EnsureNotCancelled(entity);
 
-            // 4. Validar expiración (si aplica)
-            if (entity.ValidTo.HasValue && entity.ValidTo.Value < DateTime.UtcNow)
-                throw new InvalidOperationException("El QR ha caducado. La fecha límite de uso ha pasado.");
-
-            // 5. Validar si ya se registró entrada y salida (Luz Roja)
+            // 4. Ya registró entrada y salida (Luz Roja) -> 409
             if (entity.EntryTime != null && entity.DepartureTime != null)
-                throw new InvalidOperationException("El visitante ya registró ingreso y salida. El permiso está consumido.");
+                throw new ConflictException("El visitante ya registró ingreso y salida. El permiso está consumido.");
+
+            // 5. Si todavía no ingresó, el permiso debe estar dentro de su ventana de vigencia -> 422
+            //    (si ya está adentro, se le permite registrar la salida aunque la ventana haya terminado)
+            if (entity.EntryTime == null)
+                EnsureWithinWindow(entity);
 
             // 6. Si ya ingresó (EntryTime != null) pero AÚN no salió (DepartureTime == null) -> MARCAR SALIDA (Luz Amarilla)
             if (entity.EntryTime != null && entity.DepartureTime == null)
@@ -262,13 +267,13 @@ namespace CountrySecure.Application.Services.EntryPermission
             if (entity == null)
                 throw new KeyNotFoundException($"Permiso de Entrada con ID {permissionId} no encontrado.");
 
+            EnsureNotCancelled(entity);
+
             if (entity.EntryPermissionState != PermissionStatus.Pending)
-                throw new InvalidOperationException($"El permiso ID {permissionId} ya tiene un registro de entrada o está cancelado.");
-            // ⛔ VALIDACIÓN CRÍTICA
-            if (entity.ValidTo.HasValue && entity.ValidTo.Value < DateTime.UtcNow)
-                throw new InvalidOperationException(
-                    "El permiso está vencido y no permite check-in."
-                );
+                throw new ConflictException($"El permiso ID {permissionId} ya tiene un registro de entrada o no está pendiente.");
+
+            // Solo se permite ingresar dentro de la ventana ValidFrom..ValidTo
+            EnsureWithinWindow(entity);
 
 
             // Aplicar Check-In
@@ -297,10 +302,10 @@ namespace CountrySecure.Application.Services.EntryPermission
                 throw new KeyNotFoundException($"Permiso de Entrada con ID {permissionId} no encontrado.");
 
             if (entity.EntryTime == null)
-                throw new InvalidOperationException($"No se puede registrar la salida del permiso ID {permissionId}. La entrada no fue registrada.");
+                throw new ConflictException($"No se puede registrar la salida del permiso ID {permissionId}. La entrada no fue registrada.");
 
             if (entity.DepartureTime.HasValue)
-                throw new InvalidOperationException($"La salida del permiso ID {permissionId} ya fue registrada.");
+                throw new ConflictException($"La salida del permiso ID {permissionId} ya fue registrada.");
 
             // Aplicar Check-Out
             entity.DepartureTime = DateTime.UtcNow;
@@ -331,7 +336,31 @@ namespace CountrySecure.Application.Services.EntryPermission
             return entities.ToResponseDto();
         }
 
+        // -------------------------------------------------------------------
+        // REGLAS DE DOMINIO
+        // -------------------------------------------------------------------
 
+        private static void EnsureValidWindow(DateTime validFrom, DateTime? validTo)
+        {
+            if (validTo.HasValue && validTo.Value <= validFrom)
+                throw new BusinessRuleException("La fecha 'ValidTo' debe ser posterior a 'ValidFrom'.");
+        }
 
+        private static void EnsureNotCancelled(Domain.Entities.EntryPermission entity)
+        {
+            if (entity.EntryPermissionState == PermissionStatus.Cancelled || entity.IsDeleted || entity.Status == "Inactive")
+                throw new ConflictException("El permiso asociado a este QR se encuentra cancelado o dado de baja.");
+        }
+
+        private static void EnsureWithinWindow(Domain.Entities.EntryPermission entity)
+        {
+            var now = DateTime.UtcNow;
+
+            if (now < entity.ValidFrom)
+                throw new BusinessRuleException($"El permiso todavía no está vigente. Habilitado desde {entity.ValidFrom:yyyy-MM-dd HH:mm} UTC.");
+
+            if (entity.ValidTo.HasValue && now > entity.ValidTo.Value)
+                throw new BusinessRuleException("El permiso ha caducado. La fecha límite de uso ha pasado.");
+        }
     }
 }

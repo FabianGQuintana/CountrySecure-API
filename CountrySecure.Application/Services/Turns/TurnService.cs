@@ -5,6 +5,7 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
+using CountrySecure.Domain.Exceptions;
 
 
 namespace CountrySecure.Application.Services.Turns
@@ -13,12 +14,47 @@ namespace CountrySecure.Application.Services.Turns
     {
         private readonly ITurnRepository _turnRepository;
 
+        private readonly IAmenityRepository _amenityRepository;
+
         private readonly IUnitOfWork _unitOfWork;
 
-        public TurnService(ITurnRepository turnRepository, IUnitOfWork unitOfWork)
+        public TurnService(ITurnRepository turnRepository, IAmenityRepository amenityRepository, IUnitOfWork unitOfWork)
         {
             _turnRepository = turnRepository;
+            _amenityRepository = amenityRepository;
             _unitOfWork = unitOfWork;
+        }
+
+        /// <summary>
+        /// Reglas de reserva:
+        ///  1. StartTime &lt; EndTime y el turno no puede empezar en el pasado.
+        ///  2. El amenity debe existir y estar activo.
+        ///  3. El mismo usuario no puede tener dos reservas solapadas en el mismo amenity.
+        ///  4. La cantidad de reservas simultáneas no puede superar Capacity
+        ///     (Capacity = 1 equivale a uso exclusivo: ningún solapamiento permitido).
+        /// </summary>
+        private async Task EnsureTurnIsBookableAsync(Guid amenityId, Guid userId, DateTime start, DateTime end, Guid? excludeTurnId = null)
+        {
+            if (start >= end)
+                throw new BusinessRuleException("La hora de inicio debe ser anterior a la hora de fin.");
+
+            if (excludeTurnId == null && start < DateTime.UtcNow)
+                throw new BusinessRuleException("No se puede reservar un turno en el pasado.");
+
+            var amenity = await _amenityRepository.GetByIdAsync(amenityId);
+            if (amenity == null || amenity.IsDeleted)
+                throw new KeyNotFoundException($"El amenity con ID {amenityId} no existe o está inactivo.");
+
+            var overlapping = await _turnRepository.GetActiveOverlappingTurnsAsync(amenityId, start, end, excludeTurnId);
+
+            if (overlapping.Any(t => t.UserId == userId))
+                throw new ConflictException("Ya tenés una reserva en este amenity que se superpone con ese horario.");
+
+            var capacity = Math.Max(amenity.Capacity, 1);
+            if (overlapping.Count >= capacity)
+                throw new ConflictException(capacity == 1
+                    ? $"'{amenity.AmenityName}' ya está reservado en ese horario."
+                    : $"'{amenity.AmenityName}' alcanzó su capacidad máxima ({capacity}) en ese horario.");
         }
 
         // -------------------------------------------------------------------
@@ -35,6 +71,9 @@ namespace CountrySecure.Application.Services.Turns
             newTurnEntity.CreatedBy = currentUserId.ToString();
             newTurnEntity.CreatedAt = DateTime.UtcNow;
             newTurnEntity.Status = "Active"; // Asignar estado de BaseEntity (string)
+
+            // Reglas de dominio: horario válido, sin solapamiento y dentro de la capacidad
+            await EnsureTurnIsBookableAsync(newTurnEntity.AmenityId, currentUserId, newTurnEntity.StartTime, newTurnEntity.EndTime);
 
 
             // 3. Persistencia inicial
@@ -70,8 +109,12 @@ namespace CountrySecure.Application.Services.Turns
                 throw new UnauthorizedAccessException("User is not authorized to update this Turn.");
             }
 
-            // 3. Mapear DTO -> Entidad Existente (DESCOMENTADO Y REQUERIDO)
+            // 3. Mapear DTO -> Entidad Existente
             updateTurnDto.MapToEntity(existingTurn);
+
+            // Revalidar reglas si el turno sigue activo (puede haber cambiado horario o amenity)
+            if (existingTurn.TurnStatus != TurnStatus.Cancelled)
+                await EnsureTurnIsBookableAsync(existingTurn.AmenityId, existingTurn.UserId, existingTurn.StartTime, existingTurn.EndTime, existingTurn.Id);
 
             // 4. Actualizar Auditoría (OK)
             existingTurn.LastModifiedAt = DateTime.UtcNow;

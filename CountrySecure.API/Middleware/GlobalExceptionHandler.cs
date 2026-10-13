@@ -1,3 +1,4 @@
+using CountrySecure.Domain.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,8 @@ namespace CountrySecure.API.Middleware
             var (status, title) = exception switch
             {
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
+                ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
+                BusinessRuleException => (StatusCodes.Status422UnprocessableEntity, "Business rule violated"),
                 SecurityTokenException => (StatusCodes.Status401Unauthorized, "Invalid token"),
                 UnauthorizedAccessException when httpContext.User.Identity?.IsAuthenticated != true
                     => (StatusCodes.Status401Unauthorized, "Unauthorized"),
