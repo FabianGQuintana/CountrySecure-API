@@ -47,7 +47,7 @@ namespace CountrySecure.Application.Mappers
                 Location = dto.Location,
 
                 // IDs (Guid a Guid)
-                IdUser = dto.UserId,
+                IdUser = dto.UserId ?? Guid.Empty, // el servicio lo reemplaza por el usuario autenticado
                 IdOrder = dto.OrderId,
 
                 // EntryPermissionState (Se inicializa al valor del DTO o al defecto si no se requiere en DTO)

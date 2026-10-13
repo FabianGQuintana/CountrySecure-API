@@ -23,12 +23,15 @@ namespace CountrySecure.Application.Services.Request
         }
 
         // Crear una nueva solicitud
-        public async Task<CreateRequestDto> CreateRequestAsync(CreateRequestDto createRequestDto, Guid currentUserId)
+        public async Task<RequestResponseDto> CreateRequestAsync(CreateRequestDto createRequestDto, Guid currentUserId)
         {
 
             var requestEntity = createRequestDto.ToEntity();
 
 
+            // El solicitante siempre es el usuario autenticado
+            requestEntity.IdUser = currentUserId;
+            requestEntity.RequestStatus = RequestStatus.Pending;
             requestEntity.CreatedBy = currentUserId.ToString();
             requestEntity.CreatedAt = DateTime.UtcNow; 
             requestEntity.Status = "Active"; 
@@ -37,8 +40,19 @@ namespace CountrySecure.Application.Services.Request
             await _requestRepository.AddAsync(requestEntity);
             await _unitOfWork.SaveChangesAsync();
 
-            // Mapear la entidad a DTO de respuesta para devolverla
-            return createRequestDto;
+            var created = await _requestRepository.GetRequestWithDetailsAsync(requestEntity.Id)
+                          ?? throw new KeyNotFoundException("La solicitud fue creada pero no se pudo recuperar.");
+            return created.ToResponseDto();
+        }
+
+        // Solicitudes de un usuario (ej. "Mis solicitudes" del residente)
+        public async Task<IEnumerable<RequestResponseDto>> GetRequestsByUserIdAsync(Guid userId)
+        {
+            var requests = await _requestRepository.GetByUserIdAsync(userId);
+            return requests
+                .Where(r => r.DeletedAt == null)
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => r.ToResponseDto());
         }
 
         // Obtener una solicitud por ID

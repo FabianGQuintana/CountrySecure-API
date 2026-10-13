@@ -33,6 +33,7 @@ namespace CountrySecure.Application.Mappers
 
                 // Mapeo del Enum a String (Recomendado para APIs)
                 Status = turn.Status.ToString(),
+                TurnStatus = turn.TurnStatus.ToString(),
 
                 // Claves Foráneas
                 UserId = turn.UserId,

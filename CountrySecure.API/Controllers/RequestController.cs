@@ -24,7 +24,12 @@ namespace CountrySecure.API.Controllers
         public async Task<IActionResult> CreateRequest([FromBody] CreateRequestDto createRequestDto)
             => Ok(await _requestService.CreateRequestAsync(createRequestDto, _currentUser.GetRequiredUserId()));
 
-        [HttpGet("{id}")]
+        // Solicitudes del usuario autenticado
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMine()
+            => Ok(await _requestService.GetRequestsByUserIdAsync(_currentUser.GetRequiredUserId()));
+
+        [HttpGet("{id:guid}")]
         public async Task<ActionResult<RequestResponseDto>> GetRequestById(Guid id)
         {
             var request = await _requestService.GetRequestByIdAsync(id);

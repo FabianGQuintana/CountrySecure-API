@@ -99,6 +99,7 @@ builder.Services.AddScoped<IRequestService, RequestService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddSingleton<JwtUtils>();
 

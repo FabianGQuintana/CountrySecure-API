@@ -38,6 +38,11 @@ namespace CountrySecure.API.Controllers
             return propertyDto == null ? NotFound() : Ok(propertyDto);
         }
 
+        // Propiedades del usuario autenticado
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMine()
+            => Ok(await _propertyService.GetPropertiesByOwnerId(_currentUser.GetRequiredUserId()));
+
         [HttpGet("owner/{ownerId:guid}")]
         public async Task<IActionResult> GetByOwner(Guid ownerId)
             => Ok(await _propertyService.GetPropertiesByOwnerId(ownerId));

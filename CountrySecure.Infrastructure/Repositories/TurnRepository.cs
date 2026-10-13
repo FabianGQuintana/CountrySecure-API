@@ -20,6 +20,9 @@ namespace CountrySecure.Infrastructure.Repositories
         {
             return await _dbContext.Turns
                 .Where(t => t.AmenityId == amenityId)
+                .Include(t => t.User)
+                .Include(t => t.Amenity)
+                .OrderBy(t => t.StartTime)
                 .ToListAsync();
         }
 
@@ -27,6 +30,9 @@ namespace CountrySecure.Infrastructure.Repositories
         {
             return await _dbContext.Turns
                 .Where(t => t.UserId == userId)
+                .Include(t => t.User)
+                .Include(t => t.Amenity)
+                .OrderBy(t => t.StartTime)
                 .ToListAsync();
         }
 
@@ -34,6 +40,9 @@ namespace CountrySecure.Infrastructure.Repositories
         {
             return await _dbContext.Turns
                 .Where(t => t.StartTime >= startDate && t.EndTime <= endDate)
+                .Include(t => t.User)
+                .Include(t => t.Amenity)
+                .OrderBy(t => t.StartTime)
                 .ToListAsync();
         }
 
@@ -41,6 +50,9 @@ namespace CountrySecure.Infrastructure.Repositories
         {
             return await _dbContext.Turns
                 .Where(t => t.TurnStatus == status)
+                .Include(t => t.User)
+                .Include(t => t.Amenity)
+                .OrderBy(t => t.StartTime)
                 .ToListAsync();
         }
 

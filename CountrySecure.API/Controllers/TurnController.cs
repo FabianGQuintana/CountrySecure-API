@@ -63,6 +63,11 @@ namespace CountrySecure.API.Controllers
             return turnDto == null ? NotFound() : Ok(turnDto);
         }
 
+        // Reservas del usuario autenticado ("Mis reservas")
+        [HttpGet("me")]
+        public async Task<IActionResult> GetMine()
+            => Ok(await _turnService.GetTurnsByUserIdAsync(_currentUser.GetRequiredUserId()));
+
         [HttpGet("user/{userId:guid}")]
         public async Task<IActionResult> GetByUserId(Guid userId)
             => Ok(await _turnService.GetTurnsByUserIdAsync(userId));
