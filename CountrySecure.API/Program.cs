@@ -218,7 +218,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "CountrySecure API v1"));
 }
 
-app.UseHttpsRedirection();
+// En desarrollo el front consume la API por HTTP (http://localhost:5021) sin certificado de confianza.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
