@@ -1,393 +1,158 @@
-﻿using CountrySecure.Application.DTOs.EntryPermission;
+using CountrySecure.API.Authorization;
+using CountrySecure.Application.DTOs.EntryPermission;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Collections.Generic;
-using System.Security.Claims; 
-using System.Threading.Tasks;
 
 namespace CountrySecure.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class EntryPermissionsController : ControllerBase
     {
         private readonly IEntryPermissionService _entryPermissionService;
+        private readonly ICurrentUserService _currentUser;
 
-        public EntryPermissionsController(IEntryPermissionService entryPermissionService)
+        public EntryPermissionsController(IEntryPermissionService entryPermissionService, ICurrentUserService currentUser)
         {
             _entryPermissionService = entryPermissionService;
-        }
-
-        // --- Método Auxiliar para Seguridad (Usando Claims) ---
-        private Guid GetCurrentUserId()
-        {
-            // Busca el ClaimTypes.NameIdentifier (sub) o el claim que uses para almacenar el ID
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            // Si el claim existe y es convertible a Guid, lo devuelve. Si no, devuelve Guid.Empty
-            if (userIdClaim != null && Guid.TryParse(userIdClaim, out Guid userId))
-            {
-                return userId;
-            }
-            return Guid.Empty; // Guid.Empty indica que el ID no pudo ser recuperado
+            _currentUser = currentUser;
         }
 
         // -------------------------------------------------------------------
-        // POST: Creación de un nuevo permiso (201 Created)
+        // CRUD
         // -------------------------------------------------------------------
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateEntryPermissionDto createDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var currentUserId = GetCurrentUserId();
-                // Validar que el usuario fue autenticado
-                if (currentUserId == Guid.Empty) return Unauthorized();
-
-                var result = await _entryPermissionService.AddNewEntryPermissionAsync(createDto, currentUserId);
-
-                return CreatedAtAction(nameof(GetById), new { entryPermissionId = result.Id }, result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            var result = await _entryPermissionService.AddNewEntryPermissionAsync(createDto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { entryPermissionId = result.Id }, result);
         }
-
-        // -------------------------------------------------------------------
-        // GET: Obtener por ID (200 OK / 404 Not Found)
-        // -------------------------------------------------------------------
 
         [HttpGet("{entryPermissionId}")]
         public async Task<IActionResult> GetById(Guid entryPermissionId)
         {
-            var result = await _entryPermissionService.GetEntryPermissionByIdAsync(entryPermissionId);
-
-            if (result == null)
-            {
-                return NotFound($"EntryPermission with ID {entryPermissionId} not found.");
-            }
-
+            var result = await _entryPermissionService.GetEntryPermissionByIdAsync(entryPermissionId)
+                         ?? throw new KeyNotFoundException($"EntryPermission with ID {entryPermissionId} not found.");
             return Ok(result);
         }
-
-        // -------------------------------------------------------------------
-        // PUT: Actualización total o parcial (200 OK / 404 Not Found)
-        // -------------------------------------------------------------------
 
         [HttpPut("{entryPermissionId}")]
         public async Task<IActionResult> Update(Guid entryPermissionId, [FromBody] UpdateEntryPermissionDto updateDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                var currentUserId = GetCurrentUserId();
-                if (currentUserId == Guid.Empty) return Unauthorized(); // Seguridad
-
-                // CORREGIDO: Pasamos el currentUserId para la lógica de auditoría/autorización en el servicio
-                var result = await _entryPermissionService.UpdateEntryPermissionAsync(updateDto, entryPermissionId, currentUserId);
-
-                if (result == null)
-                {
-                    return NotFound($"EntryPermission with ID {entryPermissionId} not found.");
-                }
-
-                return Ok(result); // 200 OK
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, ex.Message); // 403 Forbidden
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            var result = await _entryPermissionService.UpdateEntryPermissionAsync(updateDto, entryPermissionId, _currentUser.GetRequiredUserId())
+                         ?? throw new KeyNotFoundException($"EntryPermission with ID {entryPermissionId} not found.");
+            return Ok(result);
         }
-
-        // -------------------------------------------------------------------
-        // DELETE: Eliminación Lógica 
-        // -------------------------------------------------------------------
 
         [HttpPatch("{id:guid}/SoftDelete")]
         public async Task<IActionResult> SoftDelete(Guid id)
         {
-        // 1. Obtener el ID del usuario actual
-            Guid? currentUserId = GetCurrentUserId();
-            if (!currentUserId.HasValue)
-            {
-                return Unauthorized();
-            }
+            var updatedPermissionDto = await _entryPermissionService.SoftDeleteEntryPermissionAsync(id, _currentUser.GetRequiredUserId())
+                                       ?? throw new KeyNotFoundException($"Permiso de Entrada con ID {id} no encontrado.");
 
-            try
+            var action = updatedPermissionDto.BaseEntityStatus == "Active" ? "reactivado" : "desactivado";
+            return Ok(new
             {
-                // 2. Llamada al servicio que ahora devuelve el DTO o null
-                var updatedPermissionDto = await _entryPermissionService.SoftDeleteEntryPermissionAsync(id, currentUserId.Value);
-
-                if (updatedPermissionDto == null)
-                {
-                    return NotFound($"Permiso de Entrada con ID {id} no encontrado."); // 404 Not Found
-                }
-
-                // 3. Retorno de éxito (200 OK y el DTO actualizado)
-                var action = updatedPermissionDto.BaseEntityStatus == "Active" ? "reactivado" : "desactivado";
-
-                return Ok(new
-                {
-                    Message = $"El Permiso de Entrada con ID {id} ha sido {action} exitosamente.",
-                    Permission = updatedPermissionDto // Devuelve el DTO completo y actualizado
-                });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Forbid(ex.Message); // 403 Forbidden
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Ocurrió un error inesperado durante el cambio de estado del Permiso de Entrada.");
-            }
+                Message = $"El Permiso de Entrada con ID {id} ha sido {action} exitosamente.",
+                Permission = updatedPermissionDto
+            });
         }
 
         // -------------------------------------------------------------------
-        // GET: Consultas de Colección (Paginated/Filtered)
+        // CONSULTAS DE COLECCIÓN
         // -------------------------------------------------------------------
 
-        [HttpGet] // GET /api/entrypermissions?pageNumber=1&pageSize=100
+        [HttpGet]
+        [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var results = await _entryPermissionService.GetAllEntryPermissionsAsync(pageNumber, pageSize);
-            return Ok(results);
-        }
+            => Ok(await _entryPermissionService.GetAllEntryPermissionsAsync(pageNumber, pageSize));
 
-        [HttpGet("type/{permissionType}")] // GET /api/entrypermissions/type/Visitante
+        [HttpGet("type/{permissionType}")]
+        [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<IActionResult> GetByType(PermissionType permissionType, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var results = await _entryPermissionService.GetEntryPermissionsByTypeAsync(permissionType, pageNumber, pageSize);
-            return Ok(results);
-        }
+            => Ok(await _entryPermissionService.GetEntryPermissionsByTypeAsync(permissionType, pageNumber, pageSize));
 
-        // -------------------------------------------------------------------
-        // Consultas por FK (UserID, VisitID, ServiceID)
-        // -------------------------------------------------------------------
-
-        [HttpGet("user/{userId}")] // GET /api/entrypermissions/user/{userId}
+        [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetByUserId(Guid userId)
         {
-            var results = await _entryPermissionService.GetEntryPermissionsByUserIdAsync(userId);
-            return Ok(results); // Devuelve 200 OK con lista vacía si no hay resultados
+            // Un residente solo puede consultar sus propios permisos
+            if (_currentUser.Role == Domain.Constants.RoleTypes.Resident && _currentUser.UserId != userId)
+                throw new UnauthorizedAccessException("You can only view your own entry permissions.");
+
+            return Ok(await _entryPermissionService.GetEntryPermissionsByUserIdAsync(userId));
         }
 
-        [HttpGet("visit/{visitId}")] // GET /api/entrypermissions/visit/{visitId}
+        [HttpGet("visit/{visitId}")]
         public async Task<IActionResult> GetByVisitId(Guid visitId)
-        {
-            var results = await _entryPermissionService.GetEntryPermissionsByVisitIdAsync(visitId);
-            return Ok(results);
-        }
+            => Ok(await _entryPermissionService.GetEntryPermissionsByVisitIdAsync(visitId));
 
-        [HttpGet("service/{serviceId}")] // GET /api/entrypermissions/service/{serviceId}
+        [HttpGet("service/{serviceId}")]
         public async Task<IActionResult> GetByServiceId(Guid serviceId)
-        {
-            var results = await _entryPermissionService.GetEntryPermissionsByServiceIdAsync(serviceId);
-            return Ok(results);
-        }
+            => Ok(await _entryPermissionService.GetEntryPermissionsByServiceIdAsync(serviceId));
 
         // -------------------------------------------------------------------
-        // VALIDACIÓN DE QR
+        // OPERACIONES DE PORTERÍA (Security / Admin)
         // -------------------------------------------------------------------
 
         [HttpGet("validate")]
+        [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<IActionResult> ValidateQrCode([FromQuery] string code)
         {
             if (string.IsNullOrWhiteSpace(code))
-            {
-                return BadRequest("QR code value is required.");
-            }
+                throw new ArgumentException("QR code value is required.");
 
-            try
-            {
-                // Llama al servicio, que ahora devuelve GateCheckResponseDto
-                var validationData = await _entryPermissionService.ValidateQrCodeAsync(code);
-
-                // 200 OK: Devuelve los datos de corroboración (luz verde/roja en el CheckResultStatus)
-                return Ok(validationData);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                // 404 Not Found (El código nunca existió)
-                return NotFound(new { Message = ex.Message, CheckResultStatus = "No Encontrado" });
-            }
-            catch (Exception ex)
-            {
-                // En caso de otros errores (ej. la base de datos falla)
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            return Ok(await _entryPermissionService.ValidateQrCodeAsync(code));
         }
-
-        // -------------------------------------------------------------------
-        // GET: Permisos del Día (La consulta que usa el MainView)
-        // -------------------------------------------------------------------
 
         [HttpGet("today")]
-        public async Task<IActionResult> GetTodayPermissions(
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 100)
+        [Authorize(Policy = Policies.SecurityStaff)]
+        public async Task<IActionResult> GetTodayPermissions([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
         {
-            try
-            {
-                // 1. Obtener la fecha de HOY en la zona horaria local del servidor
-                var todayLocal = DateTime.Today;
-
-                // 2. CONVERSIÓN CRÍTICA: Convertir la fecha local a UTC para que PostgreSQL la acepte.
-                // Asumimos que quieres consultar el día que acaba de empezar en la hora local.
-                var todayUtc = todayLocal.ToUniversalTime();
-
-                // Puedes optar por usar DateTime.UtcNow.Date para forzar UTC desde el inicio si prefieres,
-                // pero usar todayLocal y luego convertir ayuda a respetar el cambio de día local.
-
-                // Pasa el valor UTC al servicio
-                var results = await _entryPermissionService.GetActivePermissionsForDateAsync(todayUtc, pageNumber, pageSize);
-
-                return Ok(results);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            // Día local del servidor convertido a UTC (PostgreSQL timestamptz)
+            var todayUtc = DateTime.Today.ToUniversalTime();
+            return Ok(await _entryPermissionService.GetActivePermissionsForDateAsync(todayUtc, pageNumber, pageSize));
         }
-
-
-        // -------------------------------------------------------------------
-        // PATCH: Registro de Entrada (Check-In)
-        // -------------------------------------------------------------------
 
         [HttpPatch("{permissionId:guid}/checkin")]
+        [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<IActionResult> RegisterCheckIn(Guid permissionId)
         {
-            try
-            {
-                var currentUserId = GetCurrentUserId();
-                if (currentUserId == Guid.Empty) return Unauthorized();
-
-                var updatedPermission = await _entryPermissionService.RegisterCheckInAsync(permissionId, currentUserId);
-
-                return Ok(new
-                {
-                    Message = "Entrada registrada exitosamente.",
-                    Permission = updatedPermission
-                });
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound("Permiso no encontrado.");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message); // 400 Bad Request
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error al registrar la entrada: {ex.Message}");
-            }
+            var updatedPermission = await _entryPermissionService.RegisterCheckInAsync(permissionId, _currentUser.GetRequiredUserId());
+            return Ok(new { Message = "Entrada registrada exitosamente.", Permission = updatedPermission });
         }
-
-
-        // -------------------------------------------------------------------
-        // PATCH: Registro de Salida (Check-Out)
-        // -------------------------------------------------------------------
 
         [HttpPatch("{permissionId:guid}/checkout")]
+        [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<IActionResult> RegisterCheckOut(Guid permissionId)
         {
-            try
-            {
-                var currentUserId = GetCurrentUserId();
-                if (currentUserId == Guid.Empty) return Unauthorized();
-
-                var updatedPermission = await _entryPermissionService.RegisterCheckOutAsync(permissionId, currentUserId);
-
-                return Ok(new
-                {
-                    Message = "Salida registrada exitosamente.",
-                    Permission = updatedPermission
-                });
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound("Permiso no encontrado.");
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message); // 400 Bad Request
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error al registrar la salida: {ex.Message}");
-            }
+            var updatedPermission = await _entryPermissionService.RegisterCheckOutAsync(permissionId, _currentUser.GetRequiredUserId());
+            return Ok(new { Message = "Salida registrada exitosamente.", Permission = updatedPermission });
         }
-
-        // -------------------------------------------------------------------
-        // GET: Historial de Entradas/Salidas
-        // -------------------------------------------------------------------
 
         [HttpGet("history")]
-        public async Task<IActionResult> GetEntryHistory( [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null, [FromQuery] string? type = null
-        )
-        {
-            var results = await _entryPermissionService
-                .GetEntryLogsAsync(pageNumber, pageSize, search, type);
-
-            return Ok(results);
-        }
-
+        [Authorize(Policy = Policies.SecurityStaff)]
+        public async Task<IActionResult> GetEntryHistory([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null, [FromQuery] string? type = null)
+            => Ok(await _entryPermissionService.GetEntryLogsAsync(pageNumber, pageSize, search, type));
 
         [HttpPost("register-movement")]
+        [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<IActionResult> RegisterMovement([FromBody] RegisterMovementDto dto)
         {
-            if (!ModelState.IsValid)
+            // El guardia se toma del token, nunca del body.
+            var guardId = _currentUser.GetRequiredUserId();
+
+            if (dto.IsEntry)
             {
-                return BadRequest(ModelState);
+                await _entryPermissionService.RegisterCheckInAsync(dto.PermissionId, guardId);
+                return Ok(new { Message = "Entrada registrada con éxito." });
             }
 
-            try
-            {
-                if (dto.IsEntry)
-                {
-                    // Llama a la lógica de Check-In
-                    await _entryPermissionService.RegisterCheckInAsync(dto.PermissionId, dto.GuardId);
-                    return Ok(new { Message = "Entrada registrada con éxito." });
-                }
-                else
-                {
-                    // Llama a la lógica de Check-Out
-                    await _entryPermissionService.RegisterCheckOutAsync(dto.PermissionId, dto.GuardId);
-                    return Ok(new { Message = "Salida registrada con éxito." });
-                }
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { Message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                // Maneja casos como "Ya ingresó y salió" o "Entrada no registrada"
-                return Conflict(new { Message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+            await _entryPermissionService.RegisterCheckOutAsync(dto.PermissionId, guardId);
+            return Ok(new { Message = "Salida registrada con éxito." });
         }
-
     }
 }

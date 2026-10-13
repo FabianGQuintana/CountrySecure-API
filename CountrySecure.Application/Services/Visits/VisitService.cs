@@ -33,15 +33,15 @@ namespace CountrySecure.Application.Services.Visits
         public async Task<VisitResponseDto> AddNewVisitAsync(CreateVisitDto newVisitDto, Guid currentUserId)
         {
             // Mapear DTO → Entidad
-            var newVisitEntity = newVisitDto.ToEntity();
+            var newVisitEntity = newVisitDto.ToEntity(); 
 
             // Auditoría
             newVisitEntity.CreatedBy = currentUserId.ToString();
             newVisitEntity.CreatedAt = DateTime.UtcNow;
             newVisitEntity.Status = "Active";
 
-            var addedVisit = await _visitRepository.AddAsync(newVisitEntity);
-            await _unitOfWork.SaveChangesAsync();
+            var addedVisit = await _visitRepository.AddAsync(newVisitEntity); 
+            await _unitOfWork.SaveChangesAsync(); 
 
             return addedVisit.ToResponseDto();
         }

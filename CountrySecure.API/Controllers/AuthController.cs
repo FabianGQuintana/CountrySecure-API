@@ -1,43 +1,40 @@
-
-
-using System.Security.Claims;
+using CountrySecure.API.Authorization;
 using CountrySecure.Application.DTOs.Auth;
 using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 namespace CountrySecure.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
         private readonly IUserService _userService;
+        private readonly ICurrentUserService _currentUser;
 
-        public AuthController(IAuthService authService, IUserService userService)
+        public AuthController(IAuthService authService, IUserService userService, ICurrentUserService currentUser)
         {
             _authService = authService;
             _userService = userService;
+            _currentUser = currentUser;
         }
 
-
-       //[Authorize(Roles = "Admin")]
+        // Solo un Admin puede dar de alta cuentas (el primer Admin se crea por seed).
         [HttpPost("register")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto dto)
         {
             var result = await _authService.RegisterAsync(dto);
 
             if (!result.Success)
-            {
                 return BadRequest(new { message = result.Message });
-            }
 
             return CreatedAtAction(nameof(GetUserById), new { id = result.UserId }, result);
         }
-
 
         [AllowAnonymous]
         [HttpPost("login")]
@@ -45,20 +42,13 @@ namespace CountrySecure.API.Controllers
         {
             var result = await _authService.LoginAsync(dto);
 
+            // Mismo 401 para email inexistente o contraseña incorrecta (evita enumerar usuarios)
             if (!result.Success)
-            {
-                if (result.Message == "User not found")
-                {
-                    return NotFound(new { message = result.Message });
-                }
-
-                return Unauthorized(new { message = result.Message });
-            }
+                return Unauthorized(new { message = "Invalid email or password." });
 
             return Ok(result);
         }
 
-        [Authorize]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
         {
@@ -66,42 +56,15 @@ namespace CountrySecure.API.Controllers
             return Ok(new { message = "Logout succesful" });
         }
 
-
         [AllowAnonymous]
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
-        {
-            try
-            {
-                var result = await _authService.RefreshTokenAsync(request);
-                return Ok(result);
-            }
-            catch (SecurityTokenExpiredException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-        }
+            => Ok(await _authService.RefreshTokenAsync(request));
 
-        [Authorize]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized(new { message = "Invalid token." });
-
-            var userId = Guid.Parse(userIdClaim);
-
-            var result = await _authService.ChangePasswordAsync(userId, dto);
+            var result = await _authService.ChangePasswordAsync(_currentUser.GetRequiredUserId(), dto);
 
             if (!result.Success)
                 return BadRequest(new { message = result.ErrorMessage });
@@ -109,18 +72,9 @@ namespace CountrySecure.API.Controllers
             return Ok(new { message = "Password was succesfully updated." });
         }
 
-
-         [Authorize]
-        [HttpGet("{id}")]
+        [HttpGet("{id:guid}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> GetUserById(Guid id)
-        {
-            var user = await _userService.GetByIdAsync(id);
-
-            if (user == null)
-                return NotFound(new { message = "User not found" });
-
-            return Ok(user);
-        }
-
+            => Ok(await _userService.GetByIdAsync(id));
     }
 }

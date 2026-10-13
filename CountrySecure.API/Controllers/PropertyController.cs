@@ -1,207 +1,83 @@
-﻿using CountrySecure.Application.Interfaces.Services;
-using Microsoft.AspNetCore.Mvc;
+using CountrySecure.API.Authorization;
 using CountrySecure.Application.DTOs.Properties;
-using System.Threading.Tasks;
-using System.Security.Claims;
-using System;
-using System.Collections.Generic;
+using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class PropertyController : ControllerBase
     {
         private readonly IPropertyService _propertyService;
+        private readonly ICurrentUserService _currentUser;
 
-        public PropertyController(IPropertyService propertyService)
+        public PropertyController(IPropertyService propertyService, ICurrentUserService currentUser)
         {
             _propertyService = propertyService;
+            _currentUser = currentUser;
         }
 
-        // --- MÉTODOS DE CONSULTA (GET) --- (NO NECESITAN TRY/CATCH SI SOLO DE VUELVEN LISTAS)
+        // --- CONSULTA ---
 
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var propertiesDto = await _propertyService.GetAllPropertiesAsync(pageNumber, pageSize);
-            return Ok(propertiesDto);
-        }
+            => Ok(await _propertyService.GetAllPropertiesAsync(pageNumber, pageSize));
 
         [HttpGet("available")]
         public async Task<IActionResult> GetAvailable([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var availablePropertiesDto = await _propertyService.GetPropertiesByStatusAsync(
-                Domain.Enums.PropertyStatus.Available,
-                pageNumber,
-                pageSize
-            );
-            return Ok(availablePropertiesDto);
-        }
+            => Ok(await _propertyService.GetPropertiesByStatusAsync(PropertyStatus.Available, pageNumber, pageSize));
 
-        [HttpGet("{id:guid}")] // Añadir restricción :guid
+        [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var propertyDto = await _propertyService.GetPropertyByIdAsync(id);
-
-            if (propertyDto == null)
-            {
-                return NotFound();
-            }
-            return Ok(propertyDto);
+            return propertyDto == null ? NotFound() : Ok(propertyDto);
         }
 
-        [HttpGet("owner/{ownerId:guid}")] // Añadir restricción :guid
+        [HttpGet("owner/{ownerId:guid}")]
         public async Task<IActionResult> GetByOwner(Guid ownerId)
-        {
-            var propertiesDto = await _propertyService.GetPropertiesByOwnerId(ownerId);
-            return Ok(propertiesDto);
-        }
+            => Ok(await _propertyService.GetPropertiesByOwnerId(ownerId));
 
-        [HttpGet("lot/{lotId:guid}")] // Añadir restricción :guid
+        [HttpGet("lot/{lotId:guid}")]
         public async Task<IActionResult> GetByLot(Guid lotId)
-        {
-            var propertiesDto = await _propertyService.GetPropertiesByLotIdAsync(lotId);
-            return Ok(propertiesDto);
-        }
+            => Ok(await _propertyService.GetPropertiesByLotIdAsync(lotId));
 
-        // --- MÉTODOS DE ESCRITURA (CON MANEJO DE ERRORES) ---
+        // --- ESCRITURA (solo Admin) ---
 
         [HttpPost]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Post([FromBody] CreatePropertyDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                // 1. EXTRAER ID Y AUTORIZAR
-                var currentUserId = GetCurrentUserId();
-
-                // 2. CREACIÓN (Lanza KeyNotFoundException si LotId es inválido)
-                var propertyDto = await _propertyService.AddNewPropertyAsync(dto, currentUserId);
-
-                // 3. 201 Created
-                return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized(); // Token inválido o no encontrado
-            }
-            catch (KeyNotFoundException)
-            {
-                // Lanza si LotId no existe o está eliminado (lógica del servicio)
-                return BadRequest(new { message = "El LotId proporcionado no existe o no es válido para la asignación." });
-            }
-            catch (Exception ex)
-            {
-                // Captura errores de DB, de unicidad, etc.
-                return StatusCode(500, new
-                {
-                    message = "Error inesperado al crear la propiedad.",
-                    detail = ex.InnerException?.Message ?? ex.Message
-                });
-            }
+            var propertyDto = await _propertyService.AddNewPropertyAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = propertyDto.PropertyId }, propertyDto);
         }
 
-
         [HttpPut("{id:guid}")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Put(Guid id, [FromBody] UpdatePropertyDto updateDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-                // 1. EXTRAER ID Y AUTORIZAR
-                var currentUserId = GetCurrentUserId();
-
-                // 2. ACTUALIZACIÓN (Lanza KeyNotFoundException o UnauthorizedAccessException)
-                var updatedProperty = await _propertyService.UpdatePropertyAsync(id, updateDto, currentUserId);
-
-                if (updatedProperty == null)
-                {
-                    return NotFound($"Propiedad con ID {id} no encontrada.");
-                }
-
-                return Ok(updatedProperty);
-            }
-            catch (KeyNotFoundException)
-            {
-                // Captura si la Propiedad o el nuevo LotId (si se actualizó) no existen
-                return NotFound("El recurso principal o la clave foránea (Lot/Usuario) no existen.");
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Captura si el usuario no es el creador
-                return Forbid();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Error inesperado al actualizar la propiedad.", detail = ex.Message });
-            }
+            var updatedProperty = await _propertyService.UpdatePropertyAsync(id, updateDto, _currentUser.GetRequiredUserId())
+                                  ?? throw new KeyNotFoundException($"Propiedad con ID {id} no encontrada.");
+            return Ok(updatedProperty);
         }
 
         [HttpPatch("{id:guid}/SoftDelete")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> SoftDeleteToggle(Guid id)
         {
-            try
+            var updatedPropertyDto = await _propertyService.SoftDeleteToggleAsync(id, _currentUser.GetRequiredUserId())
+                                     ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
+
+            var action = updatedPropertyDto.StatusAuditoria == "Active" ? "reactivated" : "deactivated";
+            return Ok(new
             {
-                // 1. Get User ID (will throw if unauthorized/invalid GUID)
-                var currentUserId = GetCurrentUserId();
-
-                // 2. Call standardized service method
-                var updatedPropertyDto = await _propertyService.SoftDeleteToggleAsync(id, currentUserId);
-
-                if (updatedPropertyDto == null)
-                {
-                    return NotFound($"Property with ID {id} not found.");
-                }
-
-                // 3. Return 200 OK and updated DTO
-                var action = updatedPropertyDto.StatusAuditoria == "Active" ? "reactivated" : "deactivated";
-
-                return Ok(new
-                {
-                    Message = $"The Property with ID {id} has been {action} successfully.",
-                    Property = updatedPropertyDto // Returns the full updated DTO
-                });
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound($"Property with ID {id} not found.");
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Captures if the token is invalid (thrown by GetCurrentUserId)
-                return Unauthorized();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Unexpected error while changing property status.", detail = ex.Message });
-            }
-        }
-
-
-
-        // --- MÉTODO DE UTILIDAD ---
-
-        // Método consolidado para extraer y validar el ID del token
-        private Guid GetCurrentUserId()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userId))
-                throw new UnauthorizedAccessException("User ID not found in token.");
-
-            if (!Guid.TryParse(userId, out Guid currentUserId))
-                throw new UnauthorizedAccessException("User ID in token is not a valid GUID.");
-
-            return currentUserId;
+                Message = $"The Property with ID {id} has been {action} successfully.",
+                Property = updatedPropertyDto
+            });
         }
     }
 }

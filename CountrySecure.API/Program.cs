@@ -1,53 +1,57 @@
-using System;
-using System.Diagnostics;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 
 using FluentValidation;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
-using Npgsql;
+using CountrySecure.API.Authorization;
+using CountrySecure.API.Filters;
+using CountrySecure.API.Middleware;
+using CountrySecure.API.Services;
 
-// Inyección de dependencias
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
-
+using CountrySecure.Application.Services;
+using CountrySecure.Application.Services.EntryPermission;
 using CountrySecure.Application.Services.Lots;
+using CountrySecure.Application.Services.Orders;
 using CountrySecure.Application.Services.Properties;
+using CountrySecure.Application.Services.Request;
+using CountrySecure.Application.Services.Turns;
 using CountrySecure.Application.Services.Users;
 using CountrySecure.Application.Services.Visits;
-using CountrySecure.Application.Services.Orders;
-using CountrySecure.Application.Services.Request;
-using CountrySecure.Application.Services.EntryPermission;
+using CountrySecure.Application.Validators;
+using CountrySecure.Domain.Constants;
 
 using CountrySecure.Infrastructure.Persistence;
+using CountrySecure.Infrastructure.Persistence.Seed;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
 using CountrySecure.Infrastructure.Utils;
 
-using CountrySecure.Application.Validators;
-using CountrySecure.API.Filters;
-using CountrySecure.Application.Services;
-using CountrySecure.Application.Services.Turns;
-using System.Security.Claims;  // si tu ValidationFilter está aquí (ajustalo según tu proyecto)
-
+// ======================================================================
+//  CONFIGURACIÓN SENSIBLE (no se versiona)
+//  En desarrollo se lee de `dotnet user-secrets` (UserSecretsId en el .csproj).
+//  Llaves utilizadas:
+//    ConnectionStrings:DefaultConnection  -> cadena de conexión a PostgreSQL
+//    Jwt:Key                              -> clave HMAC para firmar los JWT (>= 32 caracteres)
+//    Seed:AdminEmail / Seed:AdminPassword -> credenciales del Admin inicial (seed)
+//  En producción usar variables de entorno: ConnectionStrings__DefaultConnection, Jwt__Key, etc.
+//  Ver appsettings.Example.json como plantilla.
+// ======================================================================
 
 var builder = WebApplication.CreateBuilder(args);
 
-//
 // ======================================
-//       CONFIGURACIÓN DE SERVICIOS
+//   CONTROLLERS + JSON + VALIDACIÓN
 // ======================================
-//
-
-// Controllers + JSON + Validation Filter
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ValidationFilter>();
@@ -58,9 +62,17 @@ builder.Services.AddControllers(options =>
     options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
+builder.Services.AddScoped<ValidationFilter>();
+builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 
 // ======================================
-//          REPOSITORIOS
+//   MANEJO GLOBAL DE ERRORES (ProblemDetails)
+// ======================================
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// ======================================
+//   REPOSITORIOS
 // ======================================
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPropertyRepository, PropertyRepository>();
@@ -72,9 +84,8 @@ builder.Services.AddScoped<IEntryPermissionRepository, EntryPermissionRepository
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 
-
 // ======================================
-//          SERVICIOS DOMINIO
+//   SERVICIOS DE APLICACIÓN
 // ======================================
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IPropertyService, PropertyService>();
@@ -86,28 +97,17 @@ builder.Services.AddScoped<IEntryPermissionService, EntryPermissionService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IRequestService, RequestService>();
 
-
-// ======================================
-//          SERVICIOS AGREGADOS
-// ======================================
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-
-// Unity of Work
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-
-// JwtUtils
 builder.Services.AddSingleton<JwtUtils>();
 
-// Filters
-builder.Services.AddScoped<ValidationFilter>();
-
-// FluentValidation
-builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
-
+// Usuario actual (extraído del JWT)
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 
 // ======================================
-//                 CORS
+//   CORS
 // ======================================
 builder.Services.AddCors(options =>
 {
@@ -120,11 +120,16 @@ builder.Services.AddCors(options =>
     });
 });
 
+// ======================================
+//   AUTENTICACIÓN JWT
+// ======================================
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKey))
+{
+    throw new InvalidOperationException(
+        "Falta 'Jwt:Key'. Configurala con: dotnet user-secrets set \"Jwt:Key\" \"<clave>\" (ver appsettings.Example.json).");
+}
 
-//
-// ======================================
-//            AUTENTICACIÓN JWT
-// ======================================
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
@@ -134,72 +139,82 @@ builder.Services.AddAuthentication("Bearer")
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)
-            ),
-
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
             RoleClaimType = ClaimTypes.Role
         };
     });
 
-builder.Services.AddAuthorization();
-
-
-//
 // ======================================
-//          CONFIG BASE DE DATOS
+//   AUTORIZACIÓN
+//   FallbackPolicy: todo endpoint sin atributo exige usuario autenticado.
+//   Solo login y refresh son [AllowAnonymous].
 // ======================================
-var connStr = builder.Configuration.GetConnectionString("DefaultConnection")
-              ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build())
+    .AddPolicy(Policies.AdminOnly, policy => policy.RequireRole(RoleTypes.Admin))
+    .AddPolicy(Policies.SecurityStaff, policy => policy.RequireRole(Policies.SecurityStaffRoles));
 
+// ======================================
+//   BASE DE DATOS
+// ======================================
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connStr))
 {
     throw new InvalidOperationException(
-        "Cadena de conexión 'DefaultConnection' no encontrada."
-    );
+        "Falta 'ConnectionStrings:DefaultConnection'. Configurala con dotnet user-secrets (ver appsettings.Example.json).");
 }
 
-// DbContext con reintentos
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
 {
     options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure());
     options.EnableSensitiveDataLogging(false);
     options.EnableDetailedErrors(false);
-    options.LogTo(_ => { }, LogLevel.None); // desactiva logs SQL
 });
 
-
-//
 // ======================================
-//          BUILD + PIPELINE
+//   SWAGGER (con soporte JWT Bearer)
+// ======================================
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "CountrySecure API",
+        Version = "v1",
+        Description = "API de gestión y control de acceso para barrios privados."
+    });
+
+    var bearerScheme = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "Pegá el access token obtenido en POST /api/auth/login (sin el prefijo 'Bearer').",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+    };
+
+    options.AddSecurityDefinition("Bearer", bearerScheme);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement { { bearerScheme, Array.Empty<string>() } });
+});
+
+// ======================================
+//   PIPELINE
 // ======================================
 var app = builder.Build();
 
-// var logger = app.Services.GetRequiredService<ILogger<Program>>();
-
-// var fromEnv = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") != null;
-// logger.LogInformation("Connection string cargada. Override desde ENV: {FromEnv}", fromEnv);
-
-
-// Esperar BD antes de iniciar
-// try
-// {
-//     await WaitForDatabaseAsync(connStr, logger, timeoutSeconds: 30);
-// }
-// catch (Exception ex)
-// {
-//     logger.LogCritical(ex, "No se pudo conectar a la base de datos.");
-//     throw;
-// }
-
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "CountrySecure API v1"));
 }
 
 app.UseHttpsRedirection();
@@ -209,41 +224,24 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// ======================================
+//   SEED (Admin inicial)
+// ======================================
+// Corre en segundo plano una vez iniciada la app, para no bloquear el arranque
+// si la base todavía no está disponible o las migraciones no se aplicaron.
+app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () =>
+{
+    using var scope = app.Services.CreateScope();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
+        await DbSeeder.SeedAdminAsync(db, app.Configuration, logger);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "No se pudo ejecutar el seed del Admin inicial. ¿Está la BD levantada y aplicaste las migraciones (dotnet ef database update)?");
+    }
+}));
+
 app.Run();
-
-
-//
-// ======================================
-//         FUNCIÓN WAIT-FOR-DB
-// ======================================
-// static async Task WaitForDatabaseAsync(string connectionString, ILogger logger, int timeoutSeconds = 30, CancellationToken ct = default)
-// {
-//     var builder = new NpgsqlConnectionStringBuilder(connectionString);
-//     logger.LogInformation("Esperando BD en {Host}:{Port}", builder.Host, builder.Port);
-
-//     var sw = Stopwatch.StartNew();
-//     int attempt = 0;
-
-//     while (sw.Elapsed.TotalSeconds < timeoutSeconds)
-//     {
-//         ct.ThrowIfCancellationRequested();
-//         attempt++;
-
-//         try
-//         {
-//             await using var conn = new NpgsqlConnection(connectionString);
-//             await conn.OpenAsync(ct);
-
-//             logger.LogInformation("Base de datos DISPONIBLE en {Host}:{Port}", conn.Host, conn.Port);
-//             return;
-//         }
-//         catch (Exception ex)
-//         {
-//             int delay = Math.Min(1000 * attempt, 5000);
-//             logger.LogWarning(ex, "Intento {Attempt}: BD no disponible; reintentando en {Delay} ms...", attempt, delay);
-//             await Task.Delay(delay, ct);
-//         }
-//     }
-
-//     throw new TimeoutException($"Tiempo de espera agotado esperando la BD ({timeoutSeconds}s).");
-// }

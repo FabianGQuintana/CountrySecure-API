@@ -12,11 +12,13 @@ namespace CountrySecure.Application.Services.Users
 
         private readonly IUserRepository _userRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICurrentUserService _currentUser;
 
-        public UserService(IUserRepository userRepository, IUnitOfWork unitOfWork)
+        public UserService(IUserRepository userRepository, IUnitOfWork unitOfWork, ICurrentUserService currentUser)
         {
             _userRepository = userRepository;
             _unitOfWork = unitOfWork;
+            _currentUser = currentUser;
         }
 
 
@@ -63,6 +65,20 @@ namespace CountrySecure.Application.Services.Users
             var user = await _userRepository.GetByIdAsync(id);
 
             if (user == null) throw new KeyNotFoundException($"User with {id} not found");
+
+            if (!_currentUser.IsAdmin)
+            {
+                // Un usuario que no es Admin solo puede editarse a sí mismo...
+                if (_currentUser.UserId != id)
+                    throw new UnauthorizedAccessException("You can only update your own profile.");
+
+                // ...y nunca puede cambiar campos sensibles.
+                if (dto.Role != null && dto.Role != user.Role)
+                    throw new UnauthorizedAccessException("Only an Admin can change a user's role.");
+
+                if (dto.Dni.HasValue && dto.Dni.Value != user.Dni)
+                    throw new UnauthorizedAccessException("Only an Admin can change a user's DNI.");
+            }
 
             user.Name = dto.Name ?? user.Name;
             user.Lastname = dto.Lastname ?? user.Lastname;

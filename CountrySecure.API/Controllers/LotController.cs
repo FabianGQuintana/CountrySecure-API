@@ -1,158 +1,75 @@
-﻿using CountrySecure.Application.Interfaces.Services;
-using Microsoft.AspNetCore.Mvc;
+using CountrySecure.API.Authorization;
 using CountrySecure.Application.DTOs.Lots;
-using System.Threading.Tasks;
-using System.Security.Claims;
-using System;
-using System.Collections.Generic;
+using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[Controller]")]
     public class LotController : ControllerBase
     {
         private readonly ILotService _lotService;
+        private readonly ICurrentUserService _currentUser;
 
-        public LotController(ILotService lotService)
+        public LotController(ILotService lotService, ICurrentUserService currentUser)
         {
             _lotService = lotService;
+            _currentUser = currentUser;
         }
 
-        // --- MÉTODOS DE CONSULTA (GET) ---
+        // --- CONSULTA ---
 
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var lotsDto = await _lotService.GetAllLotsAsync(pageNumber, pageSize);
-            return Ok(lotsDto);
-        }
+            => Ok(await _lotService.GetAllLotsAsync(pageNumber, pageSize));
 
         [HttpGet("block-names")]
         public async Task<IActionResult> GetAllBlockNames()
-        {
-            var blockNames = await _lotService.GetAllBlockNamesAsync();
-            return Ok(blockNames);
-        }
+            => Ok(await _lotService.GetAllBlockNamesAsync());
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
             var lotDto = await _lotService.GetLotByIdAsync(id);
-            if (lotDto == null)
-            {
-                return NotFound();
-            }
-            return Ok(lotDto);
+            return lotDto == null ? NotFound() : Ok(lotDto);
         }
 
         [HttpGet("status")]
         public async Task<IActionResult> GetLotsByStatus([FromQuery] LotStatus status, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var lotsDto = await _lotService.GetLotsByStatusAsync(status, pageNumber, pageSize);
+            => Ok(await _lotService.GetLotsByStatusAsync(status, pageNumber, pageSize));
 
-          
-            return Ok(lotsDto);
-        }
-
-        // --- MÉTODOS DE ESCRITURA ---
+        // --- ESCRITURA (solo Admin) ---
 
         [HttpPost]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> Post([FromBody] CreateLotDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            // 1. Extracción del ID del usuario creador (del token)
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
-            {
-                return Unauthorized();
-            }
-
-            // 2. Llamada al servicio con el ID del creador
-            var lotDto = await _lotService.AddNewLotAsync(dto, currentUserId);
-
+            var lotDto = await _lotService.AddNewLotAsync(dto, _currentUser.GetRequiredUserId());
             return CreatedAtAction(nameof(GetById), new { id = lotDto.LotId }, lotDto);
         }
 
-        [HttpPut("{id:guid}")] // Añadir restricción :guid
-        public async Task<IActionResult> put(Guid id, [FromBody] UpdateLotDto updatedto)
-        {
-            // 1. Extracción y validación del ID del usuario del token
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
-            {
-                return Unauthorized();
-            }
+        [HttpPut("{id:guid}")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<IActionResult> Put(Guid id, [FromBody] UpdateLotDto updatedto)
+            => Ok(await _lotService.UpdateAsync(updatedto, id, _currentUser.GetRequiredUserId()));
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            try
-            {
-               
-                var updatedLotDto = await _lotService.UpdateAsync(updatedto, id, currentUserId);
-
-               
-                return Ok(updatedLotDto);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                // El servicio ahora lanza la excepción si no encuentra el Lote.
-                return NotFound(ex.Message);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid();
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "Ocurrió un error interno al actualizar el lote.");
-            }
-        }
-        [HttpPatch("{id:guid}/SoftDelete")] 
+        [HttpPatch("{id:guid}/SoftDelete")]
+        [Authorize(Policy = Policies.AdminOnly)]
         public async Task<IActionResult> SoftDeleteToggle(Guid id)
         {
-            
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid currentUserId))
+            var updatedLotDto = await _lotService.SoftDeleteToggleAsync(id, _currentUser.GetRequiredUserId())
+                                ?? throw new KeyNotFoundException($"Lot with ID {id} not found.");
+
+            var action = updatedLotDto.Status == "Active" ? "reactivated" : "deactivated";
+            return Ok(new
             {
-                return Unauthorized();
-            }
-
-            try
-            {
-                
-                var updatedLotDto = await _lotService.SoftDeleteToggleAsync(id, currentUserId);
-
-                if (updatedLotDto == null)
-                {
-                   
-                    return NotFound(new { message = $"Lot with ID {id} not found." });
-                }
-
-              
-                var action = updatedLotDto.Status == "Active" ? "reactivated" : "deactivated"; 
-
-                return Ok(new
-                {
-                    Message = $"The Lot with ID {id} has been {action} successfully.",
-                    Lot = updatedLotDto 
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An internal error occurred while updating the lot status.", detail = ex.Message });
-            }
+                Message = $"The Lot with ID {id} has been {action} successfully.",
+                Lot = updatedLotDto
+            });
         }
-
-
-
     }
 }

@@ -155,7 +155,7 @@ namespace CountrySecure.Infrastructure.Services
             var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);
 
             if (storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
-                throw new InvalidOperationException("Invalid refresh token.");
+                throw new SecurityTokenException("Invalid refresh token.");
 
             if (storedToken.Expires < DateTime.UtcNow)
                 throw new SecurityTokenExpiredException("Refresh token expired.");
@@ -171,7 +171,7 @@ namespace CountrySecure.Infrastructure.Services
             );
 
             if (userIdClaim == null)
-                throw new InvalidOperationException("User ID not found in access token claims.");
+                throw new SecurityTokenException("User ID not found in access token claims.");
 
             var userId = Guid.Parse(userIdClaim.Value);
 
@@ -182,7 +182,7 @@ namespace CountrySecure.Infrastructure.Services
 
             // Validar que el refresh token pertenece a ese usuario
             if (storedToken.UserId != user.Id)
-                throw new InvalidOperationException("Refresh token does not belong to this user.");
+                throw new SecurityTokenException("Refresh token does not belong to this user.");
 
             // 4. Marcar el refresh token previo como usado
             storedToken.IsUsed = true;
