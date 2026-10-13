@@ -42,7 +42,7 @@ using CountrySecure.Infrastructure.Utils;
 //  Llaves utilizadas:
 //    ConnectionStrings:DefaultConnection  -> cadena de conexión a PostgreSQL
 //    Jwt:Key                              -> clave HMAC para firmar los JWT (>= 32 caracteres)
-//    Seed:AdminEmail / Seed:AdminPassword -> credenciales del Admin inicial (seed)
+//    Seed:Users:{Admin,Resident,Security}:Password -> contraseñas de los usuarios demo (seed)
 //  En producción usar variables de entorno: ConnectionStrings__DefaultConnection, Jwt__Key, etc.
 //  Ver appsettings.Example.json como plantilla.
 // ======================================================================
@@ -225,7 +225,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ======================================
-//   SEED (Admin inicial)
+//   SEED (usuarios demo: Admin, Resident, Security)
 // ======================================
 // Corre en segundo plano una vez iniciada la app, para no bloquear el arranque
 // si la base todavía no está disponible o las migraciones no se aplicaron.
@@ -236,11 +236,11 @@ app.Lifetime.ApplicationStarted.Register(() => _ = Task.Run(async () =>
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<CountrySecureDbContext>();
-        await DbSeeder.SeedAdminAsync(db, app.Configuration, logger);
+        await DbSeeder.SeedAsync(db, app.Configuration, logger);
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "No se pudo ejecutar el seed del Admin inicial. ¿Está la BD levantada y aplicaste las migraciones (dotnet ef database update)?");
+        logger.LogError(ex, "No se pudo ejecutar el seed de usuarios demo. ¿Está la BD levantada y aplicaste las migraciones (dotnet ef database update)?");
     }
 }));
 
