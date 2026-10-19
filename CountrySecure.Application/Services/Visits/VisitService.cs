@@ -21,6 +21,21 @@ namespace CountrySecure.Application.Services.Visits
             _unitOfWork = unitOfWork;
         }
 
+        public async Task<VisitResponseDto> SetBlockedAsync(Guid id, BlockDto dto, Guid currentUserId)
+        {
+            var visit = await _visitRepository.GetByIdAsync(id)
+                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+
+            visit.IsBlocked = dto.Blocked;
+            visit.BlockReason = dto.Blocked ? dto.Reason?.Trim() : null;
+            visit.Touch(currentUserId.ToString());
+
+            await _visitRepository.UpdateAsync(visit);
+            await _unitOfWork.SaveChangesAsync();
+
+            return visit.ToResponseDto();
+        }
+
         public async Task<VisitResponseDto> CreateAsync(CreateVisitDto dto, Guid currentUserId)
         {
             await EnsureDniIsFreeAsync(dto.DniVisit, exceptVisitId: null);

@@ -197,6 +197,98 @@ async function main() {
     await call("DELETE", `/api/entry-permissions/${p3.data.id}`, resident.token);
   }
 
+  console.log("\n7b) Pase QR: formulario, token firmado, PDF, enlace público, escaneo y auditoría");
+  {
+    const now = Date.now();
+    const win = { validFrom: new Date(now - 3600e3).toISOString(), validTo: new Date(now + 7200e3).toISOString() };
+    const v = await call("POST", "/api/visits", resident.token, { nameVisit: "Pase", lastNameVisit: `Qr${suffix}`, dniVisit: dni() });
+    const visitId = v.data?.visitId;
+
+    const noPlate = await call("POST", "/api/invitations", resident.token, { permissionType: "Visit", ...win, visitId, userId: resident.id, vehicleType: "Car" });
+    check(noPlate.status === 400 && /patente/i.test(noPlate.data?.message ?? ""), "auto sin patente → 400 con mensaje claro", String(noPlate.status));
+    const tooMany = await call("POST", "/api/invitations", resident.token, { permissionType: "Visit", ...win, visitId, userId: resident.id, companionsCount: 99 });
+    check(tooMany.status === 400, "demasiados acompañantes → 400", String(tooMany.status));
+
+    const p = await call("POST", "/api/invitations", resident.token, {
+      permissionType: "Visit", ...win, visitId, userId: resident.id,
+      companionsCount: 2, vehicleType: "Car", vehiclePlate: "ab 123 cd", vehicleModel: "Fiat Cronos", passType: "SingleEntry",
+    });
+    check(p.status === 201 && p.data.vehiclePlate === "AB123CD" && p.data.companionsCount === 2 && p.data.passType === "SingleEntry",
+      "POST /invitations crea el pase con acompañantes, vehículo y tipo de pase", String(p.status));
+    const token = p.data?.qrCodeValue ?? "";
+    check(/^[0-9a-f]{32}\.[A-Za-z0-9_-]{22}$/.test(token), "el QR contiene un token firmado (id + HMAC), no datos en claro");
+
+    const pass = await call("GET", `/api/invitations/${p.data.id}/pass`, resident.token);
+    check(pass.status === 200 && pass.data.token === token && pass.data.vehiclePlate === "AB123CD", "GET /invitations/{id}/pass", String(pass.status));
+    check(!("email" in (pass.data ?? {})) && !("phone" in (pass.data ?? {})), "el pase no expone email ni teléfono del residente");
+
+    const pdfRes = await fetch(`${API}/api/invitations/${p.data.id}/pass/pdf`, { headers: { Authorization: `Bearer ${resident.token}` } });
+    const pdfBytes = new Uint8Array(await pdfRes.arrayBuffer());
+    check(pdfRes.status === 200 && pdfRes.headers.get("content-type") === "application/pdf" && String.fromCharCode(...pdfBytes.slice(0, 5)) === "%PDF-" && pdfBytes.length > 2000,
+      "PDF del pase generado", `${pdfRes.status}, ${pdfBytes.length} bytes`);
+
+    const pub = await call("GET", `/api/passes/${token}`, null);
+    check(pub.status === 200 && pub.data.visitorName === `Pase Qr${suffix}`, "enlace público del pase (sin sesión)", String(pub.status));
+    const altered = token.slice(0, -1) + (token.endsWith("A") ? "B" : "A");
+    check((await call("GET", `/api/passes/${altered}`, null)).status === 404, "token alterado en el enlace público → 404");
+
+    check((await call("POST", "/api/invitations/scan", resident.token, { token })).status === 403, "un residente no puede escanear");
+    check((await call("POST", "/api/invitations/scan", null, { token })).status === 401, "escanear sin sesión → 401");
+    check((await call("POST", "/api/invitations/scan", security.token, {})).status === 400, "escanear sin token → 400");
+
+    const forged = await call("POST", "/api/invitations/scan", security.token, { token: `${"0".repeat(32)}.AAAAAAAAAAAAAAAAAAAAAA` });
+    check(forged.status === 200 && forged.data.success === false && forged.data.reason === "InvalidToken", "token falsificado → rechazado (InvalidToken)", forged.data?.reason);
+    const unknown = await call("POST", "/api/invitations/scan", security.token, { token: "no-existe" });
+    check(unknown.data?.success === false && unknown.data?.reason === "NotFound", "pase inexistente → rechazado (NotFound)", unknown.data?.reason);
+
+    const ok = await call("POST", "/api/entry-permissions/scan", security.token, { token });
+    check(ok.data?.success === true && ok.data.outcome === "CheckIn" && ok.data.pass?.visitorName === `Pase Qr${suffix}` && ok.data.pass.companionsCount === 2 && ok.data.pass.vehiclePlate === "AB123CD",
+      "scan aprobado: check-in con la ficha completa", ok.data?.message);
+    const used = await call("POST", "/api/entry-permissions/scan", security.token, { token });
+    check(used.data?.success === false && used.data.reason === "AlreadyUsed", "segundo scan → Invitación ya utilizada", used.data?.reason);
+
+    // Lista negra
+    const v2 = await call("POST", "/api/visits", resident.token, { nameVisit: "Bloq", lastNameVisit: `Uea${suffix}`, dniVisit: dni() });
+    const p2 = await call("POST", "/api/invitations", resident.token, { permissionType: "Visit", ...win, visitId: v2.data.visitId, userId: resident.id, passType: "MultipleEntries" });
+    check((await call("PATCH", `/api/visits/${v2.data.visitId}/block`, resident.token, { blocked: true, reason: "x" })).status === 403, "un residente no puede bloquear visitantes");
+    const blk = await call("PATCH", `/api/visits/${v2.data.visitId}/block`, security.token, { blocked: true, reason: "Smoke" });
+    check(blk.status === 200 && blk.data.isBlocked === true, "Seguridad bloquea al visitante", String(blk.status));
+    const blocked = await call("POST", "/api/invitations/scan", security.token, { token: p2.data.qrCodeValue });
+    check(blocked.data?.success === false && blocked.data.reason === "Blocked", "visitante bloqueado → rechazado (Blocked)", blocked.data?.reason);
+    await call("PATCH", `/api/visits/${v2.data.visitId}/block`, security.token, { blocked: false });
+
+    // Múltiples ingresos
+    const enter1 = await call("POST", "/api/invitations/scan", security.token, { token: p2.data.qrCodeValue });
+    const inside = await call("POST", "/api/invitations/scan", security.token, { token: p2.data.qrCodeValue });
+    const exit = await call("POST", "/api/invitations/scan", security.token, { token: p2.data.qrCodeValue, action: "CheckOut" });
+    const enter2 = await call("POST", "/api/invitations/scan", security.token, { token: p2.data.qrCodeValue });
+    check(enter1.data?.success && inside.data?.reason === "AlreadyInside" && exit.data?.outcome === "CheckOut" && enter2.data?.success,
+      "pase de múltiples ingresos: entrar, no duplicar, salir y volver a entrar");
+
+    // Fuera de horario
+    const p3 = await call("POST", "/api/invitations", resident.token, { permissionType: "Visit", validFrom: new Date(now + 86400e3).toISOString(), validTo: new Date(now + 2 * 86400e3).toISOString(), visitId, userId: resident.id });
+    const early = await call("POST", "/api/invitations/scan", security.token, { token: p3.data.qrCodeValue });
+    check(early.data?.success === false && early.data.reason === "NotYetValid" && /Fuera de horario/.test(early.data.message), "fuera de horario → rechazado con motivo explícito", early.data?.reason);
+    await call("DELETE", `/api/invitations/${p3.data.id}`, resident.token);
+
+    // Cancelado
+    const p4 = await call("POST", "/api/invitations", resident.token, { permissionType: "Visit", ...win, visitId, userId: resident.id });
+    await call("DELETE", `/api/invitations/${p4.data.id}`, resident.token);
+    const cancelled = await call("POST", "/api/invitations/scan", security.token, { token: p4.data.qrCodeValue });
+    check(cancelled.data?.success === false && cancelled.data.reason === "Cancelled", "pase cancelado → rechazado (Cancelled)", cancelled.data?.reason);
+
+    // Auditoría
+    const logs = await call("GET", `/api/access-logs?permissionId=${p.data.id}`, security.token);
+    check(logs.status === 200 && logs.data.totalCount === 2 && logs.data.items.some((l) => l.outcome === "CheckIn" && l.guardId === security.id) && logs.data.items.some((l) => l.reason === "AlreadyUsed"),
+      "auditoría: queda el ingreso y el intento fallido, con el guardia", String(logs.data?.totalCount));
+    const rejected = await call("GET", "/api/access-logs?outcome=Rejected", security.token);
+    check(rejected.data?.totalCount >= 5, "auditoría: también los tokens inválidos", String(rejected.data?.totalCount));
+    check((await call("GET", "/api/access-logs", resident.token)).status === 403, "un residente no ve la auditoría");
+
+    await call("DELETE", `/api/visits/${v2.data.visitId}`, admin.token);
+    await call("DELETE", `/api/visits/${visitId}`, admin.token);
+  }
+
   console.log("\n8) Reservas y solicitudes del residente");
   {
     const amen = await call("POST", "/api/amenities", admin.token, { amenityName: `Cancha ${suffix}`, description: "prueba", schedules: "9-22", capacity: 1 });

@@ -22,6 +22,7 @@ namespace CountrySecure.Infrastructure.Persistence
         public DbSet<Turn> Turns { get; set; }
         public DbSet<Amenity> Amenities { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
+        public DbSet<AccessLog> AccessLogs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

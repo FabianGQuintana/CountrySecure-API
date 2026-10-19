@@ -22,6 +22,24 @@ namespace CountrySecure.Infrastructure.Repositories
         public Task<EntryPermission?> GetWithDetailsAsync(Guid id, bool includeDeleted = false)
             => WithDetails(includeDeleted).FirstOrDefaultAsync(p => p.Id == id);
 
+        public async Task<List<string>> GetDestinationsAsync(Guid userId)
+        {
+            var rows = await Db.Properties.AsNoTracking()
+                .Where(p => p.UserId == userId)
+                .OrderBy(p => p.Street).ThenBy(p => p.PropertyNumber)
+                .Select(p => new { p.Street, p.PropertyNumber, LotName = p.Lot != null ? p.Lot.LotName : null })
+                .ToListAsync();
+
+            // "Calle 123 · Lote A-12" (sin repetir la palabra si el lote ya se llama "Lote ...")
+            return rows.Select(r =>
+            {
+                var address = $"{r.Street} {r.PropertyNumber}";
+                if (string.IsNullOrWhiteSpace(r.LotName)) return address;
+                var lot = r.LotName.StartsWith("Lote", StringComparison.OrdinalIgnoreCase) ? r.LotName : $"Lote {r.LotName}";
+                return $"{address} · {lot}";
+            }).ToList();
+        }
+
         public Task<EntryPermission?> GetByQrCodeAsync(string qrCodeValue, bool includeDeleted = false)
             => WithDetails(includeDeleted).FirstOrDefaultAsync(p => p.QrCodeValue == qrCodeValue);
 

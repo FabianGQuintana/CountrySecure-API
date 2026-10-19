@@ -15,6 +15,11 @@ namespace CountrySecure.Application.Mappers
                 QrCodeValue = permission.QrCodeValue,
                 Type = permission.PermissionType,
                 Status = permission.EntryPermissionState,
+                PassType = permission.PassType,
+                CompanionsCount = permission.CompanionsCount,
+                VehicleType = permission.VehicleType,
+                VehiclePlate = permission.VehiclePlate,
+                VehicleModel = permission.VehicleModel,
                 ValidFrom = permission.ValidFrom,
                 EntryTime = permission.EntryTime,
                 DepartureTime = permission.DepartureTime,
@@ -44,6 +49,11 @@ namespace CountrySecure.Application.Mappers
                 QrCodeValue = string.Empty, // lo asigna el servicio
                 PermissionType = dto.PermissionType,
                 Description = dto.Description,
+                CompanionsCount = dto.CompanionsCount,
+                VehicleType = dto.VehicleType,
+                VehiclePlate = NormalizePlate(dto.VehicleType, dto.VehiclePlate),
+                VehicleModel = string.IsNullOrWhiteSpace(dto.VehicleModel) ? null : dto.VehicleModel.Trim(),
+                PassType = dto.PassType,
                 ValidFrom = dto.ValidFrom,
                 ValidTo = dto.ValidTo,
                 EntryPermissionState = PermissionStatus.Pending,
@@ -58,10 +68,23 @@ namespace CountrySecure.Application.Mappers
         {
             if (dto.PermissionType.HasValue) existing.PermissionType = dto.PermissionType.Value;
             if (dto.Description != null) existing.Description = dto.Description;
+            if (dto.CompanionsCount.HasValue) existing.CompanionsCount = dto.CompanionsCount.Value;
+            if (dto.PassType.HasValue) existing.PassType = dto.PassType.Value;
+            if (dto.VehicleType.HasValue) existing.VehicleType = dto.VehicleType.Value;
+            if (dto.VehiclePlate != null || dto.VehicleType.HasValue)
+                existing.VehiclePlate = NormalizePlate(existing.VehicleType, dto.VehiclePlate ?? existing.VehiclePlate);
+            if (dto.VehicleModel != null)
+                existing.VehicleModel = string.IsNullOrWhiteSpace(dto.VehicleModel) ? null : dto.VehicleModel.Trim();
             if (dto.ValidFrom.HasValue) existing.ValidFrom = dto.ValidFrom.Value;
             if (dto.ValidTo.HasValue) existing.ValidTo = dto.ValidTo.Value;
             if (dto.OrderId.HasValue) existing.OrderId = dto.OrderId.Value;
         }
+
+        /// <summary>La patente se guarda en mayúsculas y sin espacios; a pie no hay patente.</summary>
+        private static string? NormalizePlate(VehicleType type, string? plate)
+            => type == VehicleType.OnFoot || string.IsNullOrWhiteSpace(plate)
+                ? null
+                : plate.Replace(" ", "").Replace("-", "").ToUpperInvariant();
 
         public static EntryPermissionOrderDto ToEntryPermissionOrderDto(this Order order)
         {

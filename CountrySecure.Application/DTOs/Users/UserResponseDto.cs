@@ -12,6 +12,8 @@ namespace CountrySecure.Application.DTOs.Users
         public string Email { get; set; } = null!;
 
         public bool Active { get; set; }
+        public bool IsBlocked { get; set; }
+        public string? BlockReason { get; set; }
 
         public string Role { get; set; } = null!;
 

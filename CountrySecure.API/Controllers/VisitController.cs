@@ -67,6 +67,12 @@ namespace CountrySecure.API.Controllers
         public async Task<ActionResult<VisitResponseDto>> Delete(Guid id)
             => Ok(await _visitService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
+        /// <summary>Lista negra: bloquea o desbloquea al visitante (Admin o Seguridad).</summary>
+        [HttpPatch("{id:guid}/block")]
+        [Authorize(Policy = Policies.SecurityStaff)]
+        public async Task<ActionResult<VisitResponseDto>> SetBlocked(Guid id, [FromBody] BlockDto dto)
+            => Ok(await _visitService.SetBlockedAsync(id, dto, _currentUser.GetRequiredUserId()));
+
         [HttpPost("{id:guid}/restore")]
         [Authorize(Policy = Policies.AdminOnly)]
         public async Task<ActionResult<VisitResponseDto>> Restore(Guid id)

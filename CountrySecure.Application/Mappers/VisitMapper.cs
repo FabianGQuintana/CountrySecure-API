@@ -22,7 +22,9 @@ namespace CountrySecure.Application.Mappers
                 NameVisit = visit.NameVisit,
                 LastNameVisit = visit.LastNameVisit,
                 DniVisit = visit.DniVisit,
-                VisitStatus = visit.ToAuditStatus()
+                VisitStatus = visit.ToAuditStatus(),
+                IsBlocked = visit.IsBlocked,
+                BlockReason = visit.BlockReason
             };
         }
 

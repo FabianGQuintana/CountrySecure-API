@@ -77,15 +77,22 @@ namespace CountrySecure.Infrastructure.Repositories
             var usedBefore = now.AddHours(-1);
 
             // Solo se borran los que ya no pueden usarse; los tokens vigentes de otros dispositivos se conservan.
-            var stale = await _context.RefreshTokens
-                .Where(rt => rt.UserId == userId
+            var stale = _context.RefreshTokens.Where(rt => rt.UserId == userId
                              && (rt.Expires < now
                                  || rt.IsRevoked
-                                 || (rt.IsUsed && rt.UsedAt != null && rt.UsedAt < usedBefore)))
-                .ToListAsync();
+                                 || (rt.IsUsed && rt.UsedAt != null && rt.UsedAt < usedBefore)));
 
-            if (stale.Count > 0)
-                _context.RefreshTokens.RemoveRange(stale);
+            try
+            {
+                // Borrado directo en la base: si otra request concurrente ya borró las mismas filas, no falla
+                // (cargar y borrar entidades lanzaba DbUpdateConcurrencyException y cortaba la sesión).
+                await stale.ExecuteDeleteAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                // Proveedores sin soporte de ExecuteDelete (base en memoria de los tests)
+                _context.RefreshTokens.RemoveRange(await stale.ToListAsync());
+            }
         }
 
         public async Task RevokeAllRefreshTokensAsync(Guid userId)

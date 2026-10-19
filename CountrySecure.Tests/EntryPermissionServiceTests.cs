@@ -12,7 +12,7 @@ public class EntryPermissionServiceTests
 {
     private static EntryPermissionService ServiceFor(CountrySecureDbContext db, Guid userId, string role)
         => new(new EntryPermissionRepository(db), new VisitRepository(db), new OrderRepository(db),
-               TestSupport.NewUnitOfWork(db), TestSupport.CurrentUser(userId, role));
+               TestSupport.NewUnitOfWork(db), TestSupport.CurrentUser(userId, role), TestSupport.Tokens());
 
     private static async Task<EntryPermission> AddPermissionAsync(CountrySecureDbContext db, Guid residentId, DateTime validFrom, DateTime validTo)
     {

@@ -30,6 +30,13 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
             builder.Property(ep => ep.Description)
                 .HasMaxLength(300);
 
+            // Datos de la visita y del vehículo
+            builder.Property(ep => ep.CompanionsCount).HasDefaultValue(0);
+            builder.Property(ep => ep.VehicleType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(CountrySecure.Domain.Enums.VehicleType.OnFoot).IsRequired();
+            builder.Property(ep => ep.VehiclePlate).HasMaxLength(15);
+            builder.Property(ep => ep.VehicleModel).HasMaxLength(60);
+            builder.Property(ep => ep.PassType).HasConversion<string>().HasMaxLength(20).HasDefaultValue(CountrySecure.Domain.Enums.PassType.SingleEntry).IsRequired();
+
             
             // Se puede dejar como nullable (el valor por defecto de DateTime?)
             builder.Property(ep => ep.ValidTo)

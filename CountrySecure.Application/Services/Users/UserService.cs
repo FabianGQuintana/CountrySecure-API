@@ -96,6 +96,21 @@ namespace CountrySecure.Application.Services.Users
             return user.ToDto();
         }
 
+        public async Task<UserResponseDto> SetBlockedAsync(Guid id, BlockDto dto)
+        {
+            var user = await _userRepository.GetByIdAsync(id)
+                       ?? throw new KeyNotFoundException($"User with id {id} not found");
+
+            user.IsBlocked = dto.Blocked;
+            user.BlockReason = dto.Blocked ? dto.Reason?.Trim() : null;
+            user.Touch(_currentUser.UserId?.ToString());
+
+            await _userRepository.UpdateAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return user.ToDto();
+        }
+
         public async Task<UserResponseDto> RestoreAsync(Guid id)
         {
             var user = await _userRepository.GetByIdIncludingDeletedAsync(id)

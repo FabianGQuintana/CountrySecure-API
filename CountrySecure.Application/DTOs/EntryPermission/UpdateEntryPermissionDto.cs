@@ -10,6 +10,11 @@ namespace CountrySecure.Application.DTOs.EntryPermission
     {
         public PermissionType? PermissionType { get; set; }
         public string? Description { get; set; }
+        public int? CompanionsCount { get; set; }
+        public VehicleType? VehicleType { get; set; }
+        public string? VehiclePlate { get; set; }
+        public string? VehicleModel { get; set; }
+        public PassType? PassType { get; set; }
         public DateTime? ValidFrom { get; set; }
         public DateTime? ValidTo { get; set; }
         public Guid? OrderId { get; set; }

@@ -14,6 +14,10 @@ namespace CountrySecure.Domain.Entities
 
         public required string Role { get; set; }
 
+        /// <summary>Un residente bloqueado no puede recibir visitas: sus pases se rechazan en la guardia.</summary>
+        public bool IsBlocked { get; set; }
+        public string? BlockReason { get; set; }
+
 
         // FK
         public ICollection<Property> Properties { get; set; } = new List<Property>();

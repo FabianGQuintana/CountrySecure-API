@@ -9,6 +9,9 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<VisitResponseDto> UpdateAsync(Guid id, UpdateVisitDto dto, Guid currentUserId);
         Task<VisitResponseDto> DeleteAsync(Guid id, Guid currentUserId);
         Task<VisitResponseDto> RestoreAsync(Guid id, Guid currentUserId);
+
+        /// <summary>Lista negra: un visitante bloqueado no puede ingresar aunque tenga pases vigentes.</summary>
+        Task<VisitResponseDto> SetBlockedAsync(Guid id, BlockDto dto, Guid currentUserId);
         Task<VisitResponseDto> GetByIdAsync(Guid id);
         Task<VisitWithPermitsDto> GetWithPermitsAsync(Guid id);
         Task<IReadOnlyList<VisitEntryPermissionDto>> GetValidPermitsAsync(Guid id);

@@ -17,19 +17,22 @@ namespace CountrySecure.Application.Services.EntryPermission
         private readonly IOrderRepository _orderRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
+        private readonly IPassTokenService _tokens;
 
         public EntryPermissionService(
             IEntryPermissionRepository permissionRepository,
             IVisitRepository visitRepository,
             IOrderRepository orderRepository,
             IUnitOfWork unitOfWork,
-            ICurrentUserService currentUser)
+            ICurrentUserService currentUser,
+            IPassTokenService tokens)
         {
             _permissionRepository = permissionRepository;
             _visitRepository = visitRepository;
             _orderRepository = orderRepository;
             _unitOfWork = unitOfWork;
             _currentUser = currentUser;
+            _tokens = tokens;
         }
 
         // -------------------------------------------------------------------
@@ -51,7 +54,8 @@ namespace CountrySecure.Application.Services.EntryPermission
             if (permission.OrderId.HasValue && await _orderRepository.GetByIdAsync(permission.OrderId.Value) == null)
                 throw new KeyNotFoundException($"Service with ID {permission.OrderId} not found.");
 
-            permission.QrCodeValue = Guid.NewGuid().ToString();
+            // Token firmado (id + HMAC): el QR no contiene datos en claro ni se puede falsificar
+            permission.QrCodeValue = _tokens.Create(permission.Id);
             permission.CreatedBy = currentUserId.ToString();
 
             await _permissionRepository.AddAsync(permission);
@@ -182,17 +186,17 @@ namespace CountrySecure.Application.Services.EntryPermission
             EnsureNotCancelled(permission);
 
             // Ya registró entrada y salida (Luz Roja) -> 409
-            if (permission.EntryTime != null && permission.DepartureTime != null)
+            if (permission.PassType == PassType.SingleEntry && permission.EntryTime != null && permission.DepartureTime != null)
                 throw new ConflictException("El visitante ya registró ingreso y salida. El permiso está consumido.");
 
             // Si todavía no ingresó, debe estar dentro de su ventana de vigencia -> 422
             // (si ya está adentro, se le permite registrar la salida aunque la ventana haya terminado)
-            if (permission.EntryTime == null)
+            if (permission.EntryTime == null || permission.DepartureTime != null)
                 EnsureWithinWindow(permission);
 
             var visitorName = permission.Visit != null ? $"{permission.Visit.NameVisit} {permission.Visit.LastNameVisit}" : string.Empty;
             var residentName = permission.User != null ? $"{permission.User.Name} {permission.User.Lastname}" : string.Empty;
-            var inside = permission.EntryTime != null;
+            var inside = permission.EntryTime != null && permission.DepartureTime == null;
 
             return new GateCheckResponseDto
             {
@@ -220,11 +224,17 @@ namespace CountrySecure.Application.Services.EntryPermission
             if (permission.EntryPermissionState != PermissionStatus.Pending)
                 throw new ConflictException($"El permiso ID {permissionId} ya tiene un registro de entrada o no está pendiente.");
 
+            if (permission.EntryTime != null && permission.DepartureTime == null)
+                throw new ConflictException($"El visitante del permiso ID {permissionId} ya se encuentra dentro.");
+
             // Solo se permite ingresar dentro de la ventana ValidFrom..ValidTo
             EnsureWithinWindow(permission);
+            EnsureNotBlocked(permission);
 
             permission.EntryTime = DateTime.UtcNow;
-            permission.EntryPermissionState = PermissionStatus.Completed;
+            permission.DepartureTime = null;
+            // Un pase de un solo ingreso queda utilizado; el de varios sigue vigente para el próximo ingreso
+            permission.EntryPermissionState = permission.PassType == PassType.SingleEntry ? PermissionStatus.Completed : PermissionStatus.Pending;
             permission.CheckInGuardId = guardId;
             permission.Touch(guardId.ToString());
 
@@ -297,6 +307,14 @@ namespace CountrySecure.Application.Services.EntryPermission
         {
             if (permission.EntryPermissionState == PermissionStatus.Cancelled || permission.IsDeleted)
                 throw new ConflictException("El permiso asociado a este QR se encuentra cancelado o dado de baja.");
+        }
+
+        private static void EnsureNotBlocked(PermissionEntity permission)
+        {
+            if (permission.Visit?.IsBlocked == true)
+                throw new BusinessRuleException("Visitante bloqueado. No se permite el ingreso.");
+            if (permission.User?.IsBlocked == true)
+                throw new BusinessRuleException("El residente titular está bloqueado. No se permite el ingreso.");
         }
 
         private static void EnsureWithinWindow(PermissionEntity permission)

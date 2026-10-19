@@ -15,6 +15,9 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<UserResponseDto> DeactivateAsync(Guid id);
         Task<UserResponseDto> RestoreAsync(Guid id);
 
+        /// <summary>Un residente bloqueado no puede recibir visitas: sus pases se rechazan en la guardia.</summary>
+        Task<UserResponseDto> SetBlockedAsync(Guid id, BlockDto dto);
+
         Task<UserResponseDto> GetByIdAsync(Guid id);
         Task<PagedResult<UserResponseDto>> GetPagedAsync(PageQuery paging, string? role, string? search, bool includeInactive);
     }

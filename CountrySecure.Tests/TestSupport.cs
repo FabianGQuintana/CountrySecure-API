@@ -2,7 +2,9 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Repositories;
+using CountrySecure.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using NSubstitute;
 
 namespace CountrySecure.Tests;
@@ -17,6 +19,9 @@ internal static class TestSupport
             .Options;
         return new CountrySecureDbContext(options);
     }
+
+    public static PassTokenService Tokens(string key = "clave-de-prueba-para-firmar-pases-0123456789")
+        => new(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Pass:SigningKey"] = key }).Build());
 
     public static UnitOfWork NewUnitOfWork(CountrySecureDbContext db)
         => new(db, new UserRepository(db));

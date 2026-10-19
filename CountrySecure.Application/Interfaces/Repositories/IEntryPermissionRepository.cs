@@ -10,6 +10,9 @@ namespace CountrySecure.Application.Interfaces.Repositories
         Task<EntryPermission?> GetWithDetailsAsync(Guid id, bool includeDeleted = false);
 
         /// <summary>Busca por QR. Con <paramref name="includeDeleted"/> encuentra también los permisos cancelados (para informar al guardia).</summary>
+        /// <summary>Lotes/casas del residente, listos para mostrar ("Calle 123 · Lote A-1").</summary>
+        Task<List<string>> GetDestinationsAsync(Guid userId);
+
         Task<EntryPermission?> GetByQrCodeAsync(string qrCodeValue, bool includeDeleted = false);
 
         Task<PagedResult<EntryPermission>> GetPagedAsync(

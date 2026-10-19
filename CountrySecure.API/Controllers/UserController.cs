@@ -62,6 +62,12 @@ namespace CountrySecure.API.Controllers
         public async Task<ActionResult<UserResponseDto>> Deactivate(Guid id)
             => Ok(await _userService.DeactivateAsync(id));
 
+        /// <summary>Bloquea o desbloquea a un residente: mientras esté bloqueado, sus visitas no ingresan.</summary>
+        [HttpPatch("{id:guid}/block")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<UserResponseDto>> SetBlocked(Guid id, [FromBody] BlockDto dto)
+            => Ok(await _userService.SetBlockedAsync(id, dto));
+
         [HttpPost("{id:guid}/restore")]
         [Authorize(Policy = Policies.AdminOnly)]
         public async Task<ActionResult<UserResponseDto>> Restore(Guid id)

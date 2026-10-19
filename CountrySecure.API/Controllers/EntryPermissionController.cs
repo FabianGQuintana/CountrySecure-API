@@ -1,4 +1,5 @@
 using CountrySecure.API.Authorization;
+using CountrySecure.Application.DTOs.EntryPermission;
 using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.EntryPermission;
 using CountrySecure.Application.Interfaces.Services;
@@ -14,14 +15,23 @@ namespace CountrySecure.API.Controllers
     [ApiController]
     [Authorize]
     [Route("api/entry-permissions")]
+    [Route("api/invitations")] // mismo recurso con el nombre del flujo de invitaciones
     public class EntryPermissionsController : ControllerBase
     {
         private readonly IEntryPermissionService _permissionService;
+        private readonly IAccessControlService _accessControl;
+        private readonly IPassDocumentService _passDocument;
         private readonly ICurrentUserService _currentUser;
 
-        public EntryPermissionsController(IEntryPermissionService permissionService, ICurrentUserService currentUser)
+        public EntryPermissionsController(
+            IEntryPermissionService permissionService,
+            IAccessControlService accessControl,
+            IPassDocumentService passDocument,
+            ICurrentUserService currentUser)
         {
             _permissionService = permissionService;
+            _accessControl = accessControl;
+            _passDocument = passDocument;
             _currentUser = currentUser;
         }
 
@@ -83,8 +93,40 @@ namespace CountrySecure.API.Controllers
             => Ok(await _permissionService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
 
         // -------------------------------------------------------------------
+        // PASE DIGITAL (titular, Admin o Seguridad; lo resuelve el servicio)
+        // -------------------------------------------------------------------
+
+        /// <summary>Datos del pase (incluye el token que va dentro del QR).</summary>
+        [HttpGet("{id:guid}/pass")]
+        public async Task<ActionResult<PassDto>> GetPass(Guid id)
+            => Ok(await _accessControl.GetPassAsync(id));
+
+        /// <summary>Pase en PDF para descargar o compartir con la visita. El QR va en la esquina superior izquierda.</summary>
+        [HttpGet("{id:guid}/pass/pdf")]
+        public async Task<IActionResult> GetPassPdf(Guid id)
+        {
+            var pass = await _accessControl.GetPassAsync(id);
+            return File(_passDocument.GeneratePdf(pass), "application/pdf", PassFileName(pass));
+        }
+
+        internal static string PassFileName(PassDto pass)
+        {
+            var safe = new string(pass.VisitorName.Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray()).Trim().Replace(' ', '-');
+            return $"pase-{(safe.Length > 0 ? safe : "visita")}.pdf";
+        }
+
+        // -------------------------------------------------------------------
         // PORTERÍA (Seguridad o Admin)
         // -------------------------------------------------------------------
+
+        /// <summary>
+        /// Escanea un pase: valida existencia, estado, ventana horaria y lista negra, y registra el ingreso
+        /// (o la salida con action=CheckOut). Un rechazo responde 200 con success=false y el motivo; todo queda auditado.
+        /// </summary>
+        [HttpPost("scan")]
+        [Authorize(Policy = Policies.SecurityStaff)]
+        public async Task<ActionResult<ScanResultDto>> Scan([FromBody] ScanRequestDto dto)
+            => Ok(await _accessControl.ScanAsync(dto, _currentUser.GetRequiredUserId()));
 
         /// <summary>Valida un QR y devuelve el estado del semáforo (entrada / salida).</summary>
         [HttpGet("validate")]

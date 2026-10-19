@@ -19,6 +19,7 @@ using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Services;
+using CountrySecure.Application.Services.AccessControl;
 using CountrySecure.Application.Services.Auth;
 using CountrySecure.Application.Services.EntryPermission;
 using CountrySecure.Application.Services.Lots;
@@ -83,6 +84,7 @@ builder.Services.AddScoped<ITurnRepository, TurnRepository>();
 builder.Services.AddScoped<IEntryPermissionRepository, EntryPermissionRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
+builder.Services.AddScoped<IAccessLogRepository, AccessLogRepository>();
 
 // ======================================
 //   SERVICIOS DE APLICACIÓN
@@ -96,9 +98,12 @@ builder.Services.AddScoped<ITurnService, TurnService>();
 builder.Services.AddScoped<IEntryPermissionService, EntryPermissionService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IRequestService, RequestService>();
+builder.Services.AddScoped<IAccessControlService, AccessControlService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+builder.Services.AddSingleton<IPassTokenService, PassTokenService>();
+builder.Services.AddSingleton<IPassDocumentService, PassDocumentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();

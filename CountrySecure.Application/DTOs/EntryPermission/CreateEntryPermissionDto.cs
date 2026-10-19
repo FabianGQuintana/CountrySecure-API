@@ -8,6 +8,17 @@ namespace CountrySecure.Application.DTOs.EntryPermission
 
         public string? Description { get; set; }
 
+        /// <summary>Cantidad de acompañantes (sin contar a la visita).</summary>
+        public int CompanionsCount { get; set; }
+
+        public VehicleType VehicleType { get; set; } = VehicleType.OnFoot;
+
+        /// <summary>Patente/matrícula. Obligatoria si la visita llega en auto o moto.</summary>
+        public string? VehiclePlate { get; set; }
+        public string? VehicleModel { get; set; }
+
+        public PassType PassType { get; set; } = PassType.SingleEntry;
+
         public DateTime ValidFrom { get; set; }
 
         public DateTime ValidTo { get; set; }
