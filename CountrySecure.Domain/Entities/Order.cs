@@ -12,7 +12,7 @@ namespace CountrySecure.Domain.Entities
         //Attributes
         public required string Description { get; set; }
         public required string SupplierName { get; set; }
-        public OrderStatus OrderType { get; set; }
+        public OrderCategory Category { get; set; }
 
         // Relashionships
         public ICollection<Request>? Requests { get; set; }

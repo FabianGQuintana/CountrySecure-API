@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace CountrySecure.Domain.Enums;
 
-public enum OrderStatus
+public enum OrderCategory
 {
     Gardening = 1,
     Plumbing = 2,

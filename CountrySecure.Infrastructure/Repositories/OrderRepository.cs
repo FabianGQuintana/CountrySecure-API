@@ -11,12 +11,12 @@ public class OrderRepository : GenericRepository<Order>, IOrderRepository
 {
     public OrderRepository(CountrySecureDbContext dbContext) : base(dbContext) { }
 
-    public Task<PagedResult<Order>> GetPagedAsync(PageQuery paging, OrderStatus? type, string? search, bool includeDeleted)
+    public Task<PagedResult<Order>> GetPagedAsync(PageQuery paging, OrderCategory? type, string? search, bool includeDeleted)
     {
         var query = Set.AsNoTracking().IncludeDeleted(includeDeleted);
 
         if (type.HasValue)
-            query = query.Where(o => o.OrderType == type.Value);
+            query = query.Where(o => o.Category == type.Value);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

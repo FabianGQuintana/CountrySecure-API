@@ -24,7 +24,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
                 .HasMaxLength(200);
 
             // Enum almacenado como string
-            builder.Property(o => o.OrderType)
+            builder.Property(o => o.Category)
                 .IsRequired()
                 .HasConversion<string>()
                 .HasMaxLength(50);
@@ -37,7 +37,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
             // Relaciones
             builder.HasMany(o => o.Requests)
                 .WithOne(r => r.Order)
-                .HasForeignKey(r => r.IdOrder)
+                .HasForeignKey(r => r.OrderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.HasMany(o => o.EntryPermissions)

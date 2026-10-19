@@ -74,7 +74,7 @@ namespace CountrySecure.Application.Services.Orders
         public async Task<OrderResponseDto> GetByIdAsync(Guid id)
             => (await GetOrThrowAsync(id)).ToResponseDto();
 
-        public async Task<PagedResult<OrderResponseDto>> GetPagedAsync(PageQuery paging, OrderStatus? type, string? search, bool includeInactive)
+        public async Task<PagedResult<OrderResponseDto>> GetPagedAsync(PageQuery paging, OrderCategory? type, string? search, bool includeInactive)
         {
             var page = await _orderRepository.GetPagedAsync(paging, type, search, includeInactive);
             return page.Map(o => o.ToResponseDto());

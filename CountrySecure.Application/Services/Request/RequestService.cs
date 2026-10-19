@@ -35,7 +35,7 @@ namespace CountrySecure.Application.Services.Request
                 throw new KeyNotFoundException($"The service with ID {dto.OrderId} does not exist or is inactive.");
 
             var request = dto.ToEntity();
-            request.IdUser = currentUserId;                 // el solicitante es siempre el usuario autenticado
+            request.UserId = currentUserId;                 // el solicitante es siempre el usuario autenticado
             request.RequestStatus = RequestStatus.Pending;
             request.CreatedBy = currentUserId.ToString();
 
@@ -126,7 +126,7 @@ namespace CountrySecure.Application.Services.Request
 
         private void EnsureCanAccess(RequestEntity request)
         {
-            if (!_currentUser.IsAdmin && request.IdUser != _currentUser.UserId)
+            if (!_currentUser.IsAdmin && request.UserId != _currentUser.UserId)
                 throw new UnauthorizedAccessException("You can only access your own requests.");
         }
     }

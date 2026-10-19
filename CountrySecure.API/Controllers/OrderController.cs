@@ -27,7 +27,7 @@ namespace CountrySecure.API.Controllers
         [HttpGet]
         public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetAll(
             [FromQuery] PageQuery paging,
-            [FromQuery] OrderStatus? type = null,
+            [FromQuery] OrderCategory? type = null,
             [FromQuery] string? search = null,
             [FromQuery] bool includeInactive = false)
             => Ok(await _orderService.GetPagedAsync(paging, type, search, includeInactive && _currentUser.IsAdmin));

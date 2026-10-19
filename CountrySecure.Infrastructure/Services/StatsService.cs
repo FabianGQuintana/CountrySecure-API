@@ -61,7 +61,7 @@ namespace CountrySecure.Infrastructure.Services
 
             var myTurns = _db.Turns.AsNoTracking().Where(t => t.UserId == residentId);
             var myPermits = _db.EntryPermissions.AsNoTracking().Where(p => p.UserId == residentId);
-            var myRequests = _db.Requests.AsNoTracking().Where(r => r.IdUser == residentId);
+            var myRequests = _db.Requests.AsNoTracking().Where(r => r.UserId == residentId);
 
             // Última actividad: la fecha más reciente entre reservas, permisos y solicitudes creadas
             var lastTurn = await myTurns.MaxAsync(t => (DateTime?)t.CreatedAt);

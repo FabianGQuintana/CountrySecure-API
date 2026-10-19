@@ -11,7 +11,7 @@ namespace CountrySecure.Application.Interfaces.Services
         Task<OrderResponseDto> DeleteAsync(Guid id, Guid currentUserId);
         Task<OrderResponseDto> RestoreAsync(Guid id, Guid currentUserId);
         Task<OrderResponseDto> GetByIdAsync(Guid id);
-        Task<PagedResult<OrderResponseDto>> GetPagedAsync(PageQuery paging, OrderStatus? type, string? search, bool includeInactive);
+        Task<PagedResult<OrderResponseDto>> GetPagedAsync(PageQuery paging, OrderCategory? type, string? search, bool includeInactive);
         Task<IReadOnlyList<OrderResponseDto>> GetMostRequestedAsync();
     }
 }

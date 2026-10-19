@@ -47,8 +47,8 @@ namespace CountrySecure.Application.Mappers
                 Location = dto.Location,
 
                 // IDs (Guid a Guid)
-                IdUser = dto.UserId ?? Guid.Empty, // el servicio lo reemplaza por el usuario autenticado
-                IdOrder = dto.OrderId,
+                UserId = dto.UserId ?? Guid.Empty, // el servicio lo reemplaza por el usuario autenticado
+                OrderId = dto.OrderId,
 
                 // EntryPermissionState (Se inicializa al valor del DTO o al defecto si no se requiere en DTO)
                 RequestStatus = dto.Status,
@@ -75,7 +75,7 @@ namespace CountrySecure.Application.Mappers
                 existingEntity.RequestStatus = dto.Status.Value;
             }
 
-            // Nota: IdUser e IdOrder (relaciones) generalmente NO se actualizan en un UpdateRequestDto.
+            // Nota: UserId e OrderId (relaciones) generalmente NO se actualizan en un UpdateRequestDto.
         }
 
         public static RequestOrderDto ToRequestOrderDto(this Order? order)
@@ -88,7 +88,7 @@ namespace CountrySecure.Application.Mappers
                 Id = order.Id,
                 SupplierName = order.SupplierName,
                 Description = order.Description,
-                OrderType = order.OrderType
+                OrderType = order.Category
             };
         }
         

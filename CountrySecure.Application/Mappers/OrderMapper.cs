@@ -19,7 +19,7 @@ namespace CountrySecure.Application.Mappers
                 Id = order.Id,
                 Description = order.Description,
                 SupplierName = order.SupplierName,
-                OrderType = order.OrderType,
+                OrderType = order.Category,
                 Status = order.ToAuditStatus(),
                 
 
@@ -46,7 +46,7 @@ namespace CountrySecure.Application.Mappers
             {
                 Description = dto.Description,
                 SupplierName = dto.SupplierName,
-                OrderType = dto.OrderType,
+                Category = dto.OrderType,
 
                 // Relaciones se manejarán en el servicio
                 Requests = new List<Request>(),
@@ -66,7 +66,7 @@ namespace CountrySecure.Application.Mappers
 
             if (dto.OrderType.HasValue)
             {
-                existing.OrderType = dto.OrderType.Value;
+                existing.Category = dto.OrderType.Value;
             }
 
             // Si querés permitir actualizar EntryPermissionState

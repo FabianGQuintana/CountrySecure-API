@@ -10,7 +10,7 @@ namespace CountrySecure.Application.DTOs.Order
         public Guid Id { get; set; }
         public required string Description { get; set; }
         public required string SupplierName { get; set; }
-        public OrderStatus OrderType { get; set; }
+        public OrderCategory OrderType { get; set; }
         public required string Status { get; set; }
 
         // Relationships (solo IDs )

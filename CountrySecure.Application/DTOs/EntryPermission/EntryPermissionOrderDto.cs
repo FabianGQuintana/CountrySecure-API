@@ -10,7 +10,7 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public required string SupplierName { get; set; }
 
         public string? Description { get; set; }
-        public OrderStatus OrderType { get; set; }
+        public OrderCategory OrderType { get; set; }
 
         public required string Status { get; set; }
     }

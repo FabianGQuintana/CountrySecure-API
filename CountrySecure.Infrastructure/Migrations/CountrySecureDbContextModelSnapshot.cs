@@ -212,6 +212,11 @@ namespace CountrySecure.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -234,11 +239,6 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<string>("LastModifiedBy")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("OrderType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
 
                     b.Property<string>("SupplierName")
                         .IsRequired()
@@ -383,12 +383,6 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("IdOrder")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("IdUser")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime?>("LastModifiedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -400,6 +394,9 @@ namespace CountrySecure.Infrastructure.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("RequestStatus")
                         .IsRequired()
                         .HasColumnType("text");
@@ -407,11 +404,14 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("IdOrder");
+                    b.HasIndex("OrderId");
 
-                    b.HasIndex("IdUser");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Requests");
                 });
@@ -532,7 +532,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.ToTable("Users", (string)null);
                 });
 
-            modelBuilder.Entity("Visit", b =>
+            modelBuilder.Entity("CountrySecure.Domain.Entities.Visit", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -605,7 +605,7 @@ namespace CountrySecure.Infrastructure.Migrations
                         .WithMany("EntryPermissions")
                         .HasForeignKey("UserId1");
 
-                    b.HasOne("Visit", "Visit")
+                    b.HasOne("CountrySecure.Domain.Entities.Visit", "Visit")
                         .WithMany("EntryPermissions")
                         .HasForeignKey("VisitId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -655,13 +655,13 @@ namespace CountrySecure.Infrastructure.Migrations
                 {
                     b.HasOne("CountrySecure.Domain.Entities.Order", "Order")
                         .WithMany("Requests")
-                        .HasForeignKey("IdOrder")
+                        .HasForeignKey("OrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CountrySecure.Domain.Entities.User", "User")
                         .WithMany()
-                        .HasForeignKey("IdUser")
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -717,7 +717,7 @@ namespace CountrySecure.Infrastructure.Migrations
                     b.Navigation("Turns");
                 });
 
-            modelBuilder.Entity("Visit", b =>
+            modelBuilder.Entity("CountrySecure.Domain.Entities.Visit", b =>
                 {
                     b.Navigation("EntryPermissions");
                 });

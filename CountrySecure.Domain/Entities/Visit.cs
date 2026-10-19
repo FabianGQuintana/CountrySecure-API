@@ -2,6 +2,8 @@
 using CountrySecure.Domain.Enums;
 using System;
 
+namespace CountrySecure.Domain.Entities;
+
 public class Visit : BaseEntity
 {       
     public required string NameVisit { get; set; }

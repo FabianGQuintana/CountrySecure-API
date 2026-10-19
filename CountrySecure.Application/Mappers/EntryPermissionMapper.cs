@@ -70,7 +70,7 @@ namespace CountrySecure.Application.Mappers
                 Id = order.Id,
                 SupplierName = order.SupplierName,
                 Description = order.Description,
-                OrderType = order.OrderType,
+                OrderType = order.Category,
                 Status = order.ToAuditStatus()
             };
         }

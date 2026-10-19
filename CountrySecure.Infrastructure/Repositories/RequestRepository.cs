@@ -26,7 +26,7 @@ public class RequestRepository : GenericRepository<Request>, IRequestRepository
                        .AsQueryable();
 
         if (status.HasValue) query = query.Where(r => r.RequestStatus == status.Value);
-        if (userId.HasValue) query = query.Where(r => r.IdUser == userId.Value);
+        if (userId.HasValue) query = query.Where(r => r.UserId == userId.Value);
 
         return query.OrderByDescending(r => r.CreatedAt).ToPagedResultAsync(paging);
     }
