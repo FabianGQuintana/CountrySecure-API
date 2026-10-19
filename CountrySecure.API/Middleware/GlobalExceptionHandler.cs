@@ -31,6 +31,7 @@ namespace CountrySecure.API.Middleware
             var (status, title) = exception switch
             {
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
+                AuthenticationFailedException => (StatusCodes.Status401Unauthorized, "Authentication failed"),
                 ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
                 BusinessRuleException => (StatusCodes.Status422UnprocessableEntity, "Business rule violated"),
                 SecurityTokenException => (StatusCodes.Status401Unauthorized, "Invalid token"),

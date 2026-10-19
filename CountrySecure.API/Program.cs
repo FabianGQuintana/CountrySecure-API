@@ -19,6 +19,7 @@ using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Services;
+using CountrySecure.Application.Services.Auth;
 using CountrySecure.Application.Services.EntryPermission;
 using CountrySecure.Application.Services.Lots;
 using CountrySecure.Application.Services.Orders;
@@ -34,7 +35,6 @@ using CountrySecure.Infrastructure.Persistence;
 using CountrySecure.Infrastructure.Persistence.Seed;
 using CountrySecure.Infrastructure.Repositories;
 using CountrySecure.Infrastructure.Services;
-using CountrySecure.Infrastructure.Utils;
 
 // ======================================================================
 //  CONFIGURACIÓN SENSIBLE (no se versiona)
@@ -98,10 +98,10 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IRequestService, RequestService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddSingleton<JwtUtils>();
 
 // Usuario actual (extraído del JWT)
 builder.Services.AddHttpContextAccessor();
