@@ -34,6 +34,22 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         public string? Description { get; set; }
     }
 
+    /// <summary>Pase para la caché de la guardia: permite validar el QR sin conexión.</summary>
+    public class SyncPassDto : PassDto
+    {
+        public DateTime? EntryTime { get; set; }
+        public DateTime? DepartureTime { get; set; }
+
+        /// <summary>Visitante o residente bloqueado: la guardia debe rechazarlo aunque el pase esté vigente.</summary>
+        public bool Blocked { get; set; }
+    }
+
+    public class SyncResponseDto
+    {
+        public DateTime GeneratedAt { get; set; }
+        public required IReadOnlyList<SyncPassDto> Items { get; set; }
+    }
+
     public class ScanRequestDto
     {
         /// <summary>Valor leído del QR.</summary>

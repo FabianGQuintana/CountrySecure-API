@@ -139,6 +139,15 @@ namespace CountrySecure.API.Controllers
             return Ok(await _permissionService.ValidateQrCodeAsync(code));
         }
 
+        /// <summary>
+        /// Pases activos del día con su token, para que la app de la guardia los guarde y pueda validar el QR
+        /// sin conexión. Conviene pedirlo cada 5 minutos.
+        /// </summary>
+        [HttpGet("sync")]
+        [Authorize(Policy = Policies.SecurityStaff)]
+        public async Task<ActionResult<SyncResponseDto>> Sync()
+            => Ok(await _accessControl.GetSyncAsync());
+
         [HttpGet("today")]
         [Authorize(Policy = Policies.SecurityStaff)]
         public async Task<ActionResult<PagedResult<EntryPermissionResponseDto>>> GetToday([FromQuery] PageQuery paging)

@@ -16,6 +16,9 @@ namespace CountrySecure.Application.Interfaces.Services
         /// <summary>Pase por token firmado (enlace público para la visita). Lanza KeyNotFoundException si no es válido.</summary>
         Task<PassDto> GetPublicPassAsync(string token);
 
+        /// <summary>Pases activos del día para la caché de la guardia (validación sin conexión).</summary>
+        Task<SyncResponseDto> GetSyncAsync();
+
         Task<PagedResult<AccessLogResponseDto>> GetLogsAsync(PageQuery paging, Guid? permissionId, ScanOutcome? outcome, DateTime? from, DateTime? to);
     }
 }

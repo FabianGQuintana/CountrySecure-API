@@ -277,6 +277,21 @@ async function main() {
     const cancelled = await call("POST", "/api/invitations/scan", security.token, { token: p4.data.qrCodeValue });
     check(cancelled.data?.success === false && cancelled.data.reason === "Cancelled", "pase cancelado → rechazado (Cancelled)", cancelled.data?.reason);
 
+    // Avisos al residente y sincronización de la guardia
+    const sync = await call("GET", "/api/entry-permissions/sync", security.token);
+    check(sync.status === 200 && Array.isArray(sync.data?.items) && sync.data.items.some((i) => i.token === p2.data.qrCodeValue && typeof i.blocked === "boolean"),
+      "GET /entry-permissions/sync trae los pases activos con su token", String(sync.data?.items?.length));
+    check((await call("GET", "/api/entry-permissions/sync", resident.token)).status === 403, "un residente no puede sincronizar");
+    const unread = await call("GET", "/api/notifications/unread-count", resident.token);
+    check(unread.status === 200 && unread.data.count >= 1, "el residente tiene avisos sin leer tras el ingreso", String(unread.data?.count));
+    const notes = await call("GET", "/api/notifications?unreadOnly=true", resident.token);
+    const note = notes.data?.items?.find((n) => n.type === "VisitCheckIn" && n.message.includes(`Pase Qr${suffix}`));
+    check(!!note && note.message.endsWith("ha ingresado al barrio."), "aviso: Tu visita [nombre] ha ingresado al barrio", note?.message);
+    check((await call("PATCH", `/api/notifications/${note?.id}/read`, security.token)).status === 404, "no se puede leer el aviso de otro usuario");
+    check((await call("PATCH", `/api/notifications/${note?.id}/read`, resident.token)).status === 204, "marcar aviso como leído");
+    check((await call("POST", "/api/notifications/read-all", resident.token)).status === 204, "marcar todos como leídos");
+    check((await call("GET", "/api/notifications/unread-count", resident.token)).data?.count === 0, "sin avisos pendientes");
+
     // Auditoría
     const logs = await call("GET", `/api/access-logs?permissionId=${p.data.id}`, security.token);
     check(logs.status === 200 && logs.data.totalCount === 2 && logs.data.items.some((l) => l.outcome === "CheckIn" && l.guardId === security.id) && logs.data.items.some((l) => l.reason === "AlreadyUsed"),

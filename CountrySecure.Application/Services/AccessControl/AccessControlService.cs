@@ -19,6 +19,7 @@ namespace CountrySecure.Application.Services.AccessControl
 
         private readonly IEntryPermissionRepository _permissions;
         private readonly IAccessLogRepository _logs;
+        private readonly INotificationRepository _notifications;
         private readonly IPassTokenService _tokens;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
@@ -26,12 +27,14 @@ namespace CountrySecure.Application.Services.AccessControl
         public AccessControlService(
             IEntryPermissionRepository permissions,
             IAccessLogRepository logs,
+            INotificationRepository notifications,
             IPassTokenService tokens,
             IUnitOfWork unitOfWork,
             ICurrentUserService currentUser)
         {
             _permissions = permissions;
             _logs = logs;
+            _notifications = notifications;
             _tokens = tokens;
             _unitOfWork = unitOfWork;
             _currentUser = currentUser;
@@ -143,6 +146,31 @@ namespace CountrySecure.Application.Services.AccessControl
             return await BuildPassAsync(permission);
         }
 
+        public async Task<SyncResponseDto> GetSyncAsync()
+        {
+            var now = DateTime.UtcNow;
+            // Pases que pueden usarse desde hace 2 horas hasta dentro de 24 horas
+            var permissions = await _permissions.GetActiveForSyncAsync(now.AddHours(-2), now.AddHours(24), max: 1000);
+            var destinations = await _permissions.GetDestinationsAsync(permissions.Select(p => p.UserId).Distinct().ToList());
+
+            var items = permissions.Select(p =>
+            {
+                var pass = ToPass(p, destinations.TryGetValue(p.UserId, out var d) ? d : []);
+                return new SyncPassDto
+                {
+                    PermissionId = pass.PermissionId, Token = pass.Token, Status = pass.Status, PassType = pass.PassType,
+                    ResidentName = pass.ResidentName, Destination = pass.Destination, VisitorName = pass.VisitorName,
+                    VisitorDni = pass.VisitorDni, CompanionsCount = pass.CompanionsCount, VehicleType = pass.VehicleType,
+                    VehiclePlate = pass.VehiclePlate, VehicleModel = pass.VehicleModel, ValidFrom = pass.ValidFrom,
+                    ValidTo = pass.ValidTo, Description = pass.Description,
+                    EntryTime = p.EntryTime, DepartureTime = p.DepartureTime,
+                    Blocked = p.Visit?.IsBlocked == true || p.User?.IsBlocked == true
+                };
+            }).ToList();
+
+            return new SyncResponseDto { GeneratedAt = now, Items = items };
+        }
+
         public async Task<PagedResult<AccessLogResponseDto>> GetLogsAsync(
             PageQuery paging, Guid? permissionId, ScanOutcome? outcome, DateTime? from, DateTime? to)
         {
@@ -186,9 +214,10 @@ namespace CountrySecure.Application.Services.AccessControl
         }
 
         private async Task<PassDto> BuildPassAsync(PermissionEntity permission)
-        {
-            var destinations = await _permissions.GetDestinationsAsync(permission.UserId);
+            => ToPass(permission, await _permissions.GetDestinationsAsync(permission.UserId));
 
+        private static PassDto ToPass(PermissionEntity permission, IReadOnlyCollection<string> destinations)
+        {
             return new PassDto
             {
                 PermissionId = permission.Id,
@@ -227,6 +256,20 @@ namespace CountrySecure.Application.Services.AccessControl
         {
             await _permissions.UpdateAsync(permission);
             await _logs.AddAsync(NewLog(permission.Id, token, guardId, at, dto.Offline, outcome, ScanReason.None, message));
+
+            // Aviso en tiempo real al residente titular (lo ve en la campana del panel)
+            var visitor = pass.VisitorName;
+            await _notifications.AddAsync(new Notification
+            {
+                UserId = permission.UserId,
+                PermissionId = permission.Id,
+                Type = outcome == ScanOutcome.CheckIn ? "VisitCheckIn" : "VisitCheckOut",
+                Title = outcome == ScanOutcome.CheckIn ? "Tu visita ingresó" : "Tu visita salió",
+                Message = outcome == ScanOutcome.CheckIn
+                    ? $"Tu visita {visitor} ha ingresado al barrio."
+                    : $"Tu visita {visitor} salió del barrio.",
+                CreatedBy = guardId.ToString()
+            });
             await _unitOfWork.SaveChangesAsync();
 
             pass.Status = permission.EntryPermissionState;

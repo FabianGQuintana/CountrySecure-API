@@ -13,6 +13,12 @@ namespace CountrySecure.Application.Interfaces.Repositories
         /// <summary>Lotes/casas del residente, listos para mostrar ("Calle 123 · Lote A-1").</summary>
         Task<List<string>> GetDestinationsAsync(Guid userId);
 
+        /// <summary>Domicilios de varios residentes en una sola consulta.</summary>
+        Task<Dictionary<Guid, List<string>>> GetDestinationsAsync(IReadOnlyCollection<Guid> userIds);
+
+        /// <summary>Permisos que pueden usarse entre <paramref name="from"/> y <paramref name="to"/> (no cancelados ni consumidos).</summary>
+        Task<List<EntryPermission>> GetActiveForSyncAsync(DateTime from, DateTime to, int max);
+
         Task<EntryPermission?> GetByQrCodeAsync(string qrCodeValue, bool includeDeleted = false);
 
         Task<PagedResult<EntryPermission>> GetPagedAsync(

@@ -23,6 +23,7 @@ using CountrySecure.Application.Services.AccessControl;
 using CountrySecure.Application.Services.Auth;
 using CountrySecure.Application.Services.EntryPermission;
 using CountrySecure.Application.Services.Lots;
+using CountrySecure.Application.Services.Notifications;
 using CountrySecure.Application.Services.Orders;
 using CountrySecure.Application.Services.Properties;
 using CountrySecure.Application.Services.Request;
@@ -85,6 +86,7 @@ builder.Services.AddScoped<IEntryPermissionRepository, EntryPermissionRepository
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IRequestRepository, RequestRepository>();
 builder.Services.AddScoped<IAccessLogRepository, AccessLogRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
 // ======================================
 //   SERVICIOS DE APLICACIÓN
@@ -99,6 +101,7 @@ builder.Services.AddScoped<IEntryPermissionService, EntryPermissionService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IRequestService, RequestService>();
 builder.Services.AddScoped<IAccessControlService, AccessControlService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();

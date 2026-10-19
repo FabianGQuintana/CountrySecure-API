@@ -23,6 +23,7 @@ namespace CountrySecure.Infrastructure.Persistence
         public DbSet<Amenity> Amenities { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<AccessLog> AccessLogs { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

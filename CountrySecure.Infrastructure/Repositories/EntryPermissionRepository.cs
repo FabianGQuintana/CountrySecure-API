@@ -22,6 +22,37 @@ namespace CountrySecure.Infrastructure.Repositories
         public Task<EntryPermission?> GetWithDetailsAsync(Guid id, bool includeDeleted = false)
             => WithDetails(includeDeleted).FirstOrDefaultAsync(p => p.Id == id);
 
+        public async Task<Dictionary<Guid, List<string>>> GetDestinationsAsync(IReadOnlyCollection<Guid> userIds)
+        {
+            var rows = await Db.Properties.AsNoTracking()
+                .Where(p => p.UserId != null && userIds.Contains(p.UserId.Value))
+                .OrderBy(p => p.Street).ThenBy(p => p.PropertyNumber)
+                .Select(p => new { UserId = p.UserId!.Value, p.Street, p.PropertyNumber, LotName = p.Lot != null ? p.Lot.LotName : null })
+                .ToListAsync();
+
+            return rows.GroupBy(r => r.UserId).ToDictionary(g => g.Key, g => g.Select(r => FormatDestination(r.Street, r.PropertyNumber, r.LotName)).ToList());
+        }
+
+        private static string FormatDestination(string street, int number, string? lotName)
+        {
+            var address = $"{street} {number}";
+            if (string.IsNullOrWhiteSpace(lotName)) return address;
+            var lot = lotName.StartsWith("Lote", StringComparison.OrdinalIgnoreCase) ? lotName : $"Lote {lotName}";
+            return $"{address} · {lot}";
+        }
+
+        public Task<List<EntryPermission>> GetActiveForSyncAsync(DateTime from, DateTime to, int max)
+            => WithDetails()
+                .AsNoTracking()
+                .Where(p => p.EntryPermissionState != PermissionStatus.Cancelled
+                            && p.ValidFrom <= to
+                            && (p.ValidTo == null || p.ValidTo >= from)
+                            // un pase de un solo ingreso ya usado y con salida no puede volver a entrar
+                            && !(p.PassType == PassType.SingleEntry && p.EntryTime != null && p.DepartureTime != null))
+                .OrderBy(p => p.ValidFrom)
+                .Take(max)
+                .ToListAsync();
+
         public async Task<List<string>> GetDestinationsAsync(Guid userId)
         {
             var rows = await Db.Properties.AsNoTracking()

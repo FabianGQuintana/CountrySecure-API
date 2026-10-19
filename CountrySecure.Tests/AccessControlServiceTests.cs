@@ -16,7 +16,7 @@ public class AccessControlServiceTests
     private readonly PassTokenService _tokens = TestSupport.Tokens();
 
     private AccessControlService ServiceFor(CountrySecureDbContext db, Guid userId, string role = "Security")
-        => new(new EntryPermissionRepository(db), new AccessLogRepository(db), _tokens,
+        => new(new EntryPermissionRepository(db), new AccessLogRepository(db), new NotificationRepository(db), _tokens,
                TestSupport.NewUnitOfWork(db), TestSupport.CurrentUser(userId, role));
 
     private async Task<EntryPermission> AddPermissionAsync(
@@ -288,6 +288,50 @@ public class AccessControlServiceTests
         var result = await ServiceFor(db, guard.Id).ScanAsync(Scan(legacy.QrCodeValue), guard.Id);
 
         Assert.True(result.Success);
+    }
+
+    // ------------------------------------------------- avisos y sincronización
+
+    [Fact]
+    public async Task El_ingreso_y_la_salida_avisan_al_residente_pero_un_rechazo_no()
+    {
+        using var db = TestSupport.NewDb();
+        var resident = await TestSupport.AddUserAsync(db);
+        var guard = await TestSupport.AddUserAsync(db, "Security");
+        var permission = await AddPermissionAsync(db, resident.Id);
+        var service = ServiceFor(db, guard.Id);
+
+        await service.ScanAsync(Scan(permission.QrCodeValue), guard.Id);
+        await service.ScanAsync(Scan(permission.QrCodeValue), guard.Id); // rechazado
+        await service.ScanAsync(Scan(permission.QrCodeValue, ScanAction.CheckOut), guard.Id);
+
+        var notes = await db.Notifications.OrderBy(n => n.CreatedAt).ToListAsync();
+        Assert.Equal(2, notes.Count);
+        Assert.All(notes, n => Assert.Equal(resident.Id, n.UserId));
+        Assert.Equal("Tu visita Ana Gomez ha ingresado al barrio.", notes[0].Message);
+        Assert.Equal("VisitCheckOut", notes[1].Type);
+    }
+
+    [Fact]
+    public async Task La_sincronizacion_trae_los_pases_activos_con_token_y_marca_a_los_bloqueados()
+    {
+        using var db = TestSupport.NewDb();
+        var resident = await TestSupport.AddUserAsync(db);
+        var guard = await TestSupport.AddUserAsync(db, "Security");
+        var ok = await AddPermissionAsync(db, resident.Id);
+        var cancelled = await AddPermissionAsync(db, resident.Id);
+        cancelled.EntryPermissionState = PermissionStatus.Cancelled;
+        var farFuture = await AddPermissionAsync(db, resident.Id, DateTime.UtcNow.AddDays(3), DateTime.UtcNow.AddDays(4));
+        var blocked = await AddPermissionAsync(db, resident.Id);
+        (await db.Visits.FindAsync(blocked.VisitId))!.IsBlocked = true;
+        await db.SaveChangesAsync();
+
+        var sync = await ServiceFor(db, guard.Id, "Security").GetSyncAsync();
+
+        Assert.Equal(2, sync.Items.Count);
+        Assert.Contains(sync.Items, i => i.Token == ok.QrCodeValue && !i.Blocked);
+        Assert.Contains(sync.Items, i => i.Token == blocked.QrCodeValue && i.Blocked);
+        Assert.DoesNotContain(sync.Items, i => i.Token == cancelled.QrCodeValue || i.Token == farFuture.QrCodeValue);
     }
 
     // --------------------------------------------------------------- creación
