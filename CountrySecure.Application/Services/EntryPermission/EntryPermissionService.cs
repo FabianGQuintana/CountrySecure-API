@@ -147,8 +147,10 @@ namespace CountrySecure.Application.Services.EntryPermission
             if (_currentUser.Role == Domain.Constants.RoleTypes.Resident)
                 userId = _currentUser.GetRequiredUserId();
 
+            // Los permisos cancelados solo los ve un Admin o su titular (historial personal)
+            var ownHistory = userId.HasValue && userId == _currentUser.UserId;
             var page = await _permissionRepository.GetPagedAsync(
-                paging, type, status, userId, visitId, orderId, search, includeInactive && _currentUser.IsAdmin);
+                paging, type, status, userId, visitId, orderId, search, includeInactive && (_currentUser.IsAdmin || ownHistory));
 
             return page.Map(p => p.ToResponseDto());
         }

@@ -48,7 +48,7 @@ namespace CountrySecure.API.Controllers
             [FromQuery] PermissionType? type = null,
             [FromQuery] PermissionStatus? status = null)
             => Ok(await _permissionService.GetPagedAsync(
-                paging, type, status, _currentUser.GetRequiredUserId(), null, null, null, includeInactive: false));
+                paging, type, status, _currentUser.GetRequiredUserId(), null, null, null, includeInactive: true));
 
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<EntryPermissionResponseDto>> GetById(Guid id)

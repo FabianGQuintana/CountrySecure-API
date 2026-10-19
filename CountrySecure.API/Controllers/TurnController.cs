@@ -27,7 +27,7 @@ namespace CountrySecure.API.Controllers
         [HttpGet("me")]
         public async Task<ActionResult<PagedResult<TurnResponseDto>>> GetMine(
             [FromQuery] PageQuery paging, [FromQuery] TurnStatus? status = null)
-            => Ok(await _turnService.GetPagedAsync(paging, null, null, null, null, status, onlyMine: true, includeInactive: false));
+            => Ok(await _turnService.GetPagedAsync(paging, null, null, null, null, status, onlyMine: true, includeInactive: true));
 
         /// <summary>
         /// Listado con filtros (?userId, ?amenityId, ?from, ?to, ?status). Un residente ve solo las suyas.

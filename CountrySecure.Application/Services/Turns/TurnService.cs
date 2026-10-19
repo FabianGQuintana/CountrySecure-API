@@ -115,7 +115,9 @@ namespace CountrySecure.Application.Services.Turns
             var admin = _currentUser.IsAdmin;
             if (onlyMine || !admin) userId = _currentUser.GetRequiredUserId();
 
-            var page = await _turnRepository.GetPagedAsync(paging, userId, amenityId, from, to, status, includeInactive && admin);
+            // Las bajas (reservas canceladas) solo las ve un Admin o su propio dueño (historial personal)
+            var ownHistory = userId == _currentUser.UserId;
+            var page = await _turnRepository.GetPagedAsync(paging, userId, amenityId, from, to, status, includeInactive && (admin || ownHistory));
             return page.Map(t => t.ToResponseDto());
         }
 

@@ -27,7 +27,7 @@ namespace CountrySecure.API.Controllers
         [HttpGet("me")]
         public async Task<ActionResult<PagedResult<RequestResponseDto>>> GetMine(
             [FromQuery] PageQuery paging, [FromQuery] RequestStatus? status = null)
-            => Ok(await _requestService.GetPagedAsync(paging, status, onlyMine: true, includeInactive: false));
+            => Ok(await _requestService.GetPagedAsync(paging, status, onlyMine: true, includeInactive: true));
 
         [HttpGet]
         public async Task<ActionResult<PagedResult<RequestResponseDto>>> GetAll(

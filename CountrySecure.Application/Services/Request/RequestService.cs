@@ -96,11 +96,11 @@ namespace CountrySecure.Application.Services.Request
 
         public async Task<PagedResult<RequestResponseDto>> GetPagedAsync(PageQuery paging, RequestStatus? status, bool onlyMine, bool includeInactive)
         {
-            // Quien no es Admin solo ve sus propias solicitudes y nunca las dadas de baja
+            // Quien no es Admin solo ve sus propias solicitudes; las canceladas solo las ve un Admin o su dueño
             var restrictToMe = onlyMine || !_currentUser.IsAdmin;
             Guid? userId = restrictToMe ? _currentUser.GetRequiredUserId() : null;
 
-            var page = await _requestRepository.GetPagedAsync(paging, status, userId, includeInactive && _currentUser.IsAdmin);
+            var page = await _requestRepository.GetPagedAsync(paging, status, userId, includeInactive && (_currentUser.IsAdmin || restrictToMe));
             return page.Map(r => r.ToResponseDto());
         }
 
