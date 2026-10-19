@@ -49,6 +49,8 @@ namespace CountrySecure.API.Controllers
             return Ok(result);
         }
 
+        // AllowAnonymous: al cerrar sesión el access token puede estar vencido; el refresh token es el secreto.
+        [AllowAnonymous]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
         {

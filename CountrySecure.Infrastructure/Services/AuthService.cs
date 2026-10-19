@@ -149,79 +149,95 @@ namespace CountrySecure.Infrastructure.Services
         }
 
 
+        // Ventana en la que un refresh token ya consumido todavía devuelve el mismo reemplazo.
+        // Cubre requests simultáneas (Server Components, prefetch, varias pestañas) que usan el mismo token.
+        private static readonly TimeSpan RefreshGracePeriod = TimeSpan.FromSeconds(30);
+
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequest request)
         {
             // 1. Buscar el refresh token en la base de datos
             var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);
 
-            if (storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
+            if (storedToken == null || storedToken.IsRevoked)
                 throw new SecurityTokenException("Invalid refresh token.");
 
             if (storedToken.Expires < DateTime.UtcNow)
                 throw new SecurityTokenExpiredException("Refresh token expired.");
 
-            // 2. Obtener los claims del access token (vencido o no)
+            // 2. Validar el access token (vencido o no) y que pertenezca al mismo usuario
             var principal = _jwtUtils.GetPrincipalFromExpiredToken(request.AccessToken);
 
-            // Extraer el UserId del token, tolerando varios nombres de claim
             var userIdClaim = principal.Claims.FirstOrDefault(c =>
                 c.Type == "id" ||
                 c.Type == JwtRegisteredClaimNames.Sub ||
                 c.Type == ClaimTypes.NameIdentifier
             );
 
-            if (userIdClaim == null)
+            if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
                 throw new SecurityTokenException("User ID not found in access token claims.");
 
-            var userId = Guid.Parse(userIdClaim.Value);
-
-            // 3. Obtener el usuario de la DB
-            var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null)
-                throw new KeyNotFoundException("User not found.");
-
-            // Validar que el refresh token pertenece a ese usuario
-            if (storedToken.UserId != user.Id)
+            if (storedToken.UserId != userId)
                 throw new SecurityTokenException("Refresh token does not belong to this user.");
 
-            // 4. Marcar el refresh token previo como usado
-            storedToken.IsUsed = true;
-            await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
+            // 3. Usuario existente y activo (un usuario dado de baja no puede renovar su sesión)
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+            if (user == null || !user.Active || user.DeletedAt != null)
+                throw new SecurityTokenException("User not found or inactive.");
 
-            // Borrar los RefreshToken de la DB que tengan mas de 24hr
-            await _unitOfWork.Users.DeleteRefreshTokenAsync(userId, TimeSpan.FromHours(24));
+            // 4. Token ya consumido: dentro de la ventana de gracia se devuelve el mismo reemplazo
+            if (storedToken.IsUsed)
+            {
+                var withinGrace = storedToken.UsedAt.HasValue
+                                  && DateTime.UtcNow - storedToken.UsedAt.Value <= RefreshGracePeriod
+                                  && !string.IsNullOrEmpty(storedToken.ReplacedByToken);
 
-            // 5. Generar nuevos tokens
+                if (!withinGrace)
+                    throw new SecurityTokenException("Invalid refresh token.");
+
+                var replacement = await _unitOfWork.Users.GetRefreshTokenAsync(storedToken.ReplacedByToken!);
+                if (replacement == null || replacement.IsRevoked || replacement.Expires < DateTime.UtcNow)
+                    throw new SecurityTokenException("Invalid refresh token.");
+
+                return BuildAuthResponse(user, _tokenService.GenerateToken(user), replacement.Token);
+            }
+
+            // 5. Rotación normal: se consume el token y se emite uno nuevo
             var newAccessToken = _tokenService.GenerateToken(user);
             var newRefreshToken = _tokenService.GenerateRefreshToken();
 
-            var newRefreshTokenEntity = new RefreshToken
+            storedToken.IsUsed = true;
+            storedToken.UsedAt = DateTime.UtcNow;
+            storedToken.ReplacedByToken = newRefreshToken;
+            await _unitOfWork.Users.UpdateRefreshTokenAsync(storedToken);
+
+            // Limpieza: solo tokens vencidos, revocados o consumidos hace tiempo
+            await _unitOfWork.Users.DeleteStaleRefreshTokensAsync(userId);
+
+            await _unitOfWork.Users.AddRefreshTokenAsync(new RefreshToken
             {
                 Token = newRefreshToken,
                 UserId = user.Id,
                 Expires = DateTime.UtcNow.AddDays(7),
                 CreatedAt = DateTime.UtcNow
-            };
+            });
 
-            await _unitOfWork.Users.AddRefreshTokenAsync(newRefreshTokenEntity);
-
-            // Se guardan todos los cambios
             await _unitOfWork.SaveChangesAsync();
 
-            // 6. Respuesta al cliente
-            return new AuthResponseDto
-            {
-                Success = true,
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken,
-                Expiration = DateTime.UtcNow.AddHours(8),
-                UserId = user.Id,
-                Email = user.Email,
-                Name = user.Name,
-                Lastname = user.Lastname,
-                Role = user.Role
-            };
+            return BuildAuthResponse(user, newAccessToken, newRefreshToken);
         }
+
+        private static AuthResponseDto BuildAuthResponse(User user, string accessToken, string refreshToken) => new()
+        {
+            Success = true,
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            Expiration = DateTime.UtcNow.AddHours(8),
+            UserId = user.Id,
+            Email = user.Email,
+            Name = user.Name,
+            Lastname = user.Lastname,
+            Role = user.Role
+        };
 
     }
 }

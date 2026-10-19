@@ -18,6 +18,7 @@ namespace CountrySecure.Application.Interfaces.Repositories
         Task<RefreshToken?> GetRefreshTokenAsync(string token);
         Task AddRefreshTokenAsync(RefreshToken token);
         Task UpdateRefreshTokenAsync(RefreshToken token);
-        Task DeleteRefreshTokenAsync(Guid userId, TimeSpan maxAge);
+        /// <summary>Elimina los refresh tokens del usuario que ya no sirven (vencidos, revocados o consumidos hace tiempo).</summary>
+        Task DeleteStaleRefreshTokensAsync(Guid userId);
     }
 }

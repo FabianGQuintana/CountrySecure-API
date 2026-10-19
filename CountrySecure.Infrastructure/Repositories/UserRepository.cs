@@ -115,19 +115,21 @@ namespace CountrySecure.Infrastructure.Repositories
             return Task.CompletedTask;
         }
 
-        public async Task DeleteRefreshTokenAsync(Guid userId, TimeSpan maxAge)
+        public async Task DeleteStaleRefreshTokensAsync(Guid userId)
         {
-            var cutOfDate = DateTime.UtcNow - maxAge;
+            var now = DateTime.UtcNow;
+            var usedBefore = now.AddHours(-1);
 
-            var tokensToDelete = await _context.RefreshTokens
-                .Where(rt => rt.UserId == userId && rt.CreatedAt < cutOfDate)
+            // Solo se borran los que ya no pueden usarse; los tokens vigentes de otros dispositivos se conservan.
+            var stale = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId
+                             && (rt.Expires < now
+                                 || rt.IsRevoked
+                                 || (rt.IsUsed && rt.UsedAt != null && rt.UsedAt < usedBefore)))
                 .ToListAsync();
 
-            if (tokensToDelete.Any())
-            {
-                _context.RefreshTokens.RemoveRange(tokensToDelete);
-            } 
-
+            if (stale.Count > 0)
+                _context.RefreshTokens.RemoveRange(stale);
         }
     }
 }
