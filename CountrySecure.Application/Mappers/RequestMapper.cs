@@ -22,7 +22,7 @@ namespace CountrySecure.Application.Mappers
                 // Mapeo del estado funcional (Enum)
                 Status = request.RequestStatus,
 
-                BaseEntityStatus = request.Status,
+                BaseEntityStatus = request.ToAuditStatus(),
 
                 CreatedAt = request.CreatedAt,
 
@@ -78,23 +78,24 @@ namespace CountrySecure.Application.Mappers
             // Nota: IdUser e IdOrder (relaciones) generalmente NO se actualizan en un UpdateRequestDto.
         }
 
-        public static RequestOrderDto ToRequestOrderDto(this Order order)
+        public static RequestOrderDto ToRequestOrderDto(this Order? order)
         {
-             // Si order es null, devolvemos null o manejamos excepción según preferencia
-             if (order == null) throw new ArgumentNullException(nameof(order));
+            if (order == null)
+                return new RequestOrderDto { Id = Guid.Empty, SupplierName = "(servicio eliminado)", Description = "" };
 
-             return new RequestOrderDto
-             {
-                 Id = order.Id,
-                 SupplierName = order.SupplierName,
-                 Description = order.Description,
-                 OrderType = (int)order.OrderType
-             };
+            return new RequestOrderDto
+            {
+                Id = order.Id,
+                SupplierName = order.SupplierName,
+                Description = order.Description,
+                OrderType = order.OrderType
+            };
         }
         
-        public static RequestUserDto ToRequestUserDto(this User user)
+        public static RequestUserDto ToRequestUserDto(this User? user)
         {
-            if (user == null) throw new ArgumentNullException(nameof(user));
+            if (user == null)
+                return new RequestUserDto { Id = Guid.Empty, Name = "(usuario", Lastname = "eliminado)", Email = "" };
 
             return new RequestUserDto
             {

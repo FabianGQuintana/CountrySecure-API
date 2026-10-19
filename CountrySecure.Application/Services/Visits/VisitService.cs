@@ -1,4 +1,4 @@
-﻿using CountrySecure.Application.DTOs.EntryPermission;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Visits;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
@@ -6,162 +6,116 @@ using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using CountrySecure.Domain.Exceptions;
 
 namespace CountrySecure.Application.Services.Visits
 {
     public class VisitService : IVisitService
     {
         private readonly IVisitRepository _visitRepository;
-        private readonly IEntryPermissionRepository _entryPermissionRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        public VisitService(IVisitRepository visitRepository,IEntryPermissionRepository entryPermissionRepository, IUnitOfWork unitOfWork)
+        public VisitService(IVisitRepository visitRepository, IUnitOfWork unitOfWork)
         {
-            _entryPermissionRepository = entryPermissionRepository;
             _visitRepository = visitRepository;
             _unitOfWork = unitOfWork;
         }
 
-        // ============================================================
-        // MÉTODOS DE ESCRITURA
-        // ============================================================
-
-        public async Task<VisitResponseDto> AddNewVisitAsync(CreateVisitDto newVisitDto, Guid currentUserId)
+        public async Task<VisitResponseDto> CreateAsync(CreateVisitDto dto, Guid currentUserId)
         {
-            // Mapear DTO → Entidad
-            var newVisitEntity = newVisitDto.ToEntity(); 
+            await EnsureDniIsFreeAsync(dto.DniVisit, exceptVisitId: null);
 
-            // Auditoría
-            newVisitEntity.CreatedBy = currentUserId.ToString();
-            newVisitEntity.CreatedAt = DateTime.UtcNow;
-            newVisitEntity.Status = "Active";
+            var visit = dto.ToEntity();
+            visit.CreatedBy = currentUserId.ToString();
 
-            var addedVisit = await _visitRepository.AddAsync(newVisitEntity); 
-            await _unitOfWork.SaveChangesAsync(); 
-
-            return addedVisit.ToResponseDto();
-        }
-
-        public async Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto)
-        {
-            var existingEntity = await _visitRepository.GetByIdWithoutFiltersAsync(visitId);
-
-
-            if (existingEntity == null )
-                throw new KeyNotFoundException($"Visit with ID {visitId} not found.");
-
-            updateVisitDto.MapToEntity(existingEntity);
-
-            existingEntity.LastModifiedAt = DateTime.UtcNow;
-
-            await _visitRepository.UpdateAsync(existingEntity);
+            await _visitRepository.AddAsync(visit);
             await _unitOfWork.SaveChangesAsync();
 
-            // Volver a cargar si necesitás incluir permisos
-            return existingEntity.ToResponseDto();
+            return visit.ToResponseDto();
         }
 
-
-
-        public async Task<VisitResponseDto?> SoftDeleteToggleAsync(Guid visitId, Guid currentUserId)
+        public async Task<VisitResponseDto> UpdateAsync(Guid id, UpdateVisitDto dto, Guid currentUserId)
         {
-            
-            var visit = await _visitRepository.SoftDeleteToggleAsync(visitId);
+            var visit = await GetOrThrowAsync(id);
 
-            if (visit == null)
-                return null; 
+            if (dto.DniVisit.HasValue && dto.DniVisit.Value != visit.DniVisit)
+                await EnsureDniIsFreeAsync(dto.DniVisit.Value, exceptVisitId: id);
 
-            
-            visit.LastModifiedAt = DateTime.UtcNow;
-            visit.LastModifiedBy = currentUserId.ToString();
+            dto.MapToEntity(visit);
+            visit.Touch(currentUserId.ToString());
 
-            
-            var updatedEntity = await _visitRepository.UpdateAsync(visit);
+            await _visitRepository.UpdateAsync(visit);
             await _unitOfWork.SaveChangesAsync();
 
-          
-            return updatedEntity.ToResponseDto();
+            return visit.ToResponseDto();
         }
 
-
-
-        // ============================================================
-        // MÉTODOS DE CONSULTA
-        // ============================================================
-
-        public async Task<VisitResponseDto?> GetVisitByIdAsync(Guid visitId)
+        public async Task<VisitResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
-            var visitEntity = await _visitRepository.GetByIdAsync(visitId);
+            var visit = await GetOrThrowAsync(id);
+            visit.SoftDelete(currentUserId.ToString());
 
-            if (visitEntity == null || visitEntity.DeletedAt != null)
-                return null;
+            await _visitRepository.UpdateAsync(visit);
+            await _unitOfWork.SaveChangesAsync();
 
-            return visitEntity.ToResponseDto();
+            return visit.ToResponseDto();
         }
 
-        public async Task<IEnumerable<VisitResponseDto>> GetVisitsByDniAsync(int dniVisit)
+        public async Task<VisitResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
-            var visits = await _visitRepository.GetVisitsByDniAsync(dniVisit);
+            var visit = await _visitRepository.GetByIdIncludingDeletedAsync(id)
+                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
 
-            var filtered = visits.Where(v => v.DeletedAt == null);
+            visit.Restore(currentUserId.ToString());
 
-            return filtered.ToResponseDto();
+            await _visitRepository.UpdateAsync(visit);
+            await _unitOfWork.SaveChangesAsync();
+
+            return visit.ToResponseDto();
         }
 
-        public async Task<IEnumerable<VisitResponseDto>> GetAllVisitsAsync(int pageNumber, int pageSize)
+        public async Task<VisitResponseDto> GetByIdAsync(Guid id)
+            => (await GetOrThrowAsync(id)).ToResponseDto();
+
+        public async Task<VisitWithPermitsDto> GetWithPermitsAsync(Guid id)
         {
-            var visits = await _visitRepository.GetAllAsync(pageNumber, pageSize);
-
-            
-
-            return visits.ToResponseDto();
+            var visit = await _visitRepository.GetWithPermitsAsync(id)
+                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+            return visit.ToVisitWithPermitsDto();
         }
 
-        public async Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync()
+        public async Task<IReadOnlyList<VisitEntryPermissionDto>> GetValidPermitsAsync(Guid id)
         {
-            var visits = await _visitRepository.GetAllWithoutPaginationAsync();
+            var visit = await _visitRepository.GetWithPermitsAsync(id)
+                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
 
-            // No filtramos nada → devolvemos TODO, incluso los soft deleted
-            return visits.ToResponseDto();
+            // Permisos vigentes: pendientes y sin dar de baja
+            return visit.EntryPermissions
+                        .Where(p => p.EntryPermissionState == PermissionStatus.Pending && !p.IsDeleted)
+                        .Select(p => p.ToVisitEntryPermissionDto())
+                        .ToList();
         }
 
-
-        public async Task<VisitWithPermitsDto?> GetVisitWithPermitsAsync(Guid visitId)
+        public async Task<PagedResult<VisitResponseDto>> GetPagedAsync(PageQuery paging, int? dni, string? search, bool includeInactive)
         {
-            var visitEntity = await _visitRepository.GetVisitWithPermitsAsync(visitId);
-
-            if (visitEntity == null || visitEntity.DeletedAt != null)
-                return null;
-
-            return visitEntity.ToVisitWithPermitsDto();
+            var page = await _visitRepository.GetPagedAsync(paging, dni, search, includeInactive);
+            return page.Map(v => v.ToResponseDto());
         }
 
-
-        public async Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId)
+        // El DNI es único en toda la tabla (incluidas las visitas dadas de baja)
+        private async Task EnsureDniIsFreeAsync(int dni, Guid? exceptVisitId)
         {
-            var permits = await _entryPermissionRepository.GetEntryPermissionsByVisitIdAsync(visitId);
-            return permits.ToResponseDto();
+            var existing = await _visitRepository.GetByDniIncludingDeletedAsync(dni);
+            if (existing != null && existing.Id != exceptVisitId)
+            {
+                throw new ConflictException(existing.IsDeleted
+                    ? $"A visitor with DNI {dni} already exists but is inactive. Restore it instead."
+                    : $"A visitor with DNI {dni} already exists.");
+            }
         }
 
-        public async Task<IEnumerable<VisitEntryPermissionDto>> GetValidPermitsByVisitIdAsync(Guid visitId)
-        {
-            var permits = await _entryPermissionRepository.GetEntryPermissionsByVisitIdAsync(visitId);
-
-            // Tomamos todos los permisos válidos (Pending)
-            var valid = permits
-                .Where(p => p.EntryPermissionState == PermissionStatus.Pending)
-                .Select(p => p.ToVisitEntryPermissionDto()) // ← tu mapper liviano
-                .ToList();
-
-            return valid;
-        }
-
-
-
-
+        private async Task<Visit> GetOrThrowAsync(Guid id)
+            => await _visitRepository.GetByIdAsync(id)
+               ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
     }
 }

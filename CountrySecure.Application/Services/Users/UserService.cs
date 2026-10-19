@@ -1,15 +1,16 @@
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
 using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Exceptions;
 
 namespace CountrySecure.Application.Services.Users
 {
     public class UserService : IUserService
     {
-
         private readonly IUserRepository _userRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUser;
@@ -21,28 +22,26 @@ namespace CountrySecure.Application.Services.Users
             _currentUser = currentUser;
         }
 
-
-        public async Task<IEnumerable<UserResponseDto>> GetAllAsync(int page, int size, string? role = null)
+        public async Task<PagedResult<UserResponseDto>> GetPagedAsync(PageQuery paging, string? role, string? search, bool includeInactive)
         {
-            var users = await _userRepository.GetAllAsync(page, size, role);
-
-            return users.Select(u => u.ToDto());
+            var page = await _userRepository.GetPagedAsync(paging, role, search, includeInactive);
+            return page.Map(u => u.ToDto());
         }
 
         public async Task<UserResponseDto> GetByIdAsync(Guid id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
+            // Admin puede consultar también usuarios dados de baja
+            var user = _currentUser.IsAdmin
+                ? await _userRepository.GetByIdIncludingDeletedAsync(id)
+                : await _userRepository.GetByIdAsync(id);
 
-            if (user == null) throw new KeyNotFoundException($"User with {id} not found");
-
-            return user.ToDto();
+            return (user ?? throw new KeyNotFoundException($"User with {id} not found")).ToDto();
         }
 
-        public async Task<UserResponseDto> UpdateUserAsync(Guid id, UpdateUserDto dto)
+        public async Task<UserResponseDto> UpdateAsync(Guid id, UpdateUserDto dto)
         {
-            var user = await _userRepository.GetByIdAsync(id);
-
-            if (user == null) throw new KeyNotFoundException($"User with {id} not found");
+            var user = await _userRepository.GetByIdAsync(id)
+                       ?? throw new KeyNotFoundException($"User with {id} not found");
 
             if (!_currentUser.IsAdmin)
             {
@@ -58,13 +57,20 @@ namespace CountrySecure.Application.Services.Users
                     throw new UnauthorizedAccessException("Only an Admin can change a user's DNI.");
             }
 
+            if (dto.Email != null && !string.Equals(dto.Email, user.Email, StringComparison.OrdinalIgnoreCase)
+                && await _userRepository.EmailExistsAsync(dto.Email, id))
+                throw new ConflictException("Email is already registered.");
+
+            if (dto.Dni.HasValue && dto.Dni.Value != user.Dni && await _userRepository.DniExistsAsync(dto.Dni.Value, id))
+                throw new ConflictException("DNI is already registered.");
+
             user.Name = dto.Name ?? user.Name;
             user.Lastname = dto.Lastname ?? user.Lastname;
             user.Dni = dto.Dni ?? user.Dni;
             user.Phone = dto.Phone ?? user.Phone;
             user.Email = dto.Email ?? user.Email;
             user.Role = dto.Role ?? user.Role;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.Touch(_currentUser.UserId?.ToString());
 
             await _userRepository.UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync();
@@ -72,14 +78,34 @@ namespace CountrySecure.Application.Services.Users
             return user.ToDto();
         }
 
-        public async Task<UserResponseDto?> ToggleActiveAsync(Guid id)
+        public async Task<UserResponseDto> DeactivateAsync(Guid id)
         {
-            var user = await _userRepository.ToggleActiveAsync(id);
-            if (user == null) return null;
+            if (_currentUser.UserId == id)
+                throw new BusinessRuleException("You cannot deactivate your own account.");
 
+            var user = await _userRepository.GetByIdAsync(id)
+                       ?? throw new KeyNotFoundException($"User with id {id} not found");
+
+            user.SoftDelete(_currentUser.UserId?.ToString());
+
+            // Un usuario dado de baja no puede seguir usando sus sesiones activas
+            await _userRepository.RevokeAllRefreshTokensAsync(id);
+            await _userRepository.UpdateAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            // Simplemente devolver el DTO
+            return user.ToDto();
+        }
+
+        public async Task<UserResponseDto> RestoreAsync(Guid id)
+        {
+            var user = await _userRepository.GetByIdIncludingDeletedAsync(id)
+                       ?? throw new KeyNotFoundException($"User with id {id} not found");
+
+            user.Restore(_currentUser.UserId?.ToString());
+
+            await _userRepository.UpdateAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
             return user.ToDto();
         }
     }

@@ -1,27 +1,17 @@
-﻿using CountrySecure.Application.DTOs.EntryPermission;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Visits;
-using CountrySecure.Application.Interfaces.Persistence;
-using CountrySecure.Application.Interfaces.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace CountrySecure.Application.Interfaces.Services
 {
     public interface IVisitService
     {
-        Task<VisitResponseDto> AddNewVisitAsync(CreateVisitDto newVisitDto, Guid currentUserId);
-        Task<VisitResponseDto?> GetVisitByIdAsync(Guid visitId);
-        Task<IEnumerable<VisitResponseDto>> GetVisitsByDniAsync(int dniVisit);
-        Task<IEnumerable<VisitResponseDto>> GetAllVisitsAsync(int pageNumber, int pageSize);
-        Task<VisitWithPermitsDto?> GetVisitWithPermitsAsync(Guid visitId);
-        Task<IEnumerable<VisitResponseDto>> GetAllVisitsWithoutFilterAsync();
-        Task<IEnumerable<EntryPermissionResponseDto>> GetPermitsByVisitIdAsync(Guid visitId);
-        Task<IEnumerable<VisitEntryPermissionDto>> GetValidPermitsByVisitIdAsync(Guid visitId);
-        Task<VisitResponseDto> UpdateVisitAsync(Guid visitId, UpdateVisitDto updateVisitDto);
-        Task<VisitResponseDto?> SoftDeleteToggleAsync(Guid visitId, Guid currentUserId);
-
+        Task<VisitResponseDto> CreateAsync(CreateVisitDto dto, Guid currentUserId);
+        Task<VisitResponseDto> UpdateAsync(Guid id, UpdateVisitDto dto, Guid currentUserId);
+        Task<VisitResponseDto> DeleteAsync(Guid id, Guid currentUserId);
+        Task<VisitResponseDto> RestoreAsync(Guid id, Guid currentUserId);
+        Task<VisitResponseDto> GetByIdAsync(Guid id);
+        Task<VisitWithPermitsDto> GetWithPermitsAsync(Guid id);
+        Task<IReadOnlyList<VisitEntryPermissionDto>> GetValidPermitsAsync(Guid id);
+        Task<PagedResult<VisitResponseDto>> GetPagedAsync(PageQuery paging, int? dni, string? search, bool includeInactive);
     }
 }
-
-

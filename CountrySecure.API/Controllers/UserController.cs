@@ -1,4 +1,5 @@
 using CountrySecure.API.Authorization;
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Users;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Constants;
@@ -9,7 +10,7 @@ namespace CountrySecure.API.Controllers
 {
     [ApiController]
     [Authorize]
-    [Route("api/[controller]")]
+    [Route("api/users")]
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -21,42 +22,49 @@ namespace CountrySecure.API.Controllers
             _currentUser = currentUser;
         }
 
+        /// <summary>Lista paginada de usuarios (?role, ?search, ?includeInactive). Solo Admin.</summary>
         [HttpGet]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> GetAll([FromQuery] int page = 1, [FromQuery] int size = 100, [FromQuery] string? role = null)
-            => Ok(await _userService.GetAllAsync(page, size, role));
+        public async Task<ActionResult<PagedResult<UserResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] string? role = null,
+            [FromQuery] string? search = null,
+            [FromQuery] bool includeInactive = false)
+            => Ok(await _userService.GetPagedAsync(paging, role, search, includeInactive));
 
         [HttpGet("me")]
-        public async Task<IActionResult> GetMe()
+        public async Task<ActionResult<UserResponseDto>> GetMe()
             => Ok(await _userService.GetByIdAsync(_currentUser.GetRequiredUserId()));
 
-        // Edición del propio perfil (sin Role ni Dni salvo que sea Admin; lo valida el servicio).
+        /// <summary>Edición del propio perfil (sin Role ni Dni salvo que sea Admin; lo valida el servicio).</summary>
         [HttpPut("me")]
-        public async Task<IActionResult> UpdateMe([FromBody] UpdateUserDto dto)
-            => Ok(await _userService.UpdateUserAsync(_currentUser.GetRequiredUserId(), dto));
+        public async Task<ActionResult<UserResponseDto>> UpdateMe([FromBody] UpdateUserDto dto)
+            => Ok(await _userService.UpdateAsync(_currentUser.GetRequiredUserId(), dto));
 
         [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<ActionResult<UserResponseDto>> GetById(Guid id)
         {
-            // Un residente solo puede ver su propio usuario; Admin y Security pueden ver cualquiera.
+            // Un residente solo puede ver su propio usuario; Admin y Seguridad pueden ver cualquiera.
             if (_currentUser.Role == RoleTypes.Resident && _currentUser.UserId != id)
                 throw new UnauthorizedAccessException("You can only view your own user.");
 
             return Ok(await _userService.GetByIdAsync(id));
         }
 
-        // Admin: cualquier usuario. Resto: solo a sí mismo y sin campos sensibles (validado en UserService).
+        /// <summary>Admin: cualquier usuario. Resto: solo a sí mismo y sin campos sensibles (lo valida el servicio).</summary>
         [HttpPut("{id:guid}")]
-        public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserDto dto)
-            => Ok(await _userService.UpdateUserAsync(id, dto));
+        public async Task<ActionResult<UserResponseDto>> Update(Guid id, [FromBody] UpdateUserDto dto)
+            => Ok(await _userService.UpdateAsync(id, dto));
 
-        [HttpPatch("{id:guid}/toggle-active")]
+        /// <summary>Da de baja al usuario (baja lógica) y revoca sus sesiones.</summary>
+        [HttpDelete("{id:guid}")]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> ToggleActive(Guid id)
-        {
-            var updatedUser = await _userService.ToggleActiveAsync(id)
-                              ?? throw new KeyNotFoundException($"User with id {id} not found");
-            return Ok(updatedUser);
-        }
+        public async Task<ActionResult<UserResponseDto>> Deactivate(Guid id)
+            => Ok(await _userService.DeactivateAsync(id));
+
+        [HttpPost("{id:guid}/restore")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<UserResponseDto>> Restore(Guid id)
+            => Ok(await _userService.RestoreAsync(id));
     }
 }

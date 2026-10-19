@@ -1,13 +1,17 @@
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Turns;
 using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Domain.Constants;
+using CountrySecure.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
+    /// <summary>Reservas de amenities. Un residente solo accede a las propias.</summary>
     [ApiController]
-    [Authorize]
-    [Route("api/[controller]")]
+    [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+    [Route("api/turns")]
     public class TurnController : ControllerBase
     {
         private readonly ITurnService _turnService;
@@ -19,70 +23,53 @@ namespace CountrySecure.API.Controllers
             _currentUser = currentUser;
         }
 
-        // --- ESCRITURA ---
+        /// <summary>Reservas del usuario autenticado ("Mis reservas").</summary>
+        [HttpGet("me")]
+        public async Task<ActionResult<PagedResult<TurnResponseDto>>> GetMine(
+            [FromQuery] PageQuery paging, [FromQuery] TurnStatus? status = null)
+            => Ok(await _turnService.GetPagedAsync(paging, null, null, null, null, status, onlyMine: true, includeInactive: false));
+
+        /// <summary>
+        /// Listado con filtros (?userId, ?amenityId, ?from, ?to, ?status). Un residente ve solo las suyas.
+        /// </summary>
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<TurnResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] Guid? userId = null,
+            [FromQuery] Guid? amenityId = null,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null,
+            [FromQuery] TurnStatus? status = null,
+            [FromQuery] bool includeInactive = false)
+        {
+            if (from > to)
+                throw new ArgumentException("The start date cannot be after the end date.");
+
+            return Ok(await _turnService.GetPagedAsync(paging, userId, amenityId, from, to, status, onlyMine: false, includeInactive));
+        }
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<TurnResponseDto>> GetById(Guid id)
+            => Ok(await _turnService.GetByIdAsync(id));
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] CreateTurnDto dto)
+        public async Task<ActionResult<TurnResponseDto>> Create([FromBody] CreateTurnDto dto)
         {
-            var turnDto = await _turnService.AddNewTurnAsync(dto, _currentUser.GetRequiredUserId());
-            return CreatedAtAction(nameof(GetById), new { id = turnDto.Id }, turnDto);
+            var created = await _turnService.CreateAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPut("{id:guid}")]
-        public async Task<IActionResult> Put(Guid id, [FromBody] UpdateTurnDto updateDto)
-        {
-            var updatedTurnDto = await _turnService.UpdateTurnAsync(id, updateDto, _currentUser.GetRequiredUserId())
-                                 ?? throw new KeyNotFoundException($"Turn with ID {id} not found.");
-            return Ok(updatedTurnDto);
-        }
+        public async Task<ActionResult<TurnResponseDto>> Update(Guid id, [FromBody] UpdateTurnDto dto)
+            => Ok(await _turnService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-        [HttpPatch("{id:guid}/SoftDelete")]
-        public async Task<IActionResult> SoftDelete(Guid id)
-        {
-            var updatedTurnDto = await _turnService.SoftDeleteTurnAsync(id, _currentUser.GetRequiredUserId())
-                                 ?? throw new KeyNotFoundException($"Turn with ID {id} not found.");
+        /// <summary>Cancela la reserva (baja lógica).</summary>
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult<TurnResponseDto>> Delete(Guid id)
+            => Ok(await _turnService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
-            var action = updatedTurnDto.Status == "Active" ? "reactivated" : "deactivated";
-            return Ok(new
-            {
-                Message = $"The Turn with ID {id} has been {action} successfully.",
-                Turn = updatedTurnDto
-            });
-        }
-
-        // --- CONSULTA ---
-
-        [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-            => Ok(await _turnService.GetAllTurnsAsync(pageNumber, pageSize));
-
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            var turnDto = await _turnService.GetTurnByIdAsync(id);
-            return turnDto == null ? NotFound() : Ok(turnDto);
-        }
-
-        // Reservas del usuario autenticado ("Mis reservas")
-        [HttpGet("me")]
-        public async Task<IActionResult> GetMine()
-            => Ok(await _turnService.GetTurnsByUserIdAsync(_currentUser.GetRequiredUserId()));
-
-        [HttpGet("user/{userId:guid}")]
-        public async Task<IActionResult> GetByUserId(Guid userId)
-            => Ok(await _turnService.GetTurnsByUserIdAsync(userId));
-
-        [HttpGet("amenity/{amenityId:guid}")]
-        public async Task<IActionResult> GetByAmenityId(Guid amenityId)
-            => Ok(await _turnService.GetTurnsByAmenityIdAsync(amenityId));
-
-        [HttpGet("range")]
-        public async Task<IActionResult> GetByDateRange([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
-        {
-            if (startDate > endDate)
-                throw new ArgumentException("The start date cannot be after the end date.");
-
-            return Ok(await _turnService.GetTurnsByDateRangeAsync(startDate, endDate));
-        }
+        [HttpPost("{id:guid}/restore")]
+        public async Task<ActionResult<TurnResponseDto>> Restore(Guid id)
+            => Ok(await _turnService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

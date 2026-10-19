@@ -22,7 +22,7 @@ namespace CountrySecure.Application.Mappers
                 NameVisit = visit.NameVisit,
                 LastNameVisit = visit.LastNameVisit,
                 DniVisit = visit.DniVisit,
-                VisitStatus = visit.Status // Asumiendo que VisitResponseDto.VisitStatus es string
+                VisitStatus = visit.ToAuditStatus()
             };
         }
 
@@ -79,11 +79,6 @@ namespace CountrySecure.Application.Mappers
             { existingEntity.DniVisit = dto.DniVisit.Value;
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.StatusVisit))
-            {
-                existingEntity.Status = dto.StatusVisit;
-            }
-
         }
 
         public static VisitWithPermitsDto ToVisitWithPermitsDto(this Visit visit)
@@ -94,7 +89,7 @@ namespace CountrySecure.Application.Mappers
                 NameVisit = visit.NameVisit,
                 LastNameVisit = visit.LastNameVisit,
                 DniVisit = visit.DniVisit,
-                VisitStatus = visit.Status,
+                VisitStatus = visit.ToAuditStatus(),
 
                 // 👉 SOLO LOS CAMPOS REDUCIDOS
                 Permits = visit.EntryPermissions?.Select(ep => ep.ToVisitEntryPermissionDto()).ToList() ?? new()

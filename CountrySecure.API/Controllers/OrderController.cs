@@ -1,4 +1,5 @@
 using CountrySecure.API.Authorization;
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Order;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Domain.Enums;
@@ -7,9 +8,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
+    /// <summary>Servicios (proveedores) de la comunidad.</summary>
     [ApiController]
     [Authorize]
-    [Route("api/[controller]")]
+    [Route("api/orders")]
     public class OrderController : ControllerBase
     {
         private readonly IOrderService _orderService;
@@ -21,63 +23,45 @@ namespace CountrySecure.API.Controllers
             _currentUser = currentUser;
         }
 
-        // --- ESCRITURA (solo Admin) ---
+        /// <summary>Lista paginada. Solo un Admin puede pedir los inactivos.</summary>
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<OrderResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] OrderStatus? type = null,
+            [FromQuery] string? search = null,
+            [FromQuery] bool includeInactive = false)
+            => Ok(await _orderService.GetPagedAsync(paging, type, search, includeInactive && _currentUser.IsAdmin));
+
+        [HttpGet("most-requested")]
+        public async Task<ActionResult<IReadOnlyList<OrderResponseDto>>> GetMostRequested()
+            => Ok(await _orderService.GetMostRequestedAsync());
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<OrderResponseDto>> GetById(Guid id)
+            => Ok(await _orderService.GetByIdAsync(id));
 
         [HttpPost]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
+        public async Task<ActionResult<OrderResponseDto>> Create([FromBody] CreateOrderDto dto)
         {
-            var created = await _orderService.CreateOrderAsync(dto, _currentUser.GetRequiredUserId());
+            var created = await _orderService.CreateAsync(dto, _currentUser.GetRequiredUserId());
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
         [HttpPut("{id:guid}")]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> UpdateOrder(Guid id, [FromBody] UpdateOrderDto dto)
-            => Ok(await _orderService.UpdateOrderAsync(id, dto, _currentUser.GetRequiredUserId()));
+        public async Task<ActionResult<OrderResponseDto>> Update(Guid id, [FromBody] UpdateOrderDto dto)
+            => Ok(await _orderService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-        [HttpPatch("{id:guid}/SoftDelete")]
+        /// <summary>Baja lógica.</summary>
+        [HttpDelete("{id:guid}")]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> SoftDeleteOrder(Guid id)
-        {
-            var updatedOrderDto = await _orderService.SoftDeleteOrderAsync(id, _currentUser.GetRequiredUserId())
-                                  ?? throw new KeyNotFoundException($"Orden con ID {id} no encontrada.");
+        public async Task<ActionResult<OrderResponseDto>> Delete(Guid id)
+            => Ok(await _orderService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
-            var action = updatedOrderDto.Status == "Active" ? "reactivado" : "desactivado";
-            return Ok(new
-            {
-                Message = $"La Orden con ID {id} ha sido {action} exitosamente.",
-                Order = updatedOrderDto
-            });
-        }
-
-        // --- CONSULTA ---
-
-        [HttpGet("{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            var order = await _orderService.GetOrderByIdAsync(id);
-            return order == null ? NotFound() : Ok(order);
-        }
-
-        [HttpGet("paged")]
-        public async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int size = 100)
-            => Ok(await _orderService.GetAllOrdersAsync(page, size));
-
-        [HttpGet]
-        public async Task<IActionResult> GetAll()
-            => Ok(await _orderService.GetAllOrdersWithoutFilterAsync());
-
-        [HttpGet("type/{orderType}")]
-        public async Task<IActionResult> GetByType(OrderStatus orderType)
-            => Ok(await _orderService.GetByTypeAsync(orderType));
-
-        [HttpGet("supplier/{name}")]
-        public async Task<IActionResult> GetBySupplier(string name)
-            => Ok(await _orderService.GetBySupplierAsync(name));
-
-        [HttpGet("most-requested")]
-        public async Task<IActionResult> GetMostRequested()
-            => Ok(await _orderService.GetMostRequestedAsync());
+        [HttpPost("{id:guid}/restore")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<OrderResponseDto>> Restore(Guid id)
+            => Ok(await _orderService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

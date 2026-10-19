@@ -1,14 +1,17 @@
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Request;
 using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Domain.Constants;
 using CountrySecure.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
+    /// <summary>Solicitudes de servicio de los residentes. Un residente solo accede a las propias.</summary>
     [ApiController]
-    [Authorize]
-    [Route("api/[controller]")]
+    [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+    [Route("api/requests")]
     public class RequestsController : ControllerBase
     {
         private readonly IRequestService _requestService;
@@ -20,50 +23,47 @@ namespace CountrySecure.API.Controllers
             _currentUser = currentUser;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateRequest([FromBody] CreateRequestDto createRequestDto)
-            => Ok(await _requestService.CreateRequestAsync(createRequestDto, _currentUser.GetRequiredUserId()));
-
-        // Solicitudes del usuario autenticado
+        /// <summary>Solicitudes del usuario autenticado.</summary>
         [HttpGet("me")]
-        public async Task<IActionResult> GetMine()
-            => Ok(await _requestService.GetRequestsByUserIdAsync(_currentUser.GetRequiredUserId()));
-
-        [HttpGet("{id:guid}")]
-        public async Task<ActionResult<RequestResponseDto>> GetRequestById(Guid id)
-        {
-            var request = await _requestService.GetRequestByIdAsync(id);
-            return request == null ? NotFound() : Ok(request);
-        }
+        public async Task<ActionResult<PagedResult<RequestResponseDto>>> GetMine(
+            [FromQuery] PageQuery paging, [FromQuery] RequestStatus? status = null)
+            => Ok(await _requestService.GetPagedAsync(paging, status, onlyMine: true, includeInactive: false));
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RequestResponseDto>>> GetAllRequests([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-            => Ok(await _requestService.GetAllRequestsAsync(pageNumber, pageSize));
+        public async Task<ActionResult<PagedResult<RequestResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] RequestStatus? status = null,
+            [FromQuery] bool includeInactive = false)
+            => Ok(await _requestService.GetPagedAsync(paging, status, onlyMine: false, includeInactive));
 
-        [HttpGet("status/{status}")]
-        public async Task<ActionResult<IEnumerable<RequestResponseDto>>> GetRequestsByStatus(RequestStatus status, int pageNumber = 1, int pageSize = 100)
-            => Ok(await _requestService.GetRequestsByStatusAsync(status, pageNumber, pageSize));
+        [HttpGet("count")]
+        [Authorize(Roles = RoleTypes.Admin)]
+        public async Task<ActionResult<int>> Count([FromQuery] RequestStatus status)
+            => Ok(await _requestService.CountByStatusAsync(status));
 
-        [HttpGet("count/{status}")]
-        public async Task<ActionResult<int>> CountRequestsByStatus(RequestStatus status)
-            => Ok(await _requestService.CountRequestsByStatusAsync(status));
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<RequestResponseDto>> GetById(Guid id)
+            => Ok(await _requestService.GetByIdAsync(id));
+
+        [HttpPost]
+        public async Task<ActionResult<RequestResponseDto>> Create([FromBody] CreateRequestDto dto)
+        {
+            var created = await _requestService.CreateAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        }
 
         [HttpPut("{id:guid}")]
-        public async Task<ActionResult<RequestResponseDto>> UpdateRequest(Guid id, [FromBody] UpdateRequestDto updateRequestDto)
-            => Ok(await _requestService.UpdateRequestAsync(id, updateRequestDto, _currentUser.GetRequiredUserId()));
+        public async Task<ActionResult<RequestResponseDto>> Update(Guid id, [FromBody] UpdateRequestDto dto)
+            => Ok(await _requestService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-        [HttpPatch("{id:guid}/SoftDelete")]
-        public async Task<IActionResult> SoftDeleteToggle(Guid id)
-        {
-            var updatedRequest = await _requestService.SoftDeleteToggleAsync(id, _currentUser.GetRequiredUserId())
-                                 ?? throw new KeyNotFoundException($"Request with ID {id} not found.");
+        /// <summary>Cancela la solicitud (baja lógica).</summary>
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult<RequestResponseDto>> Delete(Guid id)
+            => Ok(await _requestService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
-            var action = updatedRequest.BaseEntityStatus == "Active" ? "reactivated" : "deactivated";
-            return Ok(new
-            {
-                Message = $"The Request with ID {id} has been {action} successfully.",
-                Request = updatedRequest
-            });
-        }
+        [HttpPost("{id:guid}/restore")]
+        [Authorize(Roles = RoleTypes.Admin)]
+        public async Task<ActionResult<RequestResponseDto>> Restore(Guid id)
+            => Ok(await _requestService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

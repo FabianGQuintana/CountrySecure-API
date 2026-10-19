@@ -16,7 +16,7 @@ namespace CountrySecure.Application.Mappers
                 Dni = user.Dni,
                 Phone = user.Phone,
                 Email = user.Email,
-                Active = user.Active,
+                Active = !user.IsDeleted,
                 Role = user.Role.ToString()
             };
         }

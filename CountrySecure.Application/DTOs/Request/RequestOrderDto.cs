@@ -11,6 +11,6 @@ namespace CountrySecure.Application.DTOs.Request
         public Guid Id { get; set; }
         public required string SupplierName { get; set; } 
         public required string Description { get; set; } 
-        public int OrderType { get; set; }
+        public Domain.Enums.OrderStatus OrderType { get; set; }
     }
 }

@@ -1,22 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Application.Interfaces.Repositories
 {
     public interface ILotRepository : IGenericRepository<Lot>
     {
-        Task<Lot?> GetLotByNameLotAsync(string nameLot);
+        /// <summary>Busca por nombre incluyendo lotes dados de baja (el nombre es único en toda la tabla).</summary>
+        Task<Lot?> GetByNameIncludingDeletedAsync(string lotName);
 
-        Task<Lot?> GetLotByNameBlockAsync(string nameBlock);
+        Task<IReadOnlyList<string>> GetDistinctBlockNamesAsync();
 
-        // Método para obtener la lista de nombres de bloques únicos (para filtros)
-        Task<IEnumerable<string>> GetDistinctBlockNamesAsync();
-
-        Task<IEnumerable<Lot>> GetLotsByStatusAsync(Domain.Enums.LotStatus status, int pageNumber, int pageSize);
-        Task<Lot?> SoftDeleteLotAsync(Guid lotId);
+        Task<PagedResult<Lot>> GetPagedAsync(PageQuery paging, LotStatus? state, string? search, bool includeDeleted);
     }
 }

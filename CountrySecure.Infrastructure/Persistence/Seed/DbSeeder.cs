@@ -67,8 +67,6 @@ namespace CountrySecure.Infrastructure.Persistence.Seed
                         user.Password = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 10);
 
                     user.Role = demo.Role;
-                    user.Active = true;
-                    user.Status = "Active";
                     user.DeletedAt = null;
                 }
 

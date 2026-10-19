@@ -1,14 +1,17 @@
 using CountrySecure.API.Authorization;
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Visits;
 using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
+    /// <summary>Visitantes (personas que ingresan a la comunidad).</summary>
     [ApiController]
     [Authorize]
-    [Route("api/[controller]")]
+    [Route("api/visits")]
     public class VisitController : ControllerBase
     {
         private readonly IVisitService _visitService;
@@ -20,65 +23,53 @@ namespace CountrySecure.API.Controllers
             _currentUser = currentUser;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
-        {
-            var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, _currentUser.GetRequiredUserId());
-            return CreatedAtAction(nameof(GetVisitById), new { visitId = createdVisit.VisitId }, createdVisit);
-        }
-
-        [HttpGet("{visitId:guid}")]
-        public async Task<IActionResult> GetVisitById(Guid visitId)
-        {
-            var visit = await _visitService.GetVisitByIdAsync(visitId)
-                        ?? throw new KeyNotFoundException("Visit not found");
-            return Ok(visit);
-        }
-
-        [HttpGet("dni/{dniVisit:int}")]
-        public async Task<IActionResult> GetVisitsByDni(int dniVisit)
-            => Ok(await _visitService.GetVisitsByDniAsync(dniVisit));
-
+        /// <summary>Lista paginada (?dni, ?search). Solo un Admin puede pedir las inactivas.</summary>
         [HttpGet]
-        public async Task<IActionResult> GetAllVisits([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
-            => Ok(await _visitService.GetAllVisitsAsync(pageNumber, pageSize));
+        public async Task<ActionResult<PagedResult<VisitResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] int? dni = null,
+            [FromQuery] string? search = null,
+            [FromQuery] bool includeInactive = false)
+            => Ok(await _visitService.GetPagedAsync(paging, dni, search, includeInactive && _currentUser.IsAdmin));
 
-        // Visita completa junto con todos sus permisos asociados.
-        [HttpGet("{visitId:guid}/with-permits")]
-        public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<VisitResponseDto>> GetById(Guid id)
+            => Ok(await _visitService.GetByIdAsync(id));
+
+        /// <summary>La visita junto con todos sus permisos.</summary>
+        [HttpGet("{id:guid}/with-permits")]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Security}")]
+        public async Task<ActionResult<VisitWithPermitsDto>> GetWithPermits(Guid id)
+            => Ok(await _visitService.GetWithPermitsAsync(id));
+
+        /// <summary>Solo los permisos vigentes (pendientes) de la visita.</summary>
+        [HttpGet("{id:guid}/permits/valid")]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Security}")]
+        public async Task<ActionResult<IReadOnlyList<VisitEntryPermissionDto>>> GetValidPermits(Guid id)
+            => Ok(await _visitService.GetValidPermitsAsync(id));
+
+        [HttpPost]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+        public async Task<ActionResult<VisitResponseDto>> Create([FromBody] CreateVisitDto dto)
         {
-            var visit = await _visitService.GetVisitWithPermitsAsync(visitId)
-                        ?? throw new KeyNotFoundException("Visit not found");
-            return Ok(visit);
+            var created = await _visitService.CreateAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = created.VisitId }, created);
         }
 
-        // Solo los permisos válidos (Pending) de la visita.
-        [HttpGet("{visitId:guid}/permits/valid")]
-        public async Task<IActionResult> GetValidPermits(Guid visitId)
-            => Ok(await _visitService.GetValidPermitsByVisitIdAsync(visitId));
+        [HttpPut("{id:guid}")]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+        public async Task<ActionResult<VisitResponseDto>> Update(Guid id, [FromBody] UpdateVisitDto dto)
+            => Ok(await _visitService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-        [HttpPut("{visitId:guid}")]
-        public async Task<IActionResult> UpdateVisit(Guid visitId, [FromBody] UpdateVisitDto updateVisitDto)
-            => Ok(await _visitService.UpdateVisitAsync(visitId, updateVisitDto));
-
-        [HttpPatch("{visitId:guid}/SoftDelete")]
-        public async Task<IActionResult> SoftDeleteToggle(Guid visitId)
-        {
-            var updatedVisitDto = await _visitService.SoftDeleteToggleAsync(visitId, _currentUser.GetRequiredUserId())
-                                  ?? throw new KeyNotFoundException($"Visit with ID {visitId} not found.");
-
-            var action = updatedVisitDto.VisitStatus == "Active" ? "reactivated" : "deactivated";
-            return Ok(new
-            {
-                Message = $"The Visit with ID {visitId} has been {action} successfully.",
-                Visit = updatedVisitDto
-            });
-        }
-
-        // Incluye visitas dadas de baja: solo Admin.
-        [HttpGet("all")]
+        /// <summary>Baja lógica.</summary>
+        [HttpDelete("{id:guid}")]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> GetAllVisitsWithoutFilter()
-            => Ok(await _visitService.GetAllVisitsWithoutFilterAsync());
+        public async Task<ActionResult<VisitResponseDto>> Delete(Guid id)
+            => Ok(await _visitService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
+
+        [HttpPost("{id:guid}/restore")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<VisitResponseDto>> Restore(Guid id)
+            => Ok(await _visitService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

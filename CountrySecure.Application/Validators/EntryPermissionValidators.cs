@@ -28,10 +28,10 @@ public class UpdateEntryPermissionValidator : AbstractValidator<UpdateEntryPermi
     {
         RuleFor(x => x.Description).MaximumLength(300);
         RuleFor(x => x.PermissionType).IsInEnum().When(x => x.PermissionType.HasValue);
-        RuleFor(x => x.Status).IsInEnum().When(x => x.Status.HasValue);
-        RuleFor(x => x.DepartureTime).GreaterThanOrEqualTo(x => x.EntryTime!.Value)
-            .When(x => x.EntryTime.HasValue && x.DepartureTime.HasValue)
-            .WithMessage("Departure time cannot be before entry time.");
+        RuleFor(x => x.OrderId).NotEqual(Guid.Empty).When(x => x.OrderId.HasValue);
+        RuleFor(x => x.ValidTo).GreaterThan(x => x.ValidFrom!.Value)
+            .When(x => x.ValidFrom.HasValue && x.ValidTo.HasValue)
+            .WithMessage("ValidTo must be after ValidFrom.");
     }
 }
 

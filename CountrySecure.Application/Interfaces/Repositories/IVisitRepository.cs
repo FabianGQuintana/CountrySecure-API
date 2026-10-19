@@ -1,22 +1,14 @@
-﻿using CountrySecure.Application.DTOs.Properties;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Domain.Entities;
-using CountrySecure.Domain.Enums;
-using System;
 
 namespace CountrySecure.Application.Interfaces.Repositories;
 
 public interface IVisitRepository : IGenericRepository<Visit>
 {
-    Task<IReadOnlyList<Visit>> GetVisitsByDniAsync(int dniVisit);
-    Task<Visit?> GetVisitWithPermitsAsync(Guid visitId);
-    Task<IEnumerable<EntryPermission>> GetPermitsByVisitIdAsync(Guid visitId);
-    Task<IEnumerable<Visit>> GetAllWithoutPaginationAsync();
-    Task<EntryPermission?> GetValidPermitByVisitIdAsync(Guid visitId);
-    Task<Visit?> GetByIdWithoutFiltersAsync(Guid id);
-    Task<Visit?> SoftDeleteVisitAsync(Guid visitId);
+    /// <summary>Busca por DNI incluyendo visitas dadas de baja (el DNI es único en toda la tabla).</summary>
+    Task<Visit?> GetByDniIncludingDeletedAsync(int dni);
 
-    
+    Task<Visit?> GetWithPermitsAsync(Guid visitId);
+
+    Task<PagedResult<Visit>> GetPagedAsync(PageQuery paging, int? dni, string? search, bool includeDeleted);
 }
-
-
-

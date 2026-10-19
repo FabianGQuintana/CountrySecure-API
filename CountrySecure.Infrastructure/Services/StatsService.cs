@@ -33,23 +33,23 @@ namespace CountrySecure.Infrastructure.Services
             var (todayStart, todayEnd) = TodayRangeUtc();
 
             var users = _db.Users.AsNoTracking();
-            var turns = _db.Turns.AsNoTracking().Where(t => t.DeletedAt == null && t.TurnStatus != TurnStatus.Cancelled);
-            var permits = _db.EntryPermissions.AsNoTracking().Where(p => p.DeletedAt == null);
+            var turns = _db.Turns.AsNoTracking().Where(t => t.TurnStatus != TurnStatus.Cancelled);
+            var permits = _db.EntryPermissions.AsNoTracking();
 
             return new AdminStatsDto
             {
-                TotalResidents = await users.CountAsync(u => u.Role == RoleTypes.Resident && u.Active),
-                TotalSecurityStaff = await users.CountAsync(u => u.Role == RoleTypes.Security && u.Active),
-                ActiveUsers = await users.CountAsync(u => u.Active),
-                InactiveUsers = await users.CountAsync(u => !u.Active),
-                TotalLots = await _db.Lots.AsNoTracking().CountAsync(l => l.DeletedAt == null),
-                TotalProperties = await _db.Properties.AsNoTracking().CountAsync(p => p.DeletedAt == null),
-                OccupiedProperties = await _db.Properties.AsNoTracking().CountAsync(p => p.DeletedAt == null && p.UserId != null),
-                TotalAmenities = await _db.Amenities.AsNoTracking().CountAsync(a => a.DeletedAt == null),
+                TotalResidents = await users.CountAsync(u => u.Role == RoleTypes.Resident),
+                TotalSecurityStaff = await users.CountAsync(u => u.Role == RoleTypes.Security),
+                ActiveUsers = await users.CountAsync(),
+                InactiveUsers = await users.IgnoreQueryFilters().CountAsync(u => u.DeletedAt != null),
+                TotalLots = await _db.Lots.AsNoTracking().CountAsync(),
+                TotalProperties = await _db.Properties.AsNoTracking().CountAsync(),
+                OccupiedProperties = await _db.Properties.AsNoTracking().CountAsync(p => p.UserId != null),
+                TotalAmenities = await _db.Amenities.AsNoTracking().CountAsync(),
                 UpcomingReservations = await turns.CountAsync(t => t.StartTime >= now),
                 ReservationsToday = await turns.CountAsync(t => t.StartTime >= todayStart && t.StartTime < todayEnd),
-                PendingRequests = await _db.Requests.AsNoTracking().CountAsync(r => r.DeletedAt == null && r.RequestStatus == RequestStatus.Pending),
-                ActiveOrders = await _db.Orders.AsNoTracking().CountAsync(o => o.DeletedAt == null),
+                PendingRequests = await _db.Requests.AsNoTracking().CountAsync(r => r.RequestStatus == RequestStatus.Pending),
+                ActiveOrders = await _db.Orders.AsNoTracking().CountAsync(),
                 PermitsToday = await permits.CountAsync(p => p.ValidFrom < todayEnd && (p.ValidTo == null || p.ValidTo >= todayStart)),
                 VisitorsInside = await permits.CountAsync(p => p.EntryTime != null && p.DepartureTime == null),
             };
@@ -59,9 +59,9 @@ namespace CountrySecure.Infrastructure.Services
         {
             var now = DateTime.UtcNow;
 
-            var myTurns = _db.Turns.AsNoTracking().Where(t => t.UserId == residentId && t.DeletedAt == null);
-            var myPermits = _db.EntryPermissions.AsNoTracking().Where(p => p.UserId == residentId && p.DeletedAt == null);
-            var myRequests = _db.Requests.AsNoTracking().Where(r => r.IdUser == residentId && r.DeletedAt == null);
+            var myTurns = _db.Turns.AsNoTracking().Where(t => t.UserId == residentId);
+            var myPermits = _db.EntryPermissions.AsNoTracking().Where(p => p.UserId == residentId);
+            var myRequests = _db.Requests.AsNoTracking().Where(r => r.IdUser == residentId);
 
             // Última actividad: la fecha más reciente entre reservas, permisos y solicitudes creadas
             var lastTurn = await myTurns.MaxAsync(t => (DateTime?)t.CreatedAt);
@@ -76,8 +76,8 @@ namespace CountrySecure.Infrastructure.Services
                 ActivePermits = await myPermits.CountAsync(p => p.EntryPermissionState == PermissionStatus.Pending && (p.ValidTo == null || p.ValidTo >= now)),
                 TotalPermits = await myPermits.CountAsync(),
                 PendingRequests = await myRequests.CountAsync(r => r.RequestStatus == RequestStatus.Pending),
-                AvailableAmenities = await _db.Amenities.AsNoTracking().CountAsync(a => a.DeletedAt == null),
-                Properties = await _db.Properties.AsNoTracking().CountAsync(p => p.UserId == residentId && p.DeletedAt == null),
+                AvailableAmenities = await _db.Amenities.AsNoTracking().CountAsync(),
+                Properties = await _db.Properties.AsNoTracking().CountAsync(p => p.UserId == residentId),
                 LastActivityAt = lastActivity,
             };
         }

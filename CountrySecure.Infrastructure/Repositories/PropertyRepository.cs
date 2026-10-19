@@ -1,111 +1,47 @@
-﻿using CountrySecure.Domain.Entities;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
 using CountrySecure.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Infrastructure.Repositories;
 
 public class PropertyRepository : GenericRepository<Property>, IPropertyRepository
 {
-	private readonly CountrySecureDbContext _dbContext;
+    public PropertyRepository(CountrySecureDbContext dbContext) : base(dbContext) { }
 
-	public PropertyRepository(CountrySecureDbContext dbContext) : base(dbContext)
-	{
-		_dbContext = dbContext;
-	}
+    public Task<Property?> GetByAddressIncludingDeletedAsync(string street, int propertyNumber)
+        => Set.IgnoreQueryFilters()
+              .FirstOrDefaultAsync(p => p.Street == street && p.PropertyNumber == propertyNumber);
 
-	public async Task<Property?> GetPropertyByAdressAsync(string street, int PropertyNumber)
-	{
-		return await _dbContext.Properties
-            .Include(p => p.Lot)
-            .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.Street == street && p.PropertyNumber == PropertyNumber);
-	}
+    public Task<Property?> GetByIdWithIncludesAsync(Guid id, bool includeDeleted = false)
+        => Set.IncludeDeleted(includeDeleted)
+              .Include(p => p.Lot)
+              .Include(p => p.User)
+              .FirstOrDefaultAsync(p => p.Id == id);
 
-    public async Task<IEnumerable<Property>> GetPropertyByIdUserAsync(Guid UserId)
+    public Task<PagedResult<Property>> GetPagedAsync(
+        PageQuery paging, PropertyStatus? status, Guid? lotId, Guid? ownerId, string? search, bool includeDeleted)
     {
-        return await _dbContext.Properties
-            .Where(p => p.UserId == UserId)
-            .Include(p => p.Lot)
-            .Include(p => p.User)
-            .ToListAsync();
-    }
+        var query = Set.AsNoTracking()
+                       .IncludeDeleted(includeDeleted)
+                       .Include(p => p.Lot)
+                       .Include(p => p.User)
+                       .AsQueryable();
 
+        if (status.HasValue) query = query.Where(p => p.PropertyStatus == status.Value);
+        if (lotId.HasValue) query = query.Where(p => p.LotId == lotId.Value);
+        if (ownerId.HasValue) query = query.Where(p => p.UserId == ownerId.Value);
 
-
-    public async Task<IEnumerable<Property>> GetPropertiesByLotIdAsync(Guid lotId)
-    {
-        return await _dbContext.Properties
-                               .Where(p => p.LotId == lotId)
-                               .Include(p => p.Lot)
-                               .Include(p => p.User)
-                               .ToListAsync();
-    }
-
-
-    public async Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status, int numberPage, int pageSize)
-	{
-		return await _dbContext.Properties
-			.Where(p => (int)p.PropertyStatus == (int)status)
-			.OrderBy(p => p.Id)
-            .Include(p => p.Lot)
-			.Include(p => p.User)
-            .Skip((numberPage - 1) * pageSize)
-			.Take(pageSize)
-			.ToListAsync();
-	}
-
-    public async Task<Property?> GetByIdWithIncludesAsync(Guid id)
-    {
-        // Usar el DbSet y aplicar las inclusiones necesarias antes de buscar por ID.
-        return await _dbContext.Set<Property>()
-            .Include(p => p.Lot) // Incluye la propiedad de navegación Lot
-            .Include(p => p.User) // Incluye la propiedad de navegación User
-            .FirstOrDefaultAsync(p => p.Id == id);
-    }
-
-
-    public async Task<IEnumerable<Property>> GetAllAsync(int pageNumber, int pageSize)
-    {
-        return await _dbContext.Properties
-            .Include(p => p.Lot)
-            .Include(p => p.User)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-    }
-
-    public async Task<Property?> SoftDeleteAsync(Guid id)
-    {
-        var property = await _dbContext.Properties
-            .Include(p => p.Lot)
-            .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.Id == id);
-
-        if (property == null)
-            return null;
-
-        // Si está activo → desactivar
-        if (property.DeletedAt == null)
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            property.DeletedAt = DateTime.UtcNow;
-            property.Status = "Inactive";
-            
-        }
-        else
-        {
-            // Si está inactivo → activar
-            property.DeletedAt = null;
-            property.Status = "Active";
-            
+            var term = search.Trim().ToLower();
+            query = query.Where(p => p.Street.ToLower().Contains(term)
+                                     || (p.Lot != null && p.Lot.LotName.ToLower().Contains(term))
+                                     || (p.User != null && (p.User.Name + " " + p.User.Lastname).ToLower().Contains(term)));
         }
 
-        property.UpdatedAt = DateTime.UtcNow;
-
-        return property; // EF lo trackea
+        return query.OrderBy(p => p.Street).ThenBy(p => p.PropertyNumber).ToPagedResultAsync(paging);
     }
-
-
-
 }

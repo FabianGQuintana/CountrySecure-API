@@ -1,14 +1,12 @@
-﻿using CountrySecure.Application.Mappers;
-using CountrySecure.Application.Interfaces.Repositories;
-using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Domain.Entities;
-using CountrySecure.Domain.Enums;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Lots;
 using CountrySecure.Application.Interfaces.Persistence;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq; 
+using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Application.Mappers;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
+using CountrySecure.Domain.Exceptions;
 
 namespace CountrySecure.Application.Services.Lots
 {
@@ -23,140 +21,88 @@ namespace CountrySecure.Application.Services.Lots
             _unitOfWork = unitOfWork;
         }
 
-        // --- MÉTODOS DE ESCRITURA ---
-
-        public async Task<LotResponseDto> AddNewLotAsync(CreateLotDto newLotDto, Guid currentUserId)
+        public async Task<LotResponseDto> CreateAsync(CreateLotDto dto, Guid currentUserId)
         {
-            // 1. Convertir DTO a Entidad (Ahora mapea LotState)
-            var newLotEntity = newLotDto.ToEntity();
+            await EnsureNameIsFreeAsync(dto.LotName, exceptLotId: null);
 
-            // 2. ASIGNACIÓN DE AUDITORÍA Y CAMPOS BASE
+            var lot = dto.ToEntity();
+            lot.CreatedBy = currentUserId.ToString();
 
-            // Asignación del Creador
-            newLotEntity.CreatedBy = currentUserId.ToString();
-
-            //  Asignamos el EntryPermissionState de la BaseEntity (string) a "Active"
-            newLotEntity.Status = "Active";
-
-            // El LotState (el enum que vino del DTO) ya está asignado.
-
-            newLotEntity.CreatedAt = DateTime.UtcNow; // Auditoría
-
-            var addedLot = await _lotRepository.AddAsync(newLotEntity);
+            await _lotRepository.AddAsync(lot);
             await _unitOfWork.SaveChangesAsync();
 
-            // 3. Mapeo de Entidad a DTO de Respuesta
-            return addedLot.ToResponseDto();
+            return lot.ToResponseDto();
         }
 
-        public async Task<LotResponseDto> UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId)
+        public async Task<LotResponseDto> UpdateAsync(Guid id, UpdateLotDto dto, Guid currentUserId)
         {
-            // 1. Buscar la entidad existente por ID
-            var lotToUpdate = await _lotRepository.GetByIdAsync(lotId);
+            var lot = await GetOrThrowAsync(id);
 
-            // 2. Manejar el caso de no encontrado (Termina aquí si no existe)
-            if (lotToUpdate == null)
-            {
-                throw new KeyNotFoundException($"El Lote con ID {lotId} no fue encontrado.");
-            }
+            if (!string.IsNullOrWhiteSpace(dto.LotName) && dto.LotName != lot.LotName)
+                await EnsureNameIsFreeAsync(dto.LotName, exceptLotId: id);
 
-            // 3. Aplicar mapeo manual de los campos
+            dto.MapToEntity(lot);
+            lot.Touch(currentUserId.ToString());
 
-            // El método String.IsNullOrWhiteSpace es robusto para validar la entrada
-            if (!string.IsNullOrWhiteSpace(updateLot.LotName))
-            {
-                lotToUpdate.LotName = updateLot.LotName;
-            }
-
-            if (!string.IsNullOrWhiteSpace(updateLot.BlockName))
-            {
-                lotToUpdate.BlockName = updateLot.BlockName;
-            }
-
-            // Los tipos de valor nulleables (Enum?) requieren chequeo HasValue
-            if (updateLot.Status.HasValue)
-            {
-                // Asignamos el valor del DTO al campo LotState de la entidad
-                lotToUpdate.LotState = updateLot.Status.Value;
-            }
-
-            // 4. Auditoría (Heredado de BaseEntity)
-            lotToUpdate.LastModifiedAt = DateTime.UtcNow;
-            lotToUpdate.LastModifiedBy = currentUserId.ToString();
-
-            // 5. Persistencia
-            // Es buena práctica capturar el resultado de UpdateAsync (aunque puede ser el mismo objeto)
-            var updatedEntity = await _lotRepository.UpdateAsync(lotToUpdate);
+            await _lotRepository.UpdateAsync(lot);
             await _unitOfWork.SaveChangesAsync();
 
-            // 6. Retorno (Garantizado: Siempre devuelve un DTO si la ejecución llega aquí)
-            return updatedEntity.ToResponseDto();
+            return lot.ToResponseDto();
         }
-        public async Task<LotResponseDto?> SoftDeleteToggleAsync(Guid lotId, Guid currentUserId)
+
+        public async Task<LotResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
-            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
-            var lot = await _lotRepository.SoftDeleteToggleAsync(lotId);
+            var lot = await GetOrThrowAsync(id);
 
-            if (lot == null)
-                return null; // Not found
+            lot.SoftDelete(currentUserId.ToString());
+            lot.LotState = LotStatus.Inactive;
 
-            // 2. Aplicar Auditoría:
-            lot.LastModifiedAt = DateTime.UtcNow;
-            lot.LastModifiedBy = currentUserId.ToString();
-
-            // 3. Lógica Específica del Enum (LotState)
-            if (lot.Status == "Inactive")
-            {
-                // Si se acaba de desactivar, marcamos el estado funcional (Enum) como Inactive.
-                lot.LotState = LotStatus.Inactive;
-            }
-            else
-            {
-                // Si se acaba de reactivar, marcamos el estado funcional (Enum) como Available.
-                lot.LotState = LotStatus.Available;
-            }
-
-            // 4. Persistencia (Guardar los cambios de Auditoría y LotState)
-            var updatedEntity = await _lotRepository.UpdateAsync(lot);
+            await _lotRepository.UpdateAsync(lot);
             await _unitOfWork.SaveChangesAsync();
 
-            // 5. Mapeo de Retorno
-            return updatedEntity.ToResponseDto();
+            return lot.ToResponseDto();
         }
 
-
-
-
-        // --- MÉTODOS DE CONSULTA ---
-
-        public async Task<LotResponseDto?> GetLotByIdAsync(Guid lotId)
+        public async Task<LotResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
-            var lotEntity = await _lotRepository.GetByIdAsync(lotId);
-            if (lotEntity == null) return null;
+            var lot = await _lotRepository.GetByIdIncludingDeletedAsync(id)
+                      ?? throw new KeyNotFoundException($"Lot with ID {id} not found.");
 
-            // Usar ToResponseDto()
-            return lotEntity.ToResponseDto();
+            lot.Restore(currentUserId.ToString());
+            lot.LotState = LotStatus.Available;
+
+            await _lotRepository.UpdateAsync(lot);
+            await _unitOfWork.SaveChangesAsync();
+
+            return lot.ToResponseDto();
         }
 
-        public async Task<IEnumerable<LotResponseDto>> GetAllLotsAsync(int pageNumber, int pageSize)
+        public async Task<LotResponseDto> GetByIdAsync(Guid id)
+            => (await GetOrThrowAsync(id)).ToResponseDto();
+
+        public Task<IReadOnlyList<string>> GetBlockNamesAsync()
+            => _lotRepository.GetDistinctBlockNamesAsync();
+
+        public async Task<PagedResult<LotResponseDto>> GetPagedAsync(PageQuery paging, LotStatus? state, string? search, bool includeInactive)
         {
-            var lotEntities = await _lotRepository.GetAllAsync(pageNumber, pageSize);
-
-            // Usar la extensión de colección ToResponseDto()
-            return lotEntities.ToResponseDto();
+            var page = await _lotRepository.GetPagedAsync(paging, state, search, includeInactive);
+            return page.Map(l => l.ToResponseDto());
         }
 
-        public async Task<IEnumerable<string>> GetAllBlockNamesAsync()
+        // El nombre del lote es único en toda la tabla (incluidos los dados de baja)
+        private async Task EnsureNameIsFreeAsync(string lotName, Guid? exceptLotId)
         {
-            return await _lotRepository.GetDistinctBlockNamesAsync();
+            var existing = await _lotRepository.GetByNameIncludingDeletedAsync(lotName);
+            if (existing != null && existing.Id != exceptLotId)
+            {
+                throw new ConflictException(existing.IsDeleted
+                    ? $"A lot named '{lotName}' already exists but is inactive. Restore it instead."
+                    : $"A lot named '{lotName}' already exists.");
+            }
         }
 
-        public async Task<IEnumerable<LotResponseDto>> GetLotsByStatusAsync(LotStatus status, int pageNumber, int pageSize)
-        {
-            var lotEntities = await _lotRepository.GetLotsByStatusAsync(status, pageNumber, pageSize);
-
-            // Usar la extensión de colección ToResponseDto()
-            return lotEntities.ToResponseDto();
-        }
+        private async Task<Lot> GetOrThrowAsync(Guid id)
+            => await _lotRepository.GetByIdAsync(id)
+               ?? throw new KeyNotFoundException($"Lot with ID {id} not found.");
     }
 }

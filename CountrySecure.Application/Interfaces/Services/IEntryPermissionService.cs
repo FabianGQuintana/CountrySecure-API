@@ -1,54 +1,37 @@
-﻿
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.EntryPermission;
-using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-
 
 namespace CountrySecure.Application.Interfaces.Services
 {
     public interface IEntryPermissionService
     {
+        Task<EntryPermissionResponseDto> CreateAsync(CreateEntryPermissionDto dto, Guid currentUserId);
+        Task<EntryPermissionResponseDto> UpdateAsync(Guid id, UpdateEntryPermissionDto dto, Guid currentUserId);
 
-        //Creación de nuevo permiso de entrada
-        Task<EntryPermissionResponseDto> AddNewEntryPermissionAsync(CreateEntryPermissionDto dto, Guid currentUserId);
+        /// <summary>Cancela el permiso (baja lógica). Solo si todavía no se usó.</summary>
+        Task<EntryPermissionResponseDto> DeleteAsync(Guid id, Guid currentUserId);
+        Task<EntryPermissionResponseDto> RestoreAsync(Guid id, Guid currentUserId);
 
-        //Obtención por Id
-        Task<EntryPermissionResponseDto?> GetEntryPermissionByIdAsync(Guid entryPermissionId);
+        /// <summary>Un residente solo puede ver los propios; Admin y Seguridad cualquiera.</summary>
+        Task<EntryPermissionResponseDto> GetByIdAsync(Guid id);
 
-        //Obtención por UserId
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByUserIdAsync(Guid userId);
+        Task<PagedResult<EntryPermissionResponseDto>> GetPagedAsync(
+            PageQuery paging,
+            PermissionType? type,
+            PermissionStatus? status,
+            Guid? userId,
+            Guid? visitId,
+            Guid? orderId,
+            string? search,
+            bool includeInactive);
 
-        //Obtención por ServiceId
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByServiceIdAsync(Guid serviceId);
-
-        //Obtención por VisitId
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByVisitIdAsync(Guid visitId);
-
-        //Obtención de todos los permisos de entrada con paginación
-        Task<IEnumerable<EntryPermissionResponseDto>> GetAllEntryPermissionsAsync(int pageNumber, int pageSize);
-
-        //Actualización de permiso de entrada
-        Task<EntryPermissionResponseDto?> UpdateEntryPermissionAsync(UpdateEntryPermissionDto dto, Guid entryPermissionId,Guid currentUserId);
-
-        //Eliminación lógica de permiso de entrada
-        Task<EntryPermissionResponseDto?> SoftDeleteEntryPermissionAsync(Guid entryPermissionId, Guid currentUserId);
-
-        //Obtención de permisos por tipo de permiso.
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByTypeAsync(PermissionType permissionType, int pageNumber, int pageSize);
-
-        //Obtención de permisos por estado (1-ALTA/0-BAJA).
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryPermissionsByStatusAsync(string status, int pageNumber, int pageSize);
-
-        // Manejo de QRCode.
+        // --- Portería ---
         Task<GateCheckResponseDto> ValidateQrCodeAsync(string qrCodeValue);
-
-        Task<PaginatedResult<EntryPermissionResponseDto>> GetActivePermissionsForDateAsync(DateTime date, int pageNumber, int pageSize);
-
-        Task<EntryPermissionResponseDto> RegisterCheckInAsync(Guid permissionId, Guid currentUserId);
-
-        Task<EntryPermissionResponseDto> RegisterCheckOutAsync(Guid permissionId, Guid currentUserId);
-
-        Task<IEnumerable<EntryPermissionResponseDto>> GetEntryLogsAsync(int pageNumber, int pageSize, string? search, string? type);
-
+        /// <summary>Permisos del día (según la zona horaria del servidor): pendientes de ingreso o con la visita adentro.</summary>
+        Task<PagedResult<EntryPermissionResponseDto>> GetTodayAsync(PageQuery paging);
+        Task<PagedResult<EntryPermissionResponseDto>> GetHistoryAsync(PageQuery paging, string? search, PermissionType? type);
+        Task<EntryPermissionResponseDto> RegisterCheckInAsync(Guid permissionId, Guid guardId);
+        Task<EntryPermissionResponseDto> RegisterCheckOutAsync(Guid permissionId, Guid guardId);
     }
 }

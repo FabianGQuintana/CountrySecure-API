@@ -1,5 +1,6 @@
 using CountrySecure.API.Authorization;
 using CountrySecure.Application.DTOs.Amenities;
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,7 +9,7 @@ namespace CountrySecure.API.Controllers
 {
     [ApiController]
     [Authorize]
-    [Route("api/[controller]")]
+    [Route("api/amenities")]
     public class AmenityController : ControllerBase
     {
         private readonly IAmenityService _amenityService;
@@ -20,60 +21,41 @@ namespace CountrySecure.API.Controllers
             _currentUser = currentUser;
         }
 
-        // --- ESCRITURA (solo Admin) ---
+        /// <summary>Lista paginada de amenities. Solo un Admin puede pedir los inactivos.</summary>
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<AmenityResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] string? search = null,
+            [FromQuery] int? minCapacity = null,
+            [FromQuery] bool includeInactive = false)
+            => Ok(await _amenityService.GetPagedAsync(paging, search, minCapacity, includeInactive && _currentUser.IsAdmin));
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<AmenityResponseDto>> GetById(Guid id)
+            => Ok(await _amenityService.GetByIdAsync(id));
 
         [HttpPost]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> Create([FromBody] AmenityCreateDto createDto)
+        public async Task<ActionResult<AmenityResponseDto>> Create([FromBody] AmenityCreateDto dto)
         {
-            var result = await _amenityService.AmenityCreateAsync(createDto, _currentUser.GetRequiredUserId());
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+            var created = await _amenityService.CreateAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:guid}")]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> Update(Guid id, [FromBody] AmenityUpdateDto updateDto)
-        {
-            var result = await _amenityService.AmenityUpdateAsync(id, updateDto, _currentUser.GetRequiredUserId())
-                         ?? throw new KeyNotFoundException($"Amenity with Id '{id}' not found.");
-            return Ok(result);
-        }
+        public async Task<ActionResult<AmenityResponseDto>> Update(Guid id, [FromBody] AmenityUpdateDto dto)
+            => Ok(await _amenityService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-        [HttpPatch("{id:guid}/SoftDelete")]
+        /// <summary>Baja lógica.</summary>
+        [HttpDelete("{id:guid}")]
         [Authorize(Policy = Policies.AdminOnly)]
-        public async Task<IActionResult> SoftDeleteToggle(Guid id)
-        {
-            var updatedAmenityDto = await _amenityService.SoftDeleteToggleAsync(id, _currentUser.GetRequiredUserId())
-                                    ?? throw new KeyNotFoundException($"Amenity con Id '{id}' no encontrado.");
+        public async Task<ActionResult<AmenityResponseDto>> Delete(Guid id)
+            => Ok(await _amenityService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
-            var action = updatedAmenityDto.Status == "Active" ? "reactivado" : "desactivado";
-            return Ok(new
-            {
-                Message = $"La Amenity con ID {id} ha sido {action} exitosamente.",
-                Amenity = updatedAmenityDto
-            });
-        }
-
-        // --- CONSULTA ---
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetById(Guid id)
-            => Ok(await _amenityService.GetByIdAsync(id));
-
-        [HttpGet]
-        public async Task<IActionResult> GetAllWithTurns([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-            => Ok(await _amenityService.GetAllAmenitiesWithTurnsAsync(pageNumber, pageSize));
-
-        [HttpGet("name/{amenityName}")]
-        public async Task<IActionResult> GetByName(string amenityName)
-            => Ok(await _amenityService.GetAmenityByNameAsync(amenityName));
-
-        [HttpGet("capacity")]
-        public async Task<IActionResult> GetByCapacity([FromQuery] int minimumCapacity)
-            => Ok(await _amenityService.GetAmenitiesByCapacityAsync(minimumCapacity));
-
-        [HttpGet("status/{status}")]
-        public async Task<IActionResult> GetByStatus(string status)
-            => Ok(await _amenityService.GetAmenitiesByStatusAsync(status));
+        [HttpPost("{id:guid}/restore")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<AmenityResponseDto>> Restore(Guid id)
+            => Ok(await _amenityService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

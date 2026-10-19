@@ -34,11 +34,11 @@ namespace CountrySecure.Application.Services.Auth
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterUserDto dto)
         {
-            var existing = await _unitOfWork.Users.GetByEmailAsync(dto.Email);
-            if (existing != null)
-            {
+            if (await _unitOfWork.Users.EmailExistsAsync(dto.Email))
                 return new AuthResponseDto { Success = false, Message = "Email is already registered" };
-            }
+
+            if (await _unitOfWork.Users.DniExistsAsync(dto.Dni))
+                return new AuthResponseDto { Success = false, Message = "DNI is already registered" };
 
             var user = new User
             {
@@ -136,7 +136,7 @@ namespace CountrySecure.Application.Services.Auth
 
             // 3. Usuario existente y activo (un usuario dado de baja no puede renovar su sesión)
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
-            if (user == null || !user.Active || user.DeletedAt != null)
+            if (user == null)
                 throw new AuthenticationFailedException("User not found or inactive.");
 
             // 4. Token ya consumido: dentro de la ventana de gracia se devuelve el mismo reemplazo

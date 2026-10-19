@@ -18,7 +18,5 @@ namespace CountrySecure.Application.DTOs.Amenities
 
         [Range(1, 100)]
         public int? Capacity { get; set; } 
-
-        public string? Status { get; set; }
     }
 }

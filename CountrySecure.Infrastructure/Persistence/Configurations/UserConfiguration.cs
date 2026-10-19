@@ -51,10 +51,6 @@ namespace CountrySecure.Infrastructure.Persistence.Configuration
                             .IsRequired()
                             .HasColumnType("text");
 
-                     // ACTIVE
-                     builder.Property(u => u.Active)
-                            .IsRequired();
-
                      // RELACIÓN: User 1 -- * Property
                      builder.HasMany(u => u.Properties)
                             .WithOne(p => p.User)

@@ -1,186 +1,126 @@
-﻿    using CountrySecure.Application.Mappers;
-using CountrySecure.Application.Interfaces.Repositories;
-using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Domain.Entities;
-using CountrySecure.Domain.Enums;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Properties;
 using CountrySecure.Application.Interfaces.Persistence;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Linq;
+using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Application.Mappers;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
+using CountrySecure.Domain.Exceptions;
 
 namespace CountrySecure.Application.Services.Properties
 {
     public class PropertyService : IPropertyService
     {
         private readonly IPropertyRepository _propertyRepository;
-        private readonly IUnitOfWork _unitOfWork;
         private readonly ILotRepository _lotRepository;
-        public PropertyService(IPropertyRepository propertyRepository, IUnitOfWork unitOfWork, ILotRepository lotRepository)
+        private readonly IUnitOfWork _unitOfWork;
+
+        public PropertyService(IPropertyRepository propertyRepository, ILotRepository lotRepository, IUnitOfWork unitOfWork)
         {
             _propertyRepository = propertyRepository;
             _lotRepository = lotRepository;
             _unitOfWork = unitOfWork;
         }
 
-        // --- MÉTODOS DE ESCRITURA ---
-
-        public async Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto, Guid currentUserId)
+        public async Task<PropertyResponseDto> CreateAsync(CreatePropertyDto dto, Guid currentUserId)
         {
-            // 1. Mapeo de DTO a Entidad
-            var newPropertyEntity = newPropertyDto.ToEntity();
+            await EnsureLotExistsAsync(dto.LotId);
+            await EnsureAddressIsFreeAsync(dto.Street, dto.PropertyNumber, exceptPropertyId: null);
 
-            // 2. Validar la existencia del Lote
-            // Asumo que GetByIdAsync del LotRepository obtiene la entidad si existe.
-            var lotExists = await _lotRepository.GetByIdAsync(newPropertyDto.LotId);
+            var property = dto.ToEntity();
+            property.CreatedBy = currentUserId.ToString();
+            property.PropertyStatus = PropertyStatus.NewBrand;
 
-            // CRÍTICO: Corrección de lógica para validar existencia/borrado.
-            if (lotExists == null || lotExists.IsDeleted)
-            {
-                throw new KeyNotFoundException($"El Lote con ID {newPropertyDto.LotId} no existe o está inactivo/eliminado.");
-            }
-
-            // 3. Auditoría y Estado Inicial
-            newPropertyEntity.CreatedBy = currentUserId.ToString();
-            newPropertyEntity.PropertyStatus = PropertyStatus.NewBrand; // Estado funcional inicial
-            newPropertyEntity.Status = "Active"; // Estado de auditoría inicial
-            newPropertyEntity.CreatedAt = DateTime.UtcNow;
-            newPropertyEntity.LastModifiedAt = DateTime.UtcNow;
-
-            // 4. Persistencia (Guardar la entidad)
-            var addedProperty = await _propertyRepository.AddAsync(newPropertyEntity);
+            await _propertyRepository.AddAsync(property);
             await _unitOfWork.SaveChangesAsync();
 
-
-            var fullProperty = await _propertyRepository.GetByIdWithIncludesAsync(addedProperty.Id);
-
-            if (fullProperty == null)
-            {
-                // En caso de fallo raro post-inserción
-                throw new InvalidOperationException("La propiedad fue creada, pero no se pudo recuperar para el mapeo completo.");
-            }
-
-            // 6. Mapeo de la entidad completa (con Lot y User cargados)
-            return fullProperty.ToResponseDto();
+            return await ReloadAsync(property.Id);
         }
 
-        public async Task<PropertyResponseDto?> UpdatePropertyAsync(Guid propertyId, UpdatePropertyDto updateProperty, Guid currentId)
+        public async Task<PropertyResponseDto> UpdateAsync(Guid id, UpdatePropertyDto dto, Guid currentUserId)
         {
-            var existingEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+            var property = await _propertyRepository.GetByIdAsync(id)
+                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
 
-            if (existingEntity == null)
-                return null;
+            if (dto.LotId.HasValue && dto.LotId != property.LotId)
+                await EnsureLotExistsAsync(dto.LotId.Value);
 
-            
-            if (!string.Equals(existingEntity.CreatedBy, currentId.ToString(), StringComparison.OrdinalIgnoreCase))
-            {
-                
-                throw new UnauthorizedAccessException("User is not authorized to update this property. Only the creator may modify it.");
-            }
+            var street = dto.Street ?? property.Street;
+            var number = dto.PropertyNumber ?? property.PropertyNumber;
+            if (street != property.Street || number != property.PropertyNumber)
+                await EnsureAddressIsFreeAsync(street, number, exceptPropertyId: id);
 
+            dto.MapToEntity(property);
+            property.Touch(currentUserId.ToString());
 
-            if (updateProperty.LotId.HasValue)
-            {
-                var lotExists = await _lotRepository.GetByIdAsync(updateProperty.LotId.Value);
-                if (lotExists == null || lotExists.IsDeleted)
-                {
-                    
-                    throw new KeyNotFoundException($"The Lot with ID {updateProperty.LotId.Value} does not exist or is inactive/deleted.");
-                }
-            }
-
-            // Aplicar cambios
-            updateProperty.MapToEntity(existingEntity);
-
-            existingEntity.LastModifiedAt = DateTime.UtcNow;
-            existingEntity.LastModifiedBy = currentId.ToString();
-
-            await _propertyRepository.UpdateAsync(existingEntity);
+            await _propertyRepository.UpdateAsync(property);
             await _unitOfWork.SaveChangesAsync();
 
-            var fullEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
-
-            return fullEntity!.ToResponseDto();
+            return await ReloadAsync(id);
         }
 
-
-        // -------------------------------------------------------------------
-        // IMPLEMENTACIÓN ESTANDARIZADA DEL SOFT DELETE / TOGGLE
-        // -------------------------------------------------------------------
-
-        public async Task<PropertyResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId)
+        public async Task<PropertyResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
-            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
-            var property = await _propertyRepository.SoftDeleteToggleAsync(id); // Asumo que el repositorio hereda el método.
+            var property = await _propertyRepository.GetByIdAsync(id)
+                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
 
-            if (property == null)
-                return null; // No se encontró
+            property.SoftDelete(currentUserId.ToString());
+            property.PropertyStatus = PropertyStatus.Inactive;
 
-            // 2. Aplicar Auditoría:
-            // **ESTO ES CRUCIAL Y FALTABA EN LA VERSIÓN ANTERIOR**
-            property.LastModifiedAt = DateTime.UtcNow;
-            property.LastModifiedBy = currentUserId.ToString();
-
-            // 3. Lógica Específica del Enum (PropertyStatus)
-            if (property.Status == "Inactive")
-            {
-                 property.PropertyStatus = PropertyStatus.Inactive; 
-            }
-            else
-            {
-                // Si se acaba de reactivar, marcamos el estado funcional como Available/Initial.
-                property.PropertyStatus = PropertyStatus.Available;
-            }
-
-            // 4. Persistencia (Guardar los cambios de Auditoría y PropertyStatus)
-            var updatedEntity = await _propertyRepository.UpdateAsync(property);
+            await _propertyRepository.UpdateAsync(property);
             await _unitOfWork.SaveChangesAsync();
 
-            // 5. Mapeo de Retorno
-            // Se asume que el DTO ya tiene la lógica para mapear correctamente BaseEntity.Status
-            return updatedEntity.ToResponseDto();
+            return await ReloadAsync(id, includeDeleted: true);
         }
 
-
-
-        // --- MÉTODOS DE CONSULTA ---
-
-        public async Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId)
+        public async Task<PropertyResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
-            var propertyEntity = await _propertyRepository.GetByIdWithIncludesAsync(propertyId);
+            var property = await _propertyRepository.GetByIdIncludingDeletedAsync(id)
+                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
 
-            if (propertyEntity == null)
-                return null;
+            property.Restore(currentUserId.ToString());
+            property.PropertyStatus = PropertyStatus.Available;
 
-            return propertyEntity.ToResponseDto();
+            await _propertyRepository.UpdateAsync(property);
+            await _unitOfWork.SaveChangesAsync();
+
+            return await ReloadAsync(id);
         }
 
+        public Task<PropertyResponseDto> GetByIdAsync(Guid id) => ReloadAsync(id);
 
-        public async Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize)
+        public async Task<PagedResult<PropertyResponseDto>> GetPagedAsync(
+            PageQuery paging, PropertyStatus? status, Guid? lotId, Guid? ownerId, string? search, bool includeInactive)
         {
-            var propertyEntities = await _propertyRepository.GetAllAsync(pageNumber, pageSize);
-
-            // OPTIONAL: If you want navigation props load includes one by one (costly)
-            return propertyEntities.ToResponseDto();
+            var page = await _propertyRepository.GetPagedAsync(paging, status, lotId, ownerId, search, includeInactive);
+            return page.Map(p => p.ToResponseDto());
         }
 
-        public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize)
+        private async Task<PropertyResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
         {
-            var propertyEntities = await _propertyRepository.GetPropertiesByStatusAsync(status, pageNumber, pageSize);
-            return propertyEntities.ToResponseDto();
+            var property = await _propertyRepository.GetByIdWithIncludesAsync(id, includeDeleted)
+                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
+            return property.ToResponseDto();
         }
 
-        public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByOwnerId(Guid ownerId)
+        private async Task EnsureLotExistsAsync(Guid lotId)
         {
-            var propertyEntities = await _propertyRepository.GetPropertyByIdUserAsync(ownerId);
-            return propertyEntities.ToResponseDto();
+            var lot = await _lotRepository.GetByIdAsync(lotId);
+            if (lot == null)
+                throw new KeyNotFoundException($"The lot with ID {lotId} does not exist or is inactive.");
         }
 
-        public async Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByLotIdAsync(Guid lotId)
+        // La dirección es única en toda la tabla (incluidas las dadas de baja)
+        private async Task EnsureAddressIsFreeAsync(string street, int number, Guid? exceptPropertyId)
         {
-            var propertyEntities = await _propertyRepository.GetPropertiesByLotIdAsync(lotId);
-            return propertyEntities.ToResponseDto();
+            var existing = await _propertyRepository.GetByAddressIncludingDeletedAsync(street, number);
+            if (existing != null && existing.Id != exceptPropertyId)
+            {
+                throw new ConflictException(existing.IsDeleted
+                    ? $"A property at {street} {number} already exists but is inactive. Restore it instead."
+                    : $"A property at {street} {number} already exists.");
+            }
         }
     }
 }

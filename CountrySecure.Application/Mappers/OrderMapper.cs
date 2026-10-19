@@ -20,7 +20,7 @@ namespace CountrySecure.Application.Mappers
                 Description = order.Description,
                 SupplierName = order.SupplierName,
                 OrderType = order.OrderType,
-                Status = order.Status,
+                Status = order.ToAuditStatus(),
                 
 
                 // Relaciones → listas de GUID
@@ -70,10 +70,6 @@ namespace CountrySecure.Application.Mappers
             }
 
             // Si querés permitir actualizar EntryPermissionState
-            if (!string.IsNullOrWhiteSpace(dto.Status))
-            {
-                existing.Status = dto.Status;
-            }
 
             // Relaciones se manejan en el servicio
         }

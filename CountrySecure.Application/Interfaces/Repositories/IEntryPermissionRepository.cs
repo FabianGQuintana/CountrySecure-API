@@ -1,39 +1,31 @@
-﻿using CountrySecure.Domain.Entities;
+﻿using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-using System;
 
 namespace CountrySecure.Application.Interfaces.Repositories
 {
     public interface IEntryPermissionRepository : IGenericRepository<EntryPermission>
     {
-        //Obtener permiso de entrada por valor de código QR.
-        Task<EntryPermission?> GetEntryPermissionByQrCodeValueAsync(string qrCodeValue);
+        /// <summary>Permiso con residente, visitante, orden y guardias cargados.</summary>
+        Task<EntryPermission?> GetWithDetailsAsync(Guid id, bool includeDeleted = false);
 
-        //Obtener todos los permisos de entrada asociados a un usuario,visita,servicio específico.
-        Task<IEnumerable<EntryPermission>> GetEntryPermissionsByUserIdAsync(Guid userId);
+        /// <summary>Busca por QR. Con <paramref name="includeDeleted"/> encuentra también los permisos cancelados (para informar al guardia).</summary>
+        Task<EntryPermission?> GetByQrCodeAsync(string qrCodeValue, bool includeDeleted = false);
 
-        Task<IEnumerable<EntryPermission>> GetEntryPermissionsByVisitIdAsync(Guid visitId);
+        Task<PagedResult<EntryPermission>> GetPagedAsync(
+            PageQuery paging,
+            PermissionType? type,
+            PermissionStatus? status,
+            Guid? userId,
+            Guid? visitId,
+            Guid? orderId,
+            string? search,
+            bool includeDeleted);
 
-        Task<IEnumerable<EntryPermission>> GetEntryPermissionsByServiceIdAsync(Guid serviceId);
+        /// <summary>Permisos del día (pendientes de ingreso o con la visita adentro), a partir de <paramref name="dayStartUtc"/>.</summary>
+        Task<PagedResult<EntryPermission>> GetTodayAsync(PageQuery paging, DateTime dayStartUtc);
 
-        //Obtener los permisos de entrada por tipo de permiso (visita, mantenimiento).
-        Task<IEnumerable<EntryPermission>> GetEntryPermissionsByTypeAsync(PermissionType permissionType, int pageNumber, int pageSize);
-
-        //Obtener permisos de entrada por estado con paginación.
-        Task<IEnumerable<EntryPermission>> GetEntryPermissionsStatusAsync(string status, int pageNumber, int pageSize);
-
-        //Obtener permiso de entrada por valor de código QR.
-        Task<EntryPermission?> GetByQrCodeValueAsync(string qrCodeValue);
-
-        Task<EntryPermission?> GetEntryPermissionWithDetailsAsync(Guid id);
-
-        Task<EntryPermission?> GetByIdWithIncludesAsync(Guid id);
-
-        // Modificar este método para que cargue las inclusiones necesarias para el mapeo
-        Task<IEnumerable<EntryPermission>> GetAllWithIncludesAsync(int pageNumber, int pageSize);
-
-        Task<PaginatedResult<EntryPermission>> GetByDateRangeWithDetailsAsync(DateTime startDate, DateTime endDate, int pageNumber, int pageSize);
-
-        Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(int pageNumber, int pageSize, string? search, string? type);
+        /// <summary>Historial de ingresos efectivos (con EntryTime), más recientes primero.</summary>
+        Task<PagedResult<EntryPermission>> GetHistoryAsync(PageQuery paging, string? search, PermissionType? type);
     }
 }
