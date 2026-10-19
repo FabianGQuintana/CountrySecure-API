@@ -22,28 +22,6 @@ namespace CountrySecure.Application.Services.Users
         }
 
 
-        public async Task<UserResponseDto> CreateUserAsync(CreateUserDto dto)
-        {
-            var user = new User
-            {
-                Name = dto.Name,
-                Lastname = dto.Lastname,
-                Dni = dto.Dni,
-                Phone = dto.Phone,
-                Email = dto.Email,
-                Password = dto.Password,
-                Role = dto.Role,
-
-                CreatedAt = DateTime.UtcNow,
-                Status = "Active"
-            };
-
-            await _userRepository.AddAsync(user);
-            await _unitOfWork.SaveChangesAsync();
-
-            return user.ToDto();
-        }
-
         public async Task<IEnumerable<UserResponseDto>> GetAllAsync(int page, int size, string? role = null)
         {
             var users = await _userRepository.GetAllAsync(page, size, role);
@@ -93,17 +71,6 @@ namespace CountrySecure.Application.Services.Users
 
             return user.ToDto();
         }
-
-        // public async Task<bool> DeleteUserAsync(Guid id)
-        // {
-        //     var deleted = await _userRepository.DeleteAsync(id);
-
-        //     if (!deleted) return false;
-
-        //     await _unitOfWork.SaveChangesAsync();
-
-        //     return true;
-        // }
 
         public async Task<UserResponseDto?> ToggleActiveAsync(Guid id)
         {
