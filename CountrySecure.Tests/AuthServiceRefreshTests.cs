@@ -3,7 +3,6 @@ using CountrySecure.Application.DTOs.Auth;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Services.Auth;
 using CountrySecure.Domain.Entities;
-using CountrySecure.Domain.Exceptions;
 using CountrySecure.Infrastructure.Persistence;
 using NSubstitute;
 
@@ -85,7 +84,9 @@ public class AuthServiceRefreshTests
         var (service, tokens) = Build(db);
         TokenBelongsTo(tokens, user.Id);
 
-        await Assert.ThrowsAsync<AuthenticationFailedException>(() => service.RefreshTokenAsync(Request(used.Token)));
+        var result = await service.RefreshTokenAsync(Request(used.Token));
+
+        Assert.False(result.Success);
     }
 
     [Fact]
@@ -97,7 +98,9 @@ public class AuthServiceRefreshTests
         var (service, tokens) = Build(db);
         TokenBelongsTo(tokens, user.Id);
 
-        await Assert.ThrowsAsync<AuthenticationFailedException>(() => service.RefreshTokenAsync(Request(revoked.Token)));
+        var result = await service.RefreshTokenAsync(Request(revoked.Token));
+
+        Assert.False(result.Success);
     }
 
     [Fact]
@@ -109,7 +112,9 @@ public class AuthServiceRefreshTests
         var (service, tokens) = Build(db);
         TokenBelongsTo(tokens, user.Id);
 
-        await Assert.ThrowsAsync<AuthenticationFailedException>(() => service.RefreshTokenAsync(Request(expired.Token)));
+        var result = await service.RefreshTokenAsync(Request(expired.Token));
+
+        Assert.False(result.Success);
     }
 
     [Fact]
@@ -122,7 +127,9 @@ public class AuthServiceRefreshTests
         var (service, tokens) = Build(db);
         TokenBelongsTo(tokens, attacker.Id);
 
-        await Assert.ThrowsAsync<AuthenticationFailedException>(() => service.RefreshTokenAsync(Request(stored.Token)));
+        var result = await service.RefreshTokenAsync(Request(stored.Token));
+
+        Assert.False(result.Success);
     }
 
     [Fact]
@@ -136,6 +143,8 @@ public class AuthServiceRefreshTests
         var (service, tokens) = Build(db);
         TokenBelongsTo(tokens, user.Id);
 
-        await Assert.ThrowsAsync<AuthenticationFailedException>(() => service.RefreshTokenAsync(Request(stored.Token)));
+        var result = await service.RefreshTokenAsync(Request(stored.Token));
+
+        Assert.False(result.Success);
     }
 }

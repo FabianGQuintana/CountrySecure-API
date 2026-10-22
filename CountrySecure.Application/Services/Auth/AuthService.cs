@@ -111,7 +111,24 @@ namespace CountrySecure.Application.Services.Auth
             return (true, null);
         }
 
+        /// <summary>
+        /// Renueva la sesión. Un refresh token inválido, vencido, revocado o ajeno es un caso esperado
+        /// (sesión vieja en el navegador): se devuelve <c>Success = false</c> en vez de propagar la
+        /// excepción, así el controlador responde 401 sin ensuciar el log con "unhandled exception".
+        /// </summary>
         public async Task<AuthResponseDto> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            try
+            {
+                return await RotateRefreshTokenAsync(request);
+            }
+            catch (AuthenticationFailedException ex)
+            {
+                return new AuthResponseDto { Success = false, Message = ex.Message };
+            }
+        }
+
+        private async Task<AuthResponseDto> RotateRefreshTokenAsync(RefreshTokenRequest request)
         {
             // 1. Buscar el refresh token en la base de datos
             var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);

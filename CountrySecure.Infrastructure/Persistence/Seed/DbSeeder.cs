@@ -41,7 +41,8 @@ namespace CountrySecure.Infrastructure.Persistence.Seed
                 }
 
                 var email = (configuration[$"Seed:Users:{demo.Role}:Email"] ?? demo.DefaultEmail).Trim().ToLowerInvariant();
-                var user = await context.Users.FirstOrDefaultAsync(u => u.Email == email);
+                // IgnoreQueryFilters: un demo dado de baja (soft delete) se reactiva en vez de chocar con el email único
+                var user = await context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == email);
 
                 if (user == null)
                 {

@@ -21,8 +21,9 @@ namespace CountrySecure.Infrastructure.Repositories
         public Task<User?> GetByIdIncludingDeletedAsync(Guid id)
             => _context.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == id);
 
+        // Sin distinguir mayúsculas ni espacios: "Admin@Countrysecure.local " también entra
         public Task<User?> GetByEmailAsync(string email)
-            => _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            => _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email.Trim().ToLower());
 
         public Task<bool> EmailExistsAsync(string email, Guid? exceptUserId = null)
             => _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == email && u.Id != exceptUserId);

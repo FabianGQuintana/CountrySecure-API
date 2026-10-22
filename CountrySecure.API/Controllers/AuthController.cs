@@ -61,7 +61,15 @@ namespace CountrySecure.API.Controllers
         [AllowAnonymous]
         [HttpPost("refresh")]
         public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request)
-            => Ok(await _authService.RefreshTokenAsync(request));
+        {
+            var result = await _authService.RefreshTokenAsync(request);
+
+            // Refresh token inválido, vencido o revocado: 401 limpio (el front borra la sesión y manda a /login)
+            if (!result.Success)
+                return Unauthorized(new { message = result.Message ?? "Invalid refresh token." });
+
+            return Ok(result);
+        }
 
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
