@@ -2,10 +2,12 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 
 using FluentValidation;
 
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -45,6 +47,8 @@ using CountrySecure.Infrastructure.Services;
 //    ConnectionStrings:DefaultConnection  -> cadena de conexión a PostgreSQL
 //    Jwt:Key                              -> clave HMAC para firmar los JWT (>= 32 caracteres)
 //    Seed:Users:{Admin,Resident,Security}:Password -> contraseñas de los usuarios demo (seed)
+//    App:FrontendUrl                      -> URL pública del front (enlaces de recuperación de contraseña)
+//    Smtp:{Host,Port,User,Password,From,EnableSsl} -> envío de emails (opcional; sin esto se registran en el log)
 //  En producción usar variables de entorno: ConnectionStrings__DefaultConnection, Jwt__Key, etc.
 //  Ver appsettings.Example.json como plantilla.
 // ======================================================================
@@ -112,12 +116,39 @@ builder.Services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 builder.Services.AddSingleton<IPassTokenService, PassTokenService>();
 builder.Services.AddSingleton<IPassDocumentService, PassDocumentService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+
+// Email: SMTP si está configurado; si no, se registra en el log (en desarrollo, con el enlace de recuperación)
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Smtp:Host"]))
+    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
+else
+    builder.Services.AddSingleton<IEmailSender>(sp => new LogEmailSender(
+        sp.GetRequiredService<ILogger<LogEmailSender>>(),
+        includeBody: builder.Environment.IsDevelopment()));
 builder.Services.AddScoped<IStatsService, StatsService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Usuario actual (extraído del JWT)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+// ======================================
+//   RATE LIMITING
+// ======================================
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(RateLimitPolicies.PasswordReset, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Hiciste demasiados intentos. Esperá unos minutos y probá de nuevo." },
+            cancellationToken);
+    };
+});
 
 // ======================================
 //   CORS
@@ -243,6 +274,7 @@ if (!app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 

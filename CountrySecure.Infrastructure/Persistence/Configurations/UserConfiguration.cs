@@ -31,6 +31,7 @@ namespace CountrySecure.Infrastructure.Persistence.Configuration
                      builder.Property(u => u.Dni)
                             .IsRequired();
                      builder.Property(u => u.BlockReason).HasMaxLength(300);
+                     builder.Property(u => u.Avatar).HasMaxLength(32);
 
                      builder.HasIndex(u => u.Dni)    // El dni es unico
                             .IsUnique();

@@ -31,5 +31,13 @@ namespace CountrySecure.Application.Interfaces.Repositories
 
         /// <summary>Revoca todos los refresh tokens vigentes del usuario (p. ej. al darlo de baja).</summary>
         Task RevokeAllRefreshTokensAsync(Guid userId);
+
+        // Recuperación de contraseña
+        Task AddPasswordResetTokenAsync(PasswordResetToken token);
+        Task<PasswordResetToken?> GetPasswordResetTokenAsync(string tokenHash);
+        Task<int> CountPasswordResetTokensSinceAsync(Guid userId, DateTime since);
+
+        /// <summary>Marca como usados los enlaces pendientes del usuario (al pedir uno nuevo).</summary>
+        Task InvalidatePasswordResetTokensAsync(Guid userId);
     }
 }

@@ -18,6 +18,9 @@ namespace CountrySecure.Domain.Entities
         public bool IsBlocked { get; set; }
         public string? BlockReason { get; set; }
 
+        /// <summary>Clave de uno de los avatares predefinidos (<see cref="Constants.Avatars"/>); null = iniciales.</summary>
+        public string? Avatar { get; set; }
+
 
         // FK
         public ICollection<Property> Properties { get; set; } = new List<Property>();

@@ -17,5 +17,6 @@ namespace CountrySecure.Application.DTOs.Auth
         public string Name { get; set; } = null!;
         public string Lastname { get; set; } = null!;
         public string Role { get; set; } = null!;
+        public string? Avatar { get; set; }
     }
 }

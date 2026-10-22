@@ -4,6 +4,7 @@ using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
+using CountrySecure.Domain.Constants;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Exceptions;
 
@@ -36,6 +37,23 @@ namespace CountrySecure.Application.Services.Users
                 : await _userRepository.GetByIdAsync(id);
 
             return (user ?? throw new KeyNotFoundException($"No se encontró el usuario {id}.")).ToDto();
+        }
+
+        public async Task<UserResponseDto> UpdateAvatarAsync(Guid userId, string? avatar)
+        {
+            if (avatar != null && !Avatars.IsValid(avatar))
+                throw new ArgumentException("Elegí uno de los avatares disponibles.");
+
+            var user = await _userRepository.GetByIdAsync(userId)
+                       ?? throw new KeyNotFoundException($"No se encontró el usuario {userId}.");
+
+            user.Avatar = avatar;
+            user.Touch(userId.ToString());
+
+            await _userRepository.UpdateAsync(user);
+            await _unitOfWork.SaveChangesAsync();
+
+            return user.ToDto();
         }
 
         public async Task<UserResponseDto> UpdateAsync(Guid id, UpdateUserDto dto)

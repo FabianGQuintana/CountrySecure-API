@@ -16,6 +16,7 @@ namespace CountrySecure.Application.DTOs.Users
         public string? BlockReason { get; set; }
 
         public string Role { get; set; } = null!;
+        public string? Avatar { get; set; }
 
         // Auditoría básica (útil para admins)
         // public DateTime CreatedAt { get; set; }

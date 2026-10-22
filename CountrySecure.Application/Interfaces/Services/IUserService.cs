@@ -18,6 +18,9 @@ namespace CountrySecure.Application.Interfaces.Services
         /// <summary>Un residente bloqueado no puede recibir visitas: sus pases se rechazan en la guardia.</summary>
         Task<UserResponseDto> SetBlockedAsync(Guid id, BlockDto dto);
 
+        /// <summary>Cada usuario elige su propio avatar entre los predefinidos (null = iniciales).</summary>
+        Task<UserResponseDto> UpdateAvatarAsync(Guid userId, string? avatar);
+
         Task<UserResponseDto> GetByIdAsync(Guid id);
         Task<PagedResult<UserResponseDto>> GetPagedAsync(PageQuery paging, string? role, string? search, bool includeInactive);
     }

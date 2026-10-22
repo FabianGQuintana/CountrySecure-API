@@ -41,6 +41,11 @@ namespace CountrySecure.API.Controllers
         public async Task<ActionResult<UserResponseDto>> UpdateMe([FromBody] UpdateUserDto dto)
             => Ok(await _userService.UpdateAsync(_currentUser.GetRequiredUserId(), dto));
 
+        /// <summary>Elige uno de los avatares predefinidos (avatar-1 … avatar-5) o null para volver a las iniciales.</summary>
+        [HttpPut("me/avatar")]
+        public async Task<ActionResult<UserResponseDto>> UpdateMyAvatar([FromBody] UpdateAvatarDto dto)
+            => Ok(await _userService.UpdateAvatarAsync(_currentUser.GetRequiredUserId(), dto.Avatar));
+
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<UserResponseDto>> GetById(Guid id)
         {

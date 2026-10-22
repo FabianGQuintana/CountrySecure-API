@@ -209,7 +209,8 @@ namespace CountrySecure.Application.Services.Auth
             Email = user.Email,
             Name = user.Name,
             Lastname = user.Lastname,
-            Role = user.Role
+            Role = user.Role,
+            Avatar = user.Avatar
         };
     }
 }

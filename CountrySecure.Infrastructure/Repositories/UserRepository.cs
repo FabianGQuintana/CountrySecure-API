@@ -105,5 +105,27 @@ namespace CountrySecure.Infrastructure.Repositories
             foreach (var token in active)
                 token.IsRevoked = true;
         }
+
+        // --- Recuperación de contraseña ---
+
+        public async Task AddPasswordResetTokenAsync(PasswordResetToken token)
+            => await _context.PasswordResetTokens.AddAsync(token);
+
+        public Task<PasswordResetToken?> GetPasswordResetTokenAsync(string tokenHash)
+            => _context.PasswordResetTokens.FirstOrDefaultAsync(t => t.TokenHash == tokenHash);
+
+        public Task<int> CountPasswordResetTokensSinceAsync(Guid userId, DateTime since)
+            => _context.PasswordResetTokens.CountAsync(t => t.UserId == userId && t.CreatedAt >= since);
+
+        public async Task InvalidatePasswordResetTokensAsync(Guid userId)
+        {
+            var pending = await _context.PasswordResetTokens
+                .Where(t => t.UserId == userId && t.UsedAt == null)
+                .ToListAsync();
+
+            var now = DateTime.UtcNow;
+            foreach (var token in pending)
+                token.UsedAt = now;
+        }
     }
 }

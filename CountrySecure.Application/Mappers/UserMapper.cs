@@ -19,7 +19,8 @@ namespace CountrySecure.Application.Mappers
                 Active = !user.IsDeleted,
                 IsBlocked = user.IsBlocked,
                 BlockReason = user.BlockReason,
-                Role = user.Role.ToString()
+                Role = user.Role.ToString(),
+                Avatar = user.Avatar
             };
         }
 
