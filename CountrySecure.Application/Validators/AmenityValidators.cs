@@ -10,7 +10,7 @@ public class AmenityCreateValidator : AbstractValidator<AmenityCreateDto>
         RuleFor(x => x.AmenityName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).NotEmpty().MaximumLength(500);
         RuleFor(x => x.Schedules).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Capacity).InclusiveBetween(1, 1000).WithMessage("Capacity must be between 1 and 1000.");
+        RuleFor(x => x.Capacity).InclusiveBetween(1, 1000).WithMessage("La capacidad debe estar entre 1 y 1000.");
     }
 }
 

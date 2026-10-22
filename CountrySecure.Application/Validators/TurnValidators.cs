@@ -10,10 +10,10 @@ public class CreateTurnValidator : AbstractValidator<CreateTurnDto>
         RuleFor(x => x.AmenityId).NotEmpty();
         RuleFor(x => x.StartTime).NotEmpty();
         RuleFor(x => x.EndTime).NotEmpty().GreaterThan(x => x.StartTime)
-            .WithMessage("End time must be after start time.");
+            .WithMessage("La hora de fin debe ser posterior a la de inicio.");
         RuleFor(x => x)
             .Must(x => x.EndTime - x.StartTime <= TimeSpan.FromHours(12))
-            .WithMessage("A reservation cannot last more than 12 hours.")
+            .WithMessage("Una reserva no puede durar más de 12 horas.")
             .When(x => x.EndTime > x.StartTime);
     }
 }
@@ -26,6 +26,6 @@ public class UpdateTurnValidator : AbstractValidator<UpdateTurnDto>
         RuleFor(x => x.AmenityId).NotEqual(Guid.Empty).When(x => x.AmenityId.HasValue);
         RuleFor(x => x.EndTime).GreaterThan(x => x.StartTime!.Value)
             .When(x => x.StartTime.HasValue && x.EndTime.HasValue)
-            .WithMessage("End time must be after start time.");
+            .WithMessage("La hora de fin debe ser posterior a la de inicio.");
     }
 }

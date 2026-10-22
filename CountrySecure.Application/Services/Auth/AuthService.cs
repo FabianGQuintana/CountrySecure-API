@@ -35,10 +35,10 @@ namespace CountrySecure.Application.Services.Auth
         public async Task<AuthResponseDto> RegisterAsync(RegisterUserDto dto)
         {
             if (await _unitOfWork.Users.EmailExistsAsync(dto.Email))
-                return new AuthResponseDto { Success = false, Message = "Email is already registered" };
+                return new AuthResponseDto { Success = false, Message = "El email ya está registrado." };
 
             if (await _unitOfWork.Users.DniExistsAsync(dto.Dni))
-                return new AuthResponseDto { Success = false, Message = "DNI is already registered" };
+                return new AuthResponseDto { Success = false, Message = "El DNI ya está registrado." };
 
             var user = new User
             {
@@ -72,7 +72,7 @@ namespace CountrySecure.Application.Services.Auth
             // Mismo resultado para "no existe" y "clave incorrecta" (no permite enumerar usuarios)
             if (user == null || !_passwordHasher.Verify(dto.Password, user.Password))
             {
-                return new AuthResponseDto { Success = false, Message = "Invalid email or password" };
+                return new AuthResponseDto { Success = false, Message = "Email o contraseña incorrectos." };
             }
 
             var accessToken = _tokenService.GenerateToken(user);
@@ -98,10 +98,10 @@ namespace CountrySecure.Application.Services.Auth
         {
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
-                return (false, "User not found.");
+                return (false, "Usuario no encontrado.");
 
             if (!_passwordHasher.Verify(dto.CurrentPassword, user.Password))
-                return (false, "Current password is incorrect.");
+                return (false, "La contraseña actual es incorrecta.");
 
             user.Password = _passwordHasher.Hash(dto.NewPassword);
 
@@ -134,10 +134,10 @@ namespace CountrySecure.Application.Services.Auth
             var storedToken = await _unitOfWork.Users.GetRefreshTokenAsync(request.RefreshToken);
 
             if (storedToken == null || storedToken.IsRevoked)
-                throw new AuthenticationFailedException("Invalid refresh token.");
+                throw new AuthenticationFailedException("La sesión no es válida. Volvé a iniciar sesión.");
 
             if (storedToken.Expires < DateTime.UtcNow)
-                throw new AuthenticationFailedException("Refresh token expired.");
+                throw new AuthenticationFailedException("La sesión expiró. Volvé a iniciar sesión.");
 
             // 2. Validar el access token (vencido o no) y que pertenezca al mismo usuario
             var principal = _tokenService.GetPrincipalFromExpiredToken(request.AccessToken);
@@ -146,15 +146,15 @@ namespace CountrySecure.Application.Services.Auth
                 c.Type == "id" || c.Type == "sub" || c.Type == ClaimTypes.NameIdentifier);
 
             if (userIdClaim == null || !Guid.TryParse(userIdClaim.Value, out var userId))
-                throw new AuthenticationFailedException("User ID not found in access token claims.");
+                throw new AuthenticationFailedException("La sesión no es válida. Volvé a iniciar sesión.");
 
             if (storedToken.UserId != userId)
-                throw new AuthenticationFailedException("Refresh token does not belong to this user.");
+                throw new AuthenticationFailedException("La sesión no es válida. Volvé a iniciar sesión.");
 
             // 3. Usuario existente y activo (un usuario dado de baja no puede renovar su sesión)
             var user = await _unitOfWork.Users.GetByIdAsync(userId);
             if (user == null)
-                throw new AuthenticationFailedException("User not found or inactive.");
+                throw new AuthenticationFailedException("El usuario no existe o está dado de baja.");
 
             // 4. Token ya consumido: dentro de la ventana de gracia se devuelve el mismo reemplazo
             if (storedToken.IsUsed)
@@ -164,11 +164,11 @@ namespace CountrySecure.Application.Services.Auth
                                   && !string.IsNullOrEmpty(storedToken.ReplacedByToken);
 
                 if (!withinGrace)
-                    throw new AuthenticationFailedException("Invalid refresh token.");
+                    throw new AuthenticationFailedException("La sesión no es válida. Volvé a iniciar sesión.");
 
                 var replacement = await _unitOfWork.Users.GetRefreshTokenAsync(storedToken.ReplacedByToken!);
                 if (replacement == null || replacement.IsRevoked || replacement.Expires < DateTime.UtcNow)
-                    throw new AuthenticationFailedException("Invalid refresh token.");
+                    throw new AuthenticationFailedException("La sesión no es válida. Volvé a iniciar sesión.");
 
                 return BuildAuthResponse(user, _tokenService.GenerateToken(user), replacement.Token);
             }

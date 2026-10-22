@@ -39,7 +39,7 @@ namespace CountrySecure.Application.Services.Notifications
         public async Task MarkReadAsync(Guid id)
         {
             if (!await _notifications.MarkReadAsync(_currentUser.GetRequiredUserId(), id))
-                throw new KeyNotFoundException("Notification not found.");
+                throw new KeyNotFoundException("Aviso no encontrado.");
             await _unitOfWork.SaveChangesAsync();
         }
 

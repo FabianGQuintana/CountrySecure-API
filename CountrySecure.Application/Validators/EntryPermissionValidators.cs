@@ -25,13 +25,13 @@ public class CreateEntryPermissionValidator : AbstractValidator<CreateEntryPermi
             .WithMessage("La patente debe tener entre 5 y 10 letras o números.");
         RuleFor(x => x.ValidFrom).NotEmpty();
         RuleFor(x => x.ValidTo).NotEmpty().GreaterThan(x => x.ValidFrom)
-            .WithMessage("ValidTo must be after ValidFrom.");
+            .WithMessage("La fecha de fin debe ser posterior a la de inicio.");
         RuleFor(x => x.VisitId).NotEmpty();
         RuleFor(x => x.UserId).NotEmpty();
         // Un permiso de mantenimiento debe indicar a qué servicio (orden) corresponde
         RuleFor(x => x.OrderId).NotEmpty()
             .When(x => x.PermissionType == PermissionType.Maintenance)
-            .WithMessage("OrderId is required for maintenance permits.");
+            .WithMessage("Elegí el servicio para un permiso de mantenimiento.");
     }
 }
 
@@ -49,7 +49,7 @@ public class UpdateEntryPermissionValidator : AbstractValidator<UpdateEntryPermi
         RuleFor(x => x.OrderId).NotEqual(Guid.Empty).When(x => x.OrderId.HasValue);
         RuleFor(x => x.ValidTo).GreaterThan(x => x.ValidFrom!.Value)
             .When(x => x.ValidFrom.HasValue && x.ValidTo.HasValue)
-            .WithMessage("ValidTo must be after ValidFrom.");
+            .WithMessage("La fecha de fin debe ser posterior a la de inicio.");
     }
 }
 

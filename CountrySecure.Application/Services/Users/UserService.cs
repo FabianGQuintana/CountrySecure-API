@@ -35,34 +35,34 @@ namespace CountrySecure.Application.Services.Users
                 ? await _userRepository.GetByIdIncludingDeletedAsync(id)
                 : await _userRepository.GetByIdAsync(id);
 
-            return (user ?? throw new KeyNotFoundException($"User with {id} not found")).ToDto();
+            return (user ?? throw new KeyNotFoundException($"No se encontró el usuario {id}.")).ToDto();
         }
 
         public async Task<UserResponseDto> UpdateAsync(Guid id, UpdateUserDto dto)
         {
             var user = await _userRepository.GetByIdAsync(id)
-                       ?? throw new KeyNotFoundException($"User with {id} not found");
+                       ?? throw new KeyNotFoundException($"No se encontró el usuario {id}.");
 
             if (!_currentUser.IsAdmin)
             {
                 // Un usuario que no es Admin solo puede editarse a sí mismo...
                 if (_currentUser.UserId != id)
-                    throw new UnauthorizedAccessException("You can only update your own profile.");
+                    throw new UnauthorizedAccessException("Solo podés editar tu propio perfil.");
 
                 // ...y nunca puede cambiar campos sensibles.
                 if (dto.Role != null && dto.Role != user.Role)
-                    throw new UnauthorizedAccessException("Only an Admin can change a user's role.");
+                    throw new UnauthorizedAccessException("Solo la administración puede cambiar el rol.");
 
                 if (dto.Dni.HasValue && dto.Dni.Value != user.Dni)
-                    throw new UnauthorizedAccessException("Only an Admin can change a user's DNI.");
+                    throw new UnauthorizedAccessException("Solo la administración puede cambiar el DNI.");
             }
 
             if (dto.Email != null && !string.Equals(dto.Email, user.Email, StringComparison.OrdinalIgnoreCase)
                 && await _userRepository.EmailExistsAsync(dto.Email, id))
-                throw new ConflictException("Email is already registered.");
+                throw new ConflictException("El email ya está registrado.");
 
             if (dto.Dni.HasValue && dto.Dni.Value != user.Dni && await _userRepository.DniExistsAsync(dto.Dni.Value, id))
-                throw new ConflictException("DNI is already registered.");
+                throw new ConflictException("El DNI ya está registrado.");
 
             user.Name = dto.Name ?? user.Name;
             user.Lastname = dto.Lastname ?? user.Lastname;
@@ -81,10 +81,10 @@ namespace CountrySecure.Application.Services.Users
         public async Task<UserResponseDto> DeactivateAsync(Guid id)
         {
             if (_currentUser.UserId == id)
-                throw new BusinessRuleException("You cannot deactivate your own account.");
+                throw new BusinessRuleException("No podés dar de baja tu propia cuenta.");
 
             var user = await _userRepository.GetByIdAsync(id)
-                       ?? throw new KeyNotFoundException($"User with id {id} not found");
+                       ?? throw new KeyNotFoundException($"No se encontró el usuario {id}.");
 
             user.SoftDelete(_currentUser.UserId?.ToString());
 
@@ -99,7 +99,7 @@ namespace CountrySecure.Application.Services.Users
         public async Task<UserResponseDto> SetBlockedAsync(Guid id, BlockDto dto)
         {
             var user = await _userRepository.GetByIdAsync(id)
-                       ?? throw new KeyNotFoundException($"User with id {id} not found");
+                       ?? throw new KeyNotFoundException($"No se encontró el usuario {id}.");
 
             user.IsBlocked = dto.Blocked;
             user.BlockReason = dto.Blocked ? dto.Reason?.Trim() : null;
@@ -114,7 +114,7 @@ namespace CountrySecure.Application.Services.Users
         public async Task<UserResponseDto> RestoreAsync(Guid id)
         {
             var user = await _userRepository.GetByIdIncludingDeletedAsync(id)
-                       ?? throw new KeyNotFoundException($"User with id {id} not found");
+                       ?? throw new KeyNotFoundException($"No se encontró el usuario {id}.");
 
             user.Restore(_currentUser.UserId?.ToString());
 

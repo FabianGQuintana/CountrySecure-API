@@ -61,7 +61,7 @@ namespace CountrySecure.Application.Services.Orders
         public async Task<OrderResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var order = await _orderRepository.GetByIdIncludingDeletedAsync(id)
-                        ?? throw new KeyNotFoundException($"Order with ID {id} not found.");
+                        ?? throw new KeyNotFoundException($"No se encontró el servicio {id}.");
 
             order.Restore(currentUserId.ToString());
 
@@ -88,6 +88,6 @@ namespace CountrySecure.Application.Services.Orders
 
         private async Task<Order> GetOrThrowAsync(Guid id)
             => await _orderRepository.GetByIdAsync(id)
-               ?? throw new KeyNotFoundException($"Order with ID {id} not found.");
+               ?? throw new KeyNotFoundException($"No se encontró el servicio {id}.");
     }
 }

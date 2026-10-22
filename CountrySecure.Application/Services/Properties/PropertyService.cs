@@ -41,7 +41,7 @@ namespace CountrySecure.Application.Services.Properties
         public async Task<PropertyResponseDto> UpdateAsync(Guid id, UpdatePropertyDto dto, Guid currentUserId)
         {
             var property = await _propertyRepository.GetByIdAsync(id)
-                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
+                           ?? throw new KeyNotFoundException($"No se encontró la propiedad {id}.");
 
             if (dto.LotId.HasValue && dto.LotId != property.LotId)
                 await EnsureLotExistsAsync(dto.LotId.Value);
@@ -63,7 +63,7 @@ namespace CountrySecure.Application.Services.Properties
         public async Task<PropertyResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
             var property = await _propertyRepository.GetByIdAsync(id)
-                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
+                           ?? throw new KeyNotFoundException($"No se encontró la propiedad {id}.");
 
             property.SoftDelete(currentUserId.ToString());
             property.PropertyStatus = PropertyStatus.Inactive;
@@ -77,7 +77,7 @@ namespace CountrySecure.Application.Services.Properties
         public async Task<PropertyResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var property = await _propertyRepository.GetByIdIncludingDeletedAsync(id)
-                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
+                           ?? throw new KeyNotFoundException($"No se encontró la propiedad {id}.");
 
             property.Restore(currentUserId.ToString());
             property.PropertyStatus = PropertyStatus.Available;
@@ -100,7 +100,7 @@ namespace CountrySecure.Application.Services.Properties
         private async Task<PropertyResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
         {
             var property = await _propertyRepository.GetByIdWithIncludesAsync(id, includeDeleted)
-                           ?? throw new KeyNotFoundException($"Property with ID {id} not found.");
+                           ?? throw new KeyNotFoundException($"No se encontró la propiedad {id}.");
             return property.ToResponseDto();
         }
 
@@ -108,7 +108,7 @@ namespace CountrySecure.Application.Services.Properties
         {
             var lot = await _lotRepository.GetByIdAsync(lotId);
             if (lot == null)
-                throw new KeyNotFoundException($"The lot with ID {lotId} does not exist or is inactive.");
+                throw new KeyNotFoundException($"El lote {lotId} no existe o está dado de baja.");
         }
 
         // La dirección es única en toda la tabla (incluidas las dadas de baja)

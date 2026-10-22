@@ -43,7 +43,7 @@ namespace CountrySecure.API.Controllers
             [FromQuery] bool includeInactive = false)
         {
             if (from > to)
-                throw new ArgumentException("The start date cannot be after the end date.");
+                throw new ArgumentException("La fecha de inicio no puede ser posterior a la de fin.");
 
             return Ok(await _turnService.GetPagedAsync(paging, userId, amenityId, from, to, status, onlyMine: false, includeInactive));
         }

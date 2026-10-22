@@ -10,7 +10,7 @@ public class CreateVisitValidator : AbstractValidator<CreateVisitDto>
         RuleFor(x => x.NameVisit).NotEmpty().MinimumLength(2).MaximumLength(100);
         RuleFor(x => x.LastNameVisit).NotEmpty().MinimumLength(2).MaximumLength(100);
         RuleFor(x => x.DniVisit).InclusiveBetween(1_000_000, 99_999_999)
-            .WithMessage("DNI must be between 1,000,000 and 99,999,999.");
+            .WithMessage("El DNI debe estar entre 1.000.000 y 99.999.999.");
     }
 }
 

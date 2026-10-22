@@ -50,7 +50,7 @@ namespace CountrySecure.Application.Services.Turns
 
             // Solo un Admin puede reasignar una reserva a otro usuario
             if (dto.UserId.HasValue && dto.UserId != turn.UserId && !_currentUser.IsAdmin)
-                throw new UnauthorizedAccessException("Only an Admin can reassign a reservation.");
+                throw new UnauthorizedAccessException("Solo la administración puede reasignar una reserva.");
 
             dto.MapToEntity(turn);
             turn.Touch(currentUserId.ToString());
@@ -81,10 +81,10 @@ namespace CountrySecure.Application.Services.Turns
         public async Task<TurnResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var turn = await _turnRepository.GetByIdIncludingDeletedAsync(id)
-                       ?? throw new KeyNotFoundException($"Turn with ID {id} not found.");
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
 
             if (!_currentUser.IsAdmin && turn.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only restore your own reservations.");
+                throw new UnauthorizedAccessException("Solo podés reactivar tus propias reservas.");
 
             // Al restaurar hay que volver a comprobar que el horario sigue libre
             await EnsureTurnIsBookableAsync(turn.AmenityId, turn.UserId, turn.StartTime, turn.EndTime, turn.Id);
@@ -101,10 +101,10 @@ namespace CountrySecure.Application.Services.Turns
         public async Task<TurnResponseDto> GetByIdAsync(Guid id)
         {
             var turn = await _turnRepository.GetByIdWithIncludesAsync(id)
-                       ?? throw new KeyNotFoundException($"Turn with ID {id} not found.");
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
 
             if (!_currentUser.IsAdmin && turn.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only view your own reservations.");
+                throw new UnauthorizedAccessException("Solo podés ver tus propias reservas.");
 
             return turn.ToResponseDto();
         }
@@ -126,17 +126,17 @@ namespace CountrySecure.Application.Services.Turns
         private async Task<TurnResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
         {
             var turn = await _turnRepository.GetByIdWithIncludesAsync(id, includeDeleted)
-                       ?? throw new KeyNotFoundException($"Turn with ID {id} not found.");
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
             return turn.ToResponseDto();
         }
 
         private async Task<Turn> GetOwnedOrThrowAsync(Guid id)
         {
             var turn = await _turnRepository.GetByIdAsync(id)
-                       ?? throw new KeyNotFoundException($"Turn with ID {id} not found.");
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
 
             if (!_currentUser.IsAdmin && turn.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only modify your own reservations.");
+                throw new UnauthorizedAccessException("Solo podés modificar tus propias reservas.");
 
             return turn;
         }

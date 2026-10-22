@@ -32,7 +32,7 @@ namespace CountrySecure.Application.Services.Request
         public async Task<RequestResponseDto> CreateAsync(CreateRequestDto dto, Guid currentUserId)
         {
             if (await _orderRepository.GetByIdAsync(dto.OrderId) == null)
-                throw new KeyNotFoundException($"The service with ID {dto.OrderId} does not exist or is inactive.");
+                throw new KeyNotFoundException("El servicio elegido no existe o está dado de baja.");
 
             var request = dto.ToEntity();
             request.UserId = currentUserId;                 // el solicitante es siempre el usuario autenticado
@@ -48,6 +48,15 @@ namespace CountrySecure.Application.Services.Request
         public async Task<RequestResponseDto> UpdateAsync(Guid id, UpdateRequestDto dto, Guid currentUserId)
         {
             var request = await GetOwnedOrThrowAsync(id);
+
+            // El residente puede corregir el detalle o la ubicación; resolver o rechazar es de la administración
+            if (dto.Status.HasValue && dto.Status != request.RequestStatus)
+            {
+                if (!_currentUser.IsAdmin)
+                    throw new UnauthorizedAccessException("Solo la administración puede cambiar el estado de una solicitud.");
+                if (request.RequestStatus != RequestStatus.Pending)
+                    throw new BusinessRuleException("Solo se puede cambiar el estado de una solicitud pendiente.");
+            }
 
             dto.MapToEntity(request);
             request.Touch(currentUserId.ToString());
@@ -74,7 +83,7 @@ namespace CountrySecure.Application.Services.Request
         public async Task<RequestResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var request = await _requestRepository.GetByIdIncludingDeletedAsync(id)
-                          ?? throw new KeyNotFoundException("Request not found.");
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
 
             request.Restore(currentUserId.ToString());
             request.RequestStatus = RequestStatus.Pending;
@@ -88,7 +97,7 @@ namespace CountrySecure.Application.Services.Request
         public async Task<RequestResponseDto> GetByIdAsync(Guid id)
         {
             var request = await _requestRepository.GetWithDetailsAsync(id)
-                          ?? throw new KeyNotFoundException("Request not found.");
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
 
             EnsureCanAccess(request);
             return request.ToResponseDto();
@@ -111,14 +120,14 @@ namespace CountrySecure.Application.Services.Request
         private async Task<RequestResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
         {
             var request = await _requestRepository.GetWithDetailsAsync(id, includeDeleted)
-                          ?? throw new KeyNotFoundException("Request not found.");
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
             return request.ToResponseDto();
         }
 
         private async Task<RequestEntity> GetOwnedOrThrowAsync(Guid id)
         {
             var request = await _requestRepository.GetByIdAsync(id)
-                          ?? throw new KeyNotFoundException("Request not found.");
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
 
             EnsureCanAccess(request);
             return request;
@@ -127,7 +136,7 @@ namespace CountrySecure.Application.Services.Request
         private void EnsureCanAccess(RequestEntity request)
         {
             if (!_currentUser.IsAdmin && request.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only access your own requests.");
+                throw new UnauthorizedAccessException("Solo podés ver tus propias solicitudes.");
         }
     }
 }

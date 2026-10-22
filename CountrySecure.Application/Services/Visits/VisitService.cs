@@ -24,7 +24,7 @@ namespace CountrySecure.Application.Services.Visits
         public async Task<VisitResponseDto> SetBlockedAsync(Guid id, BlockDto dto, Guid currentUserId)
         {
             var visit = await _visitRepository.GetByIdAsync(id)
-                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+                        ?? throw new KeyNotFoundException($"No se encontró el visitante {id}.");
 
             visit.IsBlocked = dto.Blocked;
             visit.BlockReason = dto.Blocked ? dto.Reason?.Trim() : null;
@@ -79,7 +79,7 @@ namespace CountrySecure.Application.Services.Visits
         public async Task<VisitResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var visit = await _visitRepository.GetByIdIncludingDeletedAsync(id)
-                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+                        ?? throw new KeyNotFoundException($"No se encontró el visitante {id}.");
 
             visit.Restore(currentUserId.ToString());
 
@@ -95,14 +95,14 @@ namespace CountrySecure.Application.Services.Visits
         public async Task<VisitWithPermitsDto> GetWithPermitsAsync(Guid id)
         {
             var visit = await _visitRepository.GetWithPermitsAsync(id)
-                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+                        ?? throw new KeyNotFoundException($"No se encontró el visitante {id}.");
             return visit.ToVisitWithPermitsDto();
         }
 
         public async Task<IReadOnlyList<VisitEntryPermissionDto>> GetValidPermitsAsync(Guid id)
         {
             var visit = await _visitRepository.GetWithPermitsAsync(id)
-                        ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+                        ?? throw new KeyNotFoundException($"No se encontró el visitante {id}.");
 
             // Permisos vigentes: pendientes y sin dar de baja
             return visit.EntryPermissions
@@ -131,6 +131,6 @@ namespace CountrySecure.Application.Services.Visits
 
         private async Task<Visit> GetOrThrowAsync(Guid id)
             => await _visitRepository.GetByIdAsync(id)
-               ?? throw new KeyNotFoundException($"Visit with ID {id} not found.");
+               ?? throw new KeyNotFoundException($"No se encontró el visitante {id}.");
     }
 }

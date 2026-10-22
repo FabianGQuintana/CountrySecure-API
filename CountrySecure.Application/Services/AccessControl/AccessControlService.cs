@@ -126,12 +126,12 @@ namespace CountrySecure.Application.Services.AccessControl
         public async Task<PassDto> GetPassAsync(Guid permissionId)
         {
             var permission = await _permissions.GetWithDetailsAsync(permissionId)
-                             ?? throw new KeyNotFoundException($"Entry permission with ID {permissionId} not found.");
+                             ?? throw new KeyNotFoundException($"No se encontró el permiso de ingreso {permissionId}.");
 
             var privileged = _currentUser.Role == Domain.Constants.RoleTypes.Admin
                              || _currentUser.Role == Domain.Constants.RoleTypes.Security;
             if (!privileged && permission.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only access your own entry permissions.");
+                throw new UnauthorizedAccessException("Solo podés ver tus propios permisos de ingreso.");
 
             return await BuildPassAsync(permission);
         }
@@ -141,7 +141,7 @@ namespace CountrySecure.Application.Services.AccessControl
             // Un token mal formado, falsificado o de un pase cancelado responde igual: no existe
             var (permission, forged) = await FindPermissionAsync(token.Trim());
             if (forged || permission == null || permission.IsDeleted)
-                throw new KeyNotFoundException("Pass not found.");
+                throw new KeyNotFoundException("Pase no encontrado.");
 
             return await BuildPassAsync(permission);
         }

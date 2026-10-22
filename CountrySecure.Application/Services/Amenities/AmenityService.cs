@@ -22,7 +22,7 @@ namespace CountrySecure.Application.Services
         public async Task<AmenityResponseDto> CreateAsync(AmenityCreateDto dto, Guid currentUserId)
         {
             if (await _amenityRepository.GetByNameAsync(dto.AmenityName) != null)
-                throw new ConflictException($"Amenity with name '{dto.AmenityName}' already exists.");
+                throw new ConflictException($"Ya existe un amenity llamado '{dto.AmenityName}'.");
 
             var amenity = dto.ToEntity();
             amenity.CreatedBy = currentUserId.ToString();
@@ -41,7 +41,7 @@ namespace CountrySecure.Application.Services
             {
                 var sameName = await _amenityRepository.GetByNameAsync(dto.AmenityName);
                 if (sameName != null && sameName.Id != id)
-                    throw new ConflictException($"Amenity with name '{dto.AmenityName}' already exists.");
+                    throw new ConflictException($"Ya existe un amenity llamado '{dto.AmenityName}'.");
             }
 
             dto.MapToEntity(amenity);
@@ -67,7 +67,7 @@ namespace CountrySecure.Application.Services
         public async Task<AmenityResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var amenity = await _amenityRepository.GetByIdIncludingDeletedAsync(id)
-                          ?? throw new KeyNotFoundException($"Amenity with Id '{id}' not found.");
+                          ?? throw new KeyNotFoundException($"No se encontró el amenity {id}.");
 
             amenity.Restore(currentUserId.ToString());
 
@@ -88,6 +88,6 @@ namespace CountrySecure.Application.Services
 
         private async Task<Domain.Entities.Amenity> GetOrThrowAsync(Guid id)
             => await _amenityRepository.GetByIdAsync(id)
-               ?? throw new KeyNotFoundException($"Amenity with Id '{id}' not found.");
+               ?? throw new KeyNotFoundException($"No se encontró el amenity {id}.");
     }
 }

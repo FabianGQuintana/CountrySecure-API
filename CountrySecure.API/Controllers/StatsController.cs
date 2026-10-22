@@ -32,7 +32,7 @@ namespace CountrySecure.API.Controllers
                 RoleTypes.Admin => Ok(await _statsService.GetAdminStatsAsync()),
                 RoleTypes.Security => Ok(await _statsService.GetSecurityStatsAsync()),
                 RoleTypes.Resident => Ok(await _statsService.GetResidentStatsAsync(_currentUser.GetRequiredUserId())),
-                _ => throw new UnauthorizedAccessException("Unknown role.")
+                _ => throw new UnauthorizedAccessException("Rol desconocido.")
             };
         }
 

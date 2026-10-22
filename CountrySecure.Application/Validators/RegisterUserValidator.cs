@@ -10,42 +10,42 @@ public class RegisterUserValidator : AbstractValidator<RegisterUserDto>
     public RegisterUserValidator()
     {
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Name is required")
+            .NotEmpty().WithMessage("Ingresá el nombre.")
             .MinimumLength(2)
             .MaximumLength(50);
 
         RuleFor(x => x.Lastname)
-            .NotEmpty().WithMessage("Lastname is required")
+            .NotEmpty().WithMessage("Ingresá el apellido.")
             .MinimumLength(2)
             .MaximumLength(50);
 
         RuleFor(x => x.Dni)
-            .NotEmpty().WithMessage("Dni is required")
-            .InclusiveBetween(1000000, 60000000)
-            .WithMessage("Dni must be between 1,000,000 and 60,000,000");
+            .NotEmpty().WithMessage("Ingresá el DNI.")
+            .InclusiveBetween(1000000, 99999999)
+            .WithMessage("El DNI debe estar entre 1.000.000 y 99.999.999.");
 
         RuleFor(x => x.Phone)
-            .NotEmpty().WithMessage("Phone is required")
-            .Matches(@"^[0-9]+$").WithMessage("Phone must contain only numbers")
+            .NotEmpty().WithMessage("Ingresá el teléfono.")
+            .Matches(@"^[0-9]+$").WithMessage("El teléfono solo puede tener números.")
             .MinimumLength(7)
             .MaximumLength(15);
 
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email is required")
-            .EmailAddress().WithMessage("Invalid email");
+            .NotEmpty().WithMessage("Ingresá el email.")
+            .EmailAddress().WithMessage("El email no es válido.");
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters long")
-            .Matches("[A-Z]").WithMessage("Password must contain at least one uppercase letter")
-            .Matches("[a-z]").WithMessage("Password must contain at least one lowercase letter")
-            .Matches("[0-9]").WithMessage("Password must contain at least one number")
+            .NotEmpty().WithMessage("Ingresá una contraseña.")
+            .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres.")
+            .Matches("[A-Z]").WithMessage("La contraseña debe incluir una mayúscula.")
+            .Matches("[a-z]").WithMessage("La contraseña debe incluir una minúscula.")
+            .Matches("[0-9]").WithMessage("La contraseña debe incluir un número.")
             .Matches(@"^[a-zA-Z0-9!@#$%^&*()_+=\[{\]};:<>|./?-]*$")
-                .WithMessage("Password contains invalid characters");
+                .WithMessage("La contraseña tiene caracteres no permitidos.");
 
         RuleFor(x => x.Role)
-            .NotEmpty().WithMessage("Role is required")
+            .NotEmpty().WithMessage("Elegí un rol.")
             .Must(role => RoleTypes.All.Contains(role))
-            .WithMessage("Invalid role");
+            .WithMessage("El rol no es válido.");
     }
 }

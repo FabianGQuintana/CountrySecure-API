@@ -67,6 +67,10 @@ builder.Services.AddControllers(options =>
 builder.Services.AddScoped<ValidationFilter>();
 builder.Services.AddValidatorsFromAssemblyContaining<RegisterUserValidator>();
 
+// Mensajes de validación por defecto en español, con nombres de campo legibles (llegan tal cual a la UI)
+ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("es");
+ValidatorOptions.Global.DisplayNameResolver = (_, member, _) => member == null ? null : FieldNames.Spanish(member.Name);
+
 // ======================================
 //   MANEJO GLOBAL DE ERRORES (ProblemDetails)
 // ======================================

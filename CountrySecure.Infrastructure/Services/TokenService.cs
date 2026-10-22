@@ -82,7 +82,7 @@ namespace CountrySecure.Infrastructure.Services
             }
             catch (Exception ex) when (ex is SecurityTokenException or ArgumentException)
             {
-                throw new AuthenticationFailedException("Invalid access token.");
+                throw new AuthenticationFailedException("La sesión no es válida. Volvé a iniciar sesión.");
             }
         }
     }

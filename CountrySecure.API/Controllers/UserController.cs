@@ -46,7 +46,7 @@ namespace CountrySecure.API.Controllers
         {
             // Un residente solo puede ver su propio usuario; Admin y Seguridad pueden ver cualquiera.
             if (_currentUser.Role == RoleTypes.Resident && _currentUser.UserId != id)
-                throw new UnauthorizedAccessException("You can only view your own user.");
+                throw new UnauthorizedAccessException("Solo podés ver tu propio usuario.");
 
             return Ok(await _userService.GetByIdAsync(id));
         }

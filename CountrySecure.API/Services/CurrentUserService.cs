@@ -36,6 +36,6 @@ namespace CountrySecure.API.Services
         public bool IsAdmin => Role == RoleTypes.Admin;
 
         public Guid GetRequiredUserId()
-            => UserId ?? throw new UnauthorizedAccessException("User ID not found or invalid in token.");
+            => UserId ?? throw new UnauthorizedAccessException("La sesión no es válida. Volvé a iniciar sesión.");
     }
 }

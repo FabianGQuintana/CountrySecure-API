@@ -49,10 +49,10 @@ namespace CountrySecure.Application.Services.EntryPermission
             EnsureValidWindow(permission.ValidFrom, permission.ValidTo);
 
             if (await _visitRepository.GetByIdAsync(permission.VisitId) == null)
-                throw new KeyNotFoundException($"Visit with ID {permission.VisitId} not found.");
+                throw new KeyNotFoundException($"No se encontró el visitante {permission.VisitId}.");
 
             if (permission.OrderId.HasValue && await _orderRepository.GetByIdAsync(permission.OrderId.Value) == null)
-                throw new KeyNotFoundException($"Service with ID {permission.OrderId} not found.");
+                throw new KeyNotFoundException($"No se encontró el servicio {permission.OrderId}.");
 
             // Token firmado (id + HMAC): el QR no contiene datos en claro ni se puede falsificar
             permission.QrCodeValue = _tokens.Create(permission.Id);
@@ -75,7 +75,7 @@ namespace CountrySecure.Application.Services.EntryPermission
             EnsureValidWindow(permission.ValidFrom, permission.ValidTo);
 
             if (permission.OrderId.HasValue && await _orderRepository.GetByIdAsync(permission.OrderId.Value) == null)
-                throw new KeyNotFoundException($"Service with ID {permission.OrderId} not found.");
+                throw new KeyNotFoundException($"No se encontró el servicio {permission.OrderId}.");
 
             // Un permiso pendiente cuya vigencia ya terminó queda vencido
             if (permission.ValidTo.HasValue && DateTime.UtcNow > permission.ValidTo.Value
@@ -111,7 +111,7 @@ namespace CountrySecure.Application.Services.EntryPermission
         public async Task<EntryPermissionResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var permission = await _permissionRepository.GetByIdIncludingDeletedAsync(id)
-                             ?? throw new KeyNotFoundException($"Entry permission with ID {id} not found.");
+                             ?? throw new KeyNotFoundException($"No se encontró el permiso de ingreso {id}.");
 
             EnsureCanAccess(permission);
 
@@ -131,7 +131,7 @@ namespace CountrySecure.Application.Services.EntryPermission
         public async Task<EntryPermissionResponseDto> GetByIdAsync(Guid id)
         {
             var permission = await _permissionRepository.GetWithDetailsAsync(id)
-                             ?? throw new KeyNotFoundException($"Entry permission with ID {id} not found.");
+                             ?? throw new KeyNotFoundException($"No se encontró el permiso de ingreso {id}.");
 
             EnsureCanAccess(permission);
             return permission.ToResponseDto();
@@ -272,18 +272,18 @@ namespace CountrySecure.Application.Services.EntryPermission
         private async Task<EntryPermissionResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
         {
             var permission = await _permissionRepository.GetWithDetailsAsync(id, includeDeleted)
-                             ?? throw new KeyNotFoundException($"Entry permission with ID {id} not found.");
+                             ?? throw new KeyNotFoundException($"No se encontró el permiso de ingreso {id}.");
             return permission.ToResponseDto();
         }
 
         private async Task<PermissionEntity> GetOwnedOrThrowAsync(Guid id)
         {
             var permission = await _permissionRepository.GetByIdAsync(id)
-                             ?? throw new KeyNotFoundException($"Entry permission with ID {id} not found.");
+                             ?? throw new KeyNotFoundException($"No se encontró el permiso de ingreso {id}.");
 
             // Editar o cancelar: solo el titular o un Admin (Seguridad no gestiona permisos ajenos)
             if (!_currentUser.IsAdmin && permission.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only manage your own entry permissions.");
+                throw new UnauthorizedAccessException("Solo podés gestionar tus propios permisos de ingreso.");
 
             return permission;
         }
@@ -294,13 +294,13 @@ namespace CountrySecure.Application.Services.EntryPermission
             var role = _currentUser.Role;
             var privileged = role == Domain.Constants.RoleTypes.Admin || role == Domain.Constants.RoleTypes.Security;
             if (!privileged && permission.UserId != _currentUser.UserId)
-                throw new UnauthorizedAccessException("You can only access your own entry permissions.");
+                throw new UnauthorizedAccessException("Solo podés ver tus propios permisos de ingreso.");
         }
 
         private static void EnsureValidWindow(DateTime validFrom, DateTime? validTo)
         {
             if (validTo.HasValue && validTo.Value <= validFrom)
-                throw new BusinessRuleException("La fecha 'ValidTo' debe ser posterior a 'ValidFrom'.");
+                throw new BusinessRuleException("La fecha de fin debe ser posterior a la de inicio.");
         }
 
         private static void EnsureNotCancelled(PermissionEntity permission)

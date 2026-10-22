@@ -66,7 +66,7 @@ namespace CountrySecure.Application.Services.Lots
         public async Task<LotResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
             var lot = await _lotRepository.GetByIdIncludingDeletedAsync(id)
-                      ?? throw new KeyNotFoundException($"Lot with ID {id} not found.");
+                      ?? throw new KeyNotFoundException($"No se encontró el lote {id}.");
 
             lot.Restore(currentUserId.ToString());
             lot.LotState = LotStatus.Available;
@@ -103,6 +103,6 @@ namespace CountrySecure.Application.Services.Lots
 
         private async Task<Lot> GetOrThrowAsync(Guid id)
             => await _lotRepository.GetByIdAsync(id)
-               ?? throw new KeyNotFoundException($"Lot with ID {id} not found.");
+               ?? throw new KeyNotFoundException($"No se encontró el lote {id}.");
     }
 }

@@ -44,7 +44,7 @@ namespace CountrySecure.API.Controllers
 
             // Mismo 401 para email inexistente o contraseña incorrecta (evita enumerar usuarios)
             if (!result.Success)
-                return Unauthorized(new { message = "Invalid email or password." });
+                return Unauthorized(new { message = "Email o contraseña incorrectos." });
 
             return Ok(result);
         }
@@ -55,7 +55,7 @@ namespace CountrySecure.API.Controllers
         public async Task<IActionResult> Logout([FromBody] LogoutRequestDto request)
         {
             await _authService.LogoutAsync(request.RefreshToken);
-            return Ok(new { message = "Logout succesful" });
+            return Ok(new { message = "Sesión cerrada." });
         }
 
         [AllowAnonymous]
@@ -66,7 +66,7 @@ namespace CountrySecure.API.Controllers
 
             // Refresh token inválido, vencido o revocado: 401 limpio (el front borra la sesión y manda a /login)
             if (!result.Success)
-                return Unauthorized(new { message = result.Message ?? "Invalid refresh token." });
+                return Unauthorized(new { message = result.Message ?? "La sesión no es válida. Volvé a iniciar sesión." });
 
             return Ok(result);
         }
@@ -79,7 +79,7 @@ namespace CountrySecure.API.Controllers
             if (!result.Success)
                 return BadRequest(new { message = result.ErrorMessage });
 
-            return Ok(new { message = "Password was succesfully updated." });
+            return Ok(new { message = "La contraseña se actualizó correctamente." });
         }
 
         [HttpGet("{id:guid}")]
