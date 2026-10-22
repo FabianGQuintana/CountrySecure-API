@@ -34,7 +34,7 @@ namespace CountrySecure.API.Filters
                         var problem = new ValidationProblemDetails(errors)
                         {
                             Status = StatusCodes.Status400BadRequest,
-                            Title = "One or more validation errors occurred.",
+                            Title = "Hay datos inválidos en el formulario.",
                             Instance = context.HttpContext.Request.Path
                         };
                         problem.Extensions["message"] = errors.Values.SelectMany(m => m).First();

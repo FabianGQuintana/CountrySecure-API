@@ -30,18 +30,18 @@ namespace CountrySecure.API.Middleware
         {
             var (status, title) = exception switch
             {
-                KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
-                AuthenticationFailedException => (StatusCodes.Status401Unauthorized, "Authentication failed"),
-                ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
-                BusinessRuleException => (StatusCodes.Status422UnprocessableEntity, "Business rule violated"),
-                SecurityTokenException => (StatusCodes.Status401Unauthorized, "Invalid token"),
+                KeyNotFoundException => (StatusCodes.Status404NotFound, "No se encontró el recurso."),
+                AuthenticationFailedException => (StatusCodes.Status401Unauthorized, "No se pudo validar la sesión."),
+                ConflictException => (StatusCodes.Status409Conflict, "Conflicto con los datos existentes."),
+                BusinessRuleException => (StatusCodes.Status422UnprocessableEntity, "La operación no cumple una regla del sistema."),
+                SecurityTokenException => (StatusCodes.Status401Unauthorized, "La sesión no es válida."),
                 UnauthorizedAccessException when httpContext.User.Identity?.IsAuthenticated != true
-                    => (StatusCodes.Status401Unauthorized, "Unauthorized"),
-                UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "Forbidden"),
-                ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
-                InvalidOperationException => (StatusCodes.Status409Conflict, "Operation not allowed"),
-                DbUpdateException => (StatusCodes.Status409Conflict, "Data conflict"),
-                _ => (StatusCodes.Status500InternalServerError, "Internal server error")
+                    => (StatusCodes.Status401Unauthorized, "Tenés que iniciar sesión."),
+                UnauthorizedAccessException => (StatusCodes.Status403Forbidden, "No tenés permiso para esta acción."),
+                ArgumentException => (StatusCodes.Status400BadRequest, "La solicitud no es válida."),
+                InvalidOperationException => (StatusCodes.Status409Conflict, "La operación no está permitida."),
+                DbUpdateException => (StatusCodes.Status409Conflict, "Los datos entran en conflicto con un registro existente."),
+                _ => (StatusCodes.Status500InternalServerError, "Ocurrió un error inesperado. Intentá de nuevo.")
             };
 
             if (status >= 500)
@@ -51,7 +51,7 @@ namespace CountrySecure.API.Middleware
 
             // Los mensajes de negocio (4xx) son seguros para el cliente; los 5xx y los errores de BD no se exponen.
             var detail = status >= 500 || exception is DbUpdateException
-                ? (_environment.IsDevelopment() ? exception.ToString() : "An unexpected error occurred.")
+                ? (_environment.IsDevelopment() ? exception.ToString() : "Ocurrió un error inesperado.")
                 : exception.Message;
 
             var problem = new ProblemDetails
@@ -62,7 +62,7 @@ namespace CountrySecure.API.Middleware
                 Instance = httpContext.Request.Path
             };
             // Compatibilidad con el frontend actual, que lee `message`
-            problem.Extensions["message"] = status >= 500 ? title : detail;
+            problem.Extensions["message"] = status >= 500 || exception is DbUpdateException ? title : detail;
 
             httpContext.Response.StatusCode = status;
             return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
