@@ -139,9 +139,10 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy(RateLimitPolicies.PasswordReset, httpContext =>
+        // Por IP y por endpoint (pedir el enlace y elegir la contraseña no comparten cupo)
         RateLimitPartition.GetFixedWindowLimiter(
-            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
+            $"{httpContext.Connection.RemoteIpAddress}|{httpContext.Request.Path}",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(15) }));
     options.OnRejected = async (context, cancellationToken) =>
     {
         await context.HttpContext.Response.WriteAsJsonAsync(
