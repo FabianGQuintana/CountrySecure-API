@@ -11,7 +11,8 @@ public class CreateRequestDto
 {
     public required string Details { get; set; }
     public required string Location { get; set; }
-    public required Guid UserId { get; set; }
+    // Obsoleto: se ignora. El solicitante se toma del token (usuario autenticado).
+    public Guid? UserId { get; set; }
     public required Guid OrderId { get; set; }
     
     public RequestStatus Status { get; set; } = RequestStatus.Pending;

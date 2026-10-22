@@ -1,28 +1,17 @@
-﻿using CountrySecure.Domain.Entities;
-using CountrySecure.Application.DTOs;
-using CountrySecure.Domain.Enums;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Properties;
+using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Application.Interfaces.Services
 {
     public interface IPropertyService
     {
-
-
-        Task<PropertyResponseDto> AddNewPropertyAsync(CreatePropertyDto newPropertyDto, Guid currentUserId);
-
-        Task<PropertyResponseDto?> GetPropertyByIdAsync(Guid propertyId);
-
-        Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByOwnerId(Guid ownerId);
-
-        Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByLotIdAsync(Guid lotId);
-
-        Task<PropertyResponseDto?> UpdatePropertyAsync(Guid propertyId, UpdatePropertyDto updateProperty, Guid currentId);
-
-        
-        Task<IEnumerable<PropertyResponseDto?>> GetAllPropertiesAsync(int pageNumber, int pageSize);
-
-        Task<IEnumerable<PropertyResponseDto?>> GetPropertiesByStatusAsync(PropertyStatus status, int pageNumber, int pageSize);
-        Task<PropertyResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId);
+        Task<PropertyResponseDto> CreateAsync(CreatePropertyDto dto, Guid currentUserId);
+        Task<PropertyResponseDto> UpdateAsync(Guid id, UpdatePropertyDto dto, Guid currentUserId);
+        Task<PropertyResponseDto> DeleteAsync(Guid id, Guid currentUserId);
+        Task<PropertyResponseDto> RestoreAsync(Guid id, Guid currentUserId);
+        Task<PropertyResponseDto> GetByIdAsync(Guid id);
+        Task<PagedResult<PropertyResponseDto>> GetPagedAsync(
+            PageQuery paging, PropertyStatus? status, Guid? lotId, Guid? ownerId, string? search, bool includeInactive);
     }
 }

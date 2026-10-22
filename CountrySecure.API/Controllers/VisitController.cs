@@ -1,171 +1,81 @@
-﻿using CountrySecure.Application.Interfaces.Services;
-using Microsoft.AspNetCore.Mvc;
+using CountrySecure.API.Authorization;
+using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Visits;
-using System.Threading.Tasks;
-using System.Security.Claims;
-using System;
-using System.Collections.Generic;
-
+using CountrySecure.Application.Interfaces.Services;
+using CountrySecure.Domain.Constants;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CountrySecure.API.Controllers
 {
+    /// <summary>Visitantes (personas que ingresan a la comunidad).</summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Authorize]
+    [Route("api/visits")]
     public class VisitController : ControllerBase
     {
         private readonly IVisitService _visitService;
+        private readonly ICurrentUserService _currentUser;
 
-        public VisitController(IVisitService visitService)
+        public VisitController(IVisitService visitService, ICurrentUserService currentUser)
         {
             _visitService = visitService;
+            _currentUser = currentUser;
         }
 
+        /// <summary>Lista paginada (?dni, ?search). Solo un Admin puede pedir las inactivas.</summary>
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<VisitResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] int? dni = null,
+            [FromQuery] string? search = null,
+            [FromQuery] bool includeInactive = false)
+            => Ok(await _visitService.GetPagedAsync(paging, dni, search, includeInactive && _currentUser.IsAdmin));
+
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<VisitResponseDto>> GetById(Guid id)
+            => Ok(await _visitService.GetByIdAsync(id));
+
+        /// <summary>La visita junto con todos sus permisos.</summary>
+        [HttpGet("{id:guid}/with-permits")]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Security}")]
+        public async Task<ActionResult<VisitWithPermitsDto>> GetWithPermits(Guid id)
+            => Ok(await _visitService.GetWithPermitsAsync(id));
+
+        /// <summary>Solo los permisos vigentes (pendientes) de la visita.</summary>
+        [HttpGet("{id:guid}/permits/valid")]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Security}")]
+        public async Task<ActionResult<IReadOnlyList<VisitEntryPermissionDto>>> GetValidPermits(Guid id)
+            => Ok(await _visitService.GetValidPermitsAsync(id));
 
         [HttpPost]
-        public async Task<IActionResult> AddNewVisitAsync([FromBody] CreateVisitDto newVisitDto)
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+        public async Task<ActionResult<VisitResponseDto>> Create([FromBody] CreateVisitDto dto)
         {
-            try
-            {
-                var userId = GetCurrentUserId();
-
-                var createdVisit = await _visitService.AddNewVisitAsync(newVisitDto, userId);
-
-                return CreatedAtAction(nameof(GetVisitById),
-                    new { visitId = createdVisit.VisitId },
-                    createdVisit);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized(new { message = "User not authenticated." });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new
-                {
-                    message = "Unexpected error while creating the visit.",
-                    detail = ex.Message
-                });
-            }
+            var created = await _visitService.CreateAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = created.VisitId }, created);
         }
 
+        [HttpPut("{id:guid}")]
+        [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+        public async Task<ActionResult<VisitResponseDto>> Update(Guid id, [FromBody] UpdateVisitDto dto)
+            => Ok(await _visitService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-        //  GET BY ID
-        [HttpGet("{visitId:guid}")]
-        public async Task<IActionResult> GetVisitById(Guid visitId)
-        {
-            var visit = await _visitService.GetVisitByIdAsync(visitId);
+        /// <summary>Baja lógica.</summary>
+        [HttpDelete("{id:guid}")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<VisitResponseDto>> Delete(Guid id)
+            => Ok(await _visitService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
-            if (visit == null) return NotFound("Visit not found");
+        /// <summary>Lista negra: bloquea o desbloquea al visitante (Admin o Seguridad).</summary>
+        [HttpPatch("{id:guid}/block")]
+        [Authorize(Policy = Policies.SecurityStaff)]
+        public async Task<ActionResult<VisitResponseDto>> SetBlocked(Guid id, [FromBody] BlockDto dto)
+            => Ok(await _visitService.SetBlockedAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-            return Ok(visit);
-        }
-
-        //  GET BY DNI
-        [HttpGet("dni/{dniVisit:int}")]
-        public async Task<IActionResult> GetVisitsByDni(int dniVisit)
-        {
-            var visits = await _visitService.GetVisitsByDniAsync(dniVisit);
-            return Ok(visits);
-        }
-
-        //  GET ALL (PAGINATED)
-        [HttpGet]
-        public async Task<IActionResult> GetAllVisits([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
-        {
-            var visits = await _visitService.GetAllVisitsAsync(pageNumber, pageSize);
-            return Ok(visits);
-        }
-
-        // // GET VISIT + PERMITS
-        //// Obtiene la visita completa(sus datos) junto con todos sus permisos asociados.
-
-        [HttpGet("{visitId:guid}/with-permits")]
-           public async Task<IActionResult> GetVisitWithPermits(Guid visitId)
-          {
-              var visit = await _visitService.GetVisitWithPermitsAsync(visitId);
-
-              if (visit == null) return NotFound("Visit not found");
-
-              return Ok(visit);
-          }
-
-
-        //  GET VALID PERMIT
-        // Devuelve todos los permisos validos asociados a esa visita, solo los permisos, sin los datos de la visita.
-
-        [HttpGet("{visitId:guid}/permits/valid")]
-        public async Task<IActionResult> GetValidPermits(Guid visitId)
-        {
-            var permits = await _visitService.GetValidPermitsByVisitIdAsync(visitId);
-
-            
-
-            return Ok(permits);
-        }
-
-        
-
-        //  UPDATE
-        [HttpPut("{visitId:guid}")]
-        public async Task<IActionResult> UpdateVisit(Guid visitId, [FromBody] UpdateVisitDto updateVisitDto)
-        {
-            
-            var updatedVisit = await _visitService.UpdateVisitAsync(visitId, updateVisitDto);
-            return Ok(updatedVisit);
-
-        }
-
-        [HttpPatch("{visitId:guid}/SoftDelete")] 
-        public async Task<IActionResult> SoftDeleteToggle(Guid visitId)
-        {
-            try
-            {
-
-                var currentUserId = GetCurrentUserId();
-
-              
-                var updatedVisitDto = await _visitService.SoftDeleteToggleAsync(visitId, currentUserId);
-
-                if (updatedVisitDto == null)
-                {
-                    return NotFound(new { message = $"Visit with ID {visitId} not found." });
-                }
-
-                var action = updatedVisitDto.VisitStatus == "Active" ? "reactivated" : "deactivated";
-
-                return Ok(new
-                {
-                    Message = $"The Visit with ID {visitId} has been {action} successfully.",
-                    Visit = updatedVisitDto
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Unauthorized();
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "Unexpected error while changing visit status.", detail = ex.Message });
-            }
-        }
-
-        // VIEW ALL
-        [HttpGet("all")]
-        public async Task<IActionResult> GetAllVisitsWithoutFilter()
-        {
-            var visits = await _visitService.GetAllVisitsWithoutFilterAsync();
-            return Ok(visits);
-        }
-
-        //  UTILITY: Obtener UserId autenticado
-        private Guid GetCurrentUserId()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userId))
-                throw new UnauthorizedAccessException("User ID not found in token.");
-
-            return Guid.Parse(userId);
-        }
+        [HttpPost("{id:guid}/restore")]
+        [Authorize(Policy = Policies.AdminOnly)]
+        public async Task<ActionResult<VisitResponseDto>> Restore(Guid id)
+            => Ok(await _visitService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

@@ -14,10 +14,10 @@ namespace CountrySecure.Domain.Entities
         public RequestStatus RequestStatus { get; set; } = RequestStatus.Pending;
 
         //relationships
-        public Guid IdUser { get; set; }
+        public Guid UserId { get; set; }
         public required User User { get; set; }
 
-        public Guid IdOrder { get; set; }
+        public Guid OrderId { get; set; }
         public  required Order Order { get; set; }
 
       

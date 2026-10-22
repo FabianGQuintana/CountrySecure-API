@@ -1,4 +1,5 @@
-﻿using CountrySecure.Application.DTOs.Order;
+﻿using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Application.DTOs.Order;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
@@ -10,6 +11,8 @@ namespace CountrySecure.Application.Services.Orders
 {
     public class OrderService : IOrderService
     {
+        private const int MostRequestedCount = 5;
+
         private readonly IOrderRepository _orderRepository;
         private readonly IUnitOfWork _unitOfWork;
 
@@ -19,162 +22,72 @@ namespace CountrySecure.Application.Services.Orders
             _unitOfWork = unitOfWork;
         }
 
-        // ============================================================
-        // 1. Crear Orden
-        // ============================================================
-        public async Task<OrderResponseDto> CreateOrderAsync(CreateOrderDto newOrderDto, Guid currentUserId)
+        public async Task<OrderResponseDto> CreateAsync(CreateOrderDto dto, Guid currentUserId)
         {
-            var newOrder = newOrderDto.ToEntity();
+            var order = dto.ToEntity();
+            order.CreatedBy = currentUserId.ToString();
+            order.LastModifiedBy = currentUserId.ToString();
 
-            // Auditoría
-            newOrder.CreatedBy = currentUserId.ToString();
-
-            newOrder.LastModifiedAt = DateTime.UtcNow; // Asignamos fecha
-            newOrder.LastModifiedBy = currentUserId.ToString();
-
-            await _orderRepository.AddAsync(newOrder);
+            await _orderRepository.AddAsync(order);
             await _unitOfWork.SaveChangesAsync();
-
-            return newOrder.ToResponseDto();
-        }
-
-        // ============================================================
-        // 2. Obtener por Id
-        // ============================================================
-        public async Task<OrderResponseDto?> GetOrderByIdAsync(Guid orderId)
-        {
-            var order = await _orderRepository.GetByIdAsync(orderId);
-
-            if (order == null)
-                return null;
 
             return order.ToResponseDto();
         }
 
-        // ============================================================
-        // 3. Obtener todos con paginación
-        // ============================================================
-        public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync(int pageNumber, int pageSize)
+        public async Task<OrderResponseDto> UpdateAsync(Guid id, UpdateOrderDto dto, Guid currentUserId)
         {
-            var allOrders = await _orderRepository.GetAllAsync();
+            var order = await GetOrThrowAsync(id);
 
-            var paged = allOrders
-                .Where(o => !o.IsDeleted)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize);
+            dto.MapToEntity(order);
+            order.Touch(currentUserId.ToString());
 
-            return paged.ToResponseDto();
-        }
-
-        // ============================================================
-        // 4. Obtener todos sin filtros
-        // ============================================================
-        public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersWithoutFilterAsync()
-        {
-            var all = await _orderRepository.GetAllAsync();
-
-            return all
-              //  .Where(o => !o.IsDeleted)
-                .ToResponseDto();
-        }
-
-        // ============================================================
-        // 5. Obtener por estado
-        // ============================================================
-        public async Task<IEnumerable<OrderResponseDto>> GetByStatusAsync(bool isActive)
-        {
-            var results = await _orderRepository.GetByStatusAsync(isActive);
-
-            return results
-                .Where(o => !o.IsDeleted)
-                .ToResponseDto();
-        }
-
-        // ============================================================
-        // 6. Obtener por tipo
-        // ============================================================
-        public async Task<IEnumerable<OrderResponseDto>> GetByTypeAsync(OrderStatus orderType)
-        {
-            var results = await _orderRepository.GetByTypeAsync(orderType);
-
-            return results
-                .Where(o => !o.IsDeleted)
-                .ToResponseDto();
-        }
-
-        // ============================================================
-        // 7. Obtener por proveedor
-        // ============================================================
-        public async Task<IEnumerable<OrderResponseDto>> GetBySupplierAsync(string supplierName)
-        {
-            var results = await _orderRepository.GetBySupplierAsync(supplierName);
-
-            return results
-                .Where(o => !o.IsDeleted)
-                .ToResponseDto();
-        }
-
-        // ============================================================
-        // 8. Los más solicitados
-        // ============================================================
-        public async Task<IEnumerable<OrderResponseDto>> GetMostRequestedAsync()
-        {
-            var results = await _orderRepository.GetMostRequestedAsync();
-
-            return results
-                .Where(o => !o.IsDeleted)
-                .ToResponseDto();
-        }
-        // ============================================================
-        // 9. Actualizar Orden
-        // ============================================================
-        public async Task<OrderResponseDto> UpdateOrderAsync(Guid orderId, UpdateOrderDto updateOrderDto, Guid currentUserId)
-        {
-            var existing = await _orderRepository.GetByIdAsync(orderId);
-
-            if (existing == null || existing.IsDeleted)
-                throw new KeyNotFoundException($"Order with ID {orderId} not found or is deleted.");
-
-            // 1. Aplicar mapeo y auditoría (OK)
-            updateOrderDto.MapToEntity(existing);
-
-            existing.LastModifiedAt = DateTime.UtcNow;
-            existing.LastModifiedBy = currentUserId.ToString();
-
-            // 2. Persistencia (OK)
-            var updatedEntity = await _orderRepository.UpdateAsync(existing); // Capturamos la entidad actualizada
+            await _orderRepository.UpdateAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
-            // 3. Mapeo de Retorno 
-            // Si OrderResponseDto solo usa campos escalares de Order (que es la forma más limpia):
-            return updatedEntity.ToResponseDto();
-
+            return order.ToResponseDto();
         }
 
-        // ============================================================
-        // 10. Soft Delete (Toggle)
-        // ============================================================
-        public async Task<OrderResponseDto?> SoftDeleteOrderAsync(Guid orderId, Guid currentUserId)
+        public async Task<OrderResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
-         
-            var order = await _orderRepository.SoftDeleteToggleAsync(orderId);
+            var order = await GetOrThrowAsync(id);
+            order.SoftDelete(currentUserId.ToString());
 
-            if (order == null)
-                return null; // No se encontró
-
-            // 2. Aplicar Auditoría (Única lógica específica requerida en el Service)
-            order.LastModifiedAt = DateTime.UtcNow;
-            order.LastModifiedBy = currentUserId.ToString();
-
-           
-
-            // 3. Persistencia
-            // Usamos UpdateAsync para guardar los cambios de auditoría.
-            var updatedEntity = await _orderRepository.UpdateAsync(order);
+            await _orderRepository.UpdateAsync(order);
             await _unitOfWork.SaveChangesAsync();
 
-            // 4. Mapeo de Retorno
-            return updatedEntity.ToResponseDto();
+            return order.ToResponseDto();
         }
+
+        public async Task<OrderResponseDto> RestoreAsync(Guid id, Guid currentUserId)
+        {
+            var order = await _orderRepository.GetByIdIncludingDeletedAsync(id)
+                        ?? throw new KeyNotFoundException($"No se encontró el servicio {id}.");
+
+            order.Restore(currentUserId.ToString());
+
+            await _orderRepository.UpdateAsync(order);
+            await _unitOfWork.SaveChangesAsync();
+
+            return order.ToResponseDto();
+        }
+
+        public async Task<OrderResponseDto> GetByIdAsync(Guid id)
+            => (await GetOrThrowAsync(id)).ToResponseDto();
+
+        public async Task<PagedResult<OrderResponseDto>> GetPagedAsync(PageQuery paging, OrderCategory? type, string? search, bool includeInactive)
+        {
+            var page = await _orderRepository.GetPagedAsync(paging, type, search, includeInactive);
+            return page.Map(o => o.ToResponseDto());
+        }
+
+        public async Task<IReadOnlyList<OrderResponseDto>> GetMostRequestedAsync()
+        {
+            var orders = await _orderRepository.GetMostRequestedAsync(MostRequestedCount);
+            return orders.Select(o => o.ToResponseDto()).ToList();
+        }
+
+        private async Task<Order> GetOrThrowAsync(Guid id)
+            => await _orderRepository.GetByIdAsync(id)
+               ?? throw new KeyNotFoundException($"No se encontró el servicio {id}.");
     }
 }

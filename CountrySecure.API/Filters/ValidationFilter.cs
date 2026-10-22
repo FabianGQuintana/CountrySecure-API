@@ -30,7 +30,16 @@ namespace CountrySecure.API.Filters
                                 g => g.Select(e => e.ErrorMessage).ToArray()
                             );
 
-                        context.Result = new BadRequestObjectResult(new { errors });
+                        // RFC 7807 (igual que el resto de los errores) + `message` con el primer error para el front
+                        var problem = new ValidationProblemDetails(errors)
+                        {
+                            Status = StatusCodes.Status400BadRequest,
+                            Title = "Hay datos inválidos en el formulario.",
+                            Instance = context.HttpContext.Request.Path
+                        };
+                        problem.Extensions["message"] = errors.Values.SelectMany(m => m).First();
+
+                        context.Result = new BadRequestObjectResult(problem);
                         return;
                     }
                 }

@@ -1,18 +1,15 @@
-﻿using CountrySecure.Domain.Entities;
+﻿using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 namespace CountrySecure.Application.Interfaces.Repositories;
 
-public interface IRequestRepository: IGenericRepository<Request>
+public interface IRequestRepository : IGenericRepository<Request>
 {
-    Task<IEnumerable<Request>> GetByStatusAsync(RequestStatus status, int numberPage, int pageSize);
-    Task<IEnumerable<Request>> GetByUserIdAsync(Guid userId);
+    /// <summary>Solicitud con User y Order cargados.</summary>
+    Task<Request?> GetWithDetailsAsync(Guid id, bool includeDeleted = false);
+
+    Task<PagedResult<Request>> GetPagedAsync(PageQuery paging, RequestStatus? status, Guid? userId, bool includeDeleted);
+
     Task<int> CountByStatusAsync(RequestStatus status);
-    Task<Request?> GetRequestWithDetailsAsync(Guid id);
-    Task<IEnumerable<Request>> GetAllRequestsWithDetailsAsync(int numberPage, int pageSize);
-    Task<Request?> ToggleActiveAsync(Guid id);
 }

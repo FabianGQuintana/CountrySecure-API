@@ -1,202 +1,75 @@
-﻿using CountrySecure.Application.DTOs.Turns;
+using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Application.DTOs.Turns;
 using CountrySecure.Application.Interfaces.Services;
-using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Constants;
+using CountrySecure.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace CountrySecure.API.Controllers
 {
+    /// <summary>Reservas de amenities. Un residente solo accede a las propias.</summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Authorize(Roles = $"{RoleTypes.Admin},{RoleTypes.Resident}")]
+    [Route("api/turns")]
     public class TurnController : ControllerBase
     {
         private readonly ITurnService _turnService;
+        private readonly ICurrentUserService _currentUser;
 
-        public TurnController(ITurnService turnService)
+        public TurnController(ITurnService turnService, ICurrentUserService currentUser)
         {
             _turnService = turnService;
+            _currentUser = currentUser;
         }
 
-        // --- Helper para obtener el ID del usuario actual del Token ---
-        private Guid? GetCurrentUserId()
+        /// <summary>Reservas del usuario autenticado ("Mis reservas").</summary>
+        [HttpGet("me")]
+        public async Task<ActionResult<PagedResult<TurnResponseDto>>> GetMine(
+            [FromQuery] PageQuery paging, [FromQuery] TurnStatus? status = null)
+            => Ok(await _turnService.GetPagedAsync(paging, null, null, null, null, status, onlyMine: true, includeInactive: true));
+
+        /// <summary>
+        /// Listado con filtros (?userId, ?amenityId, ?from, ?to, ?status). Un residente ve solo las suyas.
+        /// </summary>
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<TurnResponseDto>>> GetAll(
+            [FromQuery] PageQuery paging,
+            [FromQuery] Guid? userId = null,
+            [FromQuery] Guid? amenityId = null,
+            [FromQuery] DateTime? from = null,
+            [FromQuery] DateTime? to = null,
+            [FromQuery] TurnStatus? status = null,
+            [FromQuery] bool includeInactive = false)
         {
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim != null && Guid.TryParse(userIdClaim, out Guid currentUserId))
-            {
-                return currentUserId;
-            }
-            return null;
+            if (from > to)
+                throw new ArgumentException("La fecha de inicio no puede ser posterior a la de fin.");
+
+            return Ok(await _turnService.GetPagedAsync(paging, userId, amenityId, from, to, status, onlyMine: false, includeInactive));
         }
 
-        // ----------------------------------------------------------------
-        // MÉTODOS DE ESCRITURA (POST, PUT, PATCH)
-        // ----------------------------------------------------------------
+        [HttpGet("{id:guid}")]
+        public async Task<ActionResult<TurnResponseDto>> GetById(Guid id)
+            => Ok(await _turnService.GetByIdAsync(id));
 
         [HttpPost]
-        public async Task<IActionResult> Post([FromBody] CreateTurnDto dto)
+        public async Task<ActionResult<TurnResponseDto>> Create([FromBody] CreateTurnDto dto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState); // 400 Bad Request
-            }
-
-            var currentUserId = GetCurrentUserId();
-            if (!currentUserId.HasValue)
-            {
-                return Unauthorized(); // 401 Unauthorized: Invalid token or missing ID
-            }
-
-            try
-            {
-                var turnDto = await _turnService.AddNewTurnAsync(dto, currentUserId.Value);
-
-                // 201 Created
-                return CreatedAtAction(nameof(GetById), new { id = turnDto.Id }, turnDto);
-            }
-            catch (Microsoft.EntityFrameworkCore.DbUpdateException)
-            {
-                // Manejo genérico de errores de DB (Ej: Violación de FK)
-                return BadRequest(new
-                {
-                    message = "Validation Error",
-                    detail = "The provided AmenityId or UserId does not exist, or the time slot is invalid."
-                });
-            }
-            catch (Exception)
-            {
-                // Error genérico no controlado
-                return StatusCode(500, "An unexpected error occurred while creating the turn.");
-            }
+            var created = await _turnService.CreateAsync(dto, _currentUser.GetRequiredUserId());
+            return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
         }
 
-        [HttpPut("{id:guid}")] // Aseguramos la restricción de GUID en la ruta
-        public async Task<IActionResult> Put(Guid id, [FromBody] UpdateTurnDto updateDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState); // 400 Bad Request
-            }
+        [HttpPut("{id:guid}")]
+        public async Task<ActionResult<TurnResponseDto>> Update(Guid id, [FromBody] UpdateTurnDto dto)
+            => Ok(await _turnService.UpdateAsync(id, dto, _currentUser.GetRequiredUserId()));
 
-            var currentUserId = GetCurrentUserId();
-            if (!currentUserId.HasValue)
-            {
-                return Unauthorized(); // 401 Unauthorized
-            }
+        /// <summary>Cancela la reserva (baja lógica).</summary>
+        [HttpDelete("{id:guid}")]
+        public async Task<ActionResult<TurnResponseDto>> Delete(Guid id)
+            => Ok(await _turnService.DeleteAsync(id, _currentUser.GetRequiredUserId()));
 
-            try
-            {
-                var updatedTurnDto = await _turnService.UpdateTurnAsync(id, updateDto, currentUserId.Value);
-
-                if (updatedTurnDto == null)
-                {
-                    
-                    return NotFound($"Turn with ID {id} not found."); // 404 Not Found
-                }
-
-                return Ok(updatedTurnDto);
-            }
-            catch (UnauthorizedAccessException) // Lógica de negocio del servicio (403 Forbidden)
-            {
-                return Forbid();
-            }
-            catch (KeyNotFoundException ex) // Lógica de negocio (404 Not Found)
-            {
-                return NotFound(ex.Message);
-            }
-            catch (Exception)
-            {
-            
-                return StatusCode(500, "An unexpected error occurred during the update.");
-            }
-        }
-
-        [HttpPatch("{id:guid}/SoftDelete")]
-        public async Task<IActionResult> SoftDelete(Guid id)
-        {
-            var currentUserId = GetCurrentUserId();
-            if (!currentUserId.HasValue)
-            {
-                return Unauthorized();
-            }
-
-            try
-            {
-                var updatedTurnDto = await _turnService.SoftDeleteTurnAsync(id, currentUserId.Value);
-
-                if (updatedTurnDto == null)
-                {
-                    
-                    return NotFound($"Turn with ID {id} not found."); // 404 Not Found
-                }
-
-                
-                var action = updatedTurnDto.Status == "Active" ? "reactivated" : "deactivated";
-
-                return Ok(new
-                {
-                    Message = $"The Turn with ID {id} has been {action} successfully.",
-                    Turn = updatedTurnDto // Devuelve el DTO completo y actualizado
-                });
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Forbid(); // 403 Forbidden
-            }
-            catch (Exception)
-            {
-               
-                return StatusCode(500, "An unexpected error occurred during the status change.");
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // MÉTODOS DE CONSULTA (GET)
-        // ----------------------------------------------------------------
-
-        
-        [HttpGet]
-        public async Task<IActionResult> GetAll([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 100)
-        {
-            var turns = await _turnService.GetAllTurnsAsync(pageNumber, pageSize);
-            return Ok(turns);
-        }
-
-        [HttpGet("{id:guid}")] // Añadida restricción de GUID
-        public async Task<IActionResult> GetById(Guid id)
-        {
-            var turnDto = await _turnService.GetTurnByIdAsync(id);
-            if (turnDto == null)
-            {
-                return NotFound(); // 404 Not Found
-            }
-            return Ok(turnDto); // 200 OK
-        }
-
-        [HttpGet("user/{userId:guid}")]
-        public async Task<IActionResult> GetByUserId(Guid userId)
-        {
-            var turns = await _turnService.GetTurnsByUserIdAsync(userId);
-            return Ok(turns);
-        }
-
-        [HttpGet("amenity/{amenityId:guid}")]
-        public async Task<IActionResult> GetByAmenityId(Guid amenityId)
-        {
-            var turns = await _turnService.GetTurnsByAmenityIdAsync(amenityId);
-            return Ok(turns);
-        }
-
-        [HttpGet("range")]
-        public async Task<IActionResult> GetByDateRange([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
-        {
-            if (startDate > endDate)
-            {
-              
-                return BadRequest("The start date cannot be after the end date.");
-            }
-
-            var turns = await _turnService.GetTurnsByDateRangeAsync(startDate, endDate);
-            return Ok(turns);
-        }
+        [HttpPost("{id:guid}/restore")]
+        public async Task<ActionResult<TurnResponseDto>> Restore(Guid id)
+            => Ok(await _turnService.RestoreAsync(id, _currentUser.GetRequiredUserId()));
     }
 }

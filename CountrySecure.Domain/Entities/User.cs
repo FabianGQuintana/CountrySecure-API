@@ -10,10 +10,13 @@ namespace CountrySecure.Domain.Entities
         public required string Phone { get; set; }
         public required string Email { get; set; }
         public required string Password { get; set; }
-        public bool Active { get; set; } = true;
 
 
         public required string Role { get; set; }
+
+        /// <summary>Un residente bloqueado no puede recibir visitas: sus pases se rechazan en la guardia.</summary>
+        public bool IsBlocked { get; set; }
+        public string? BlockReason { get; set; }
 
 
         // FK

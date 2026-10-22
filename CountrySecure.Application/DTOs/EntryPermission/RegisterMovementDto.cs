@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel.DataAnnotations;
 
 namespace CountrySecure.Application.DTOs.EntryPermission
@@ -11,11 +11,9 @@ namespace CountrySecure.Application.DTOs.EntryPermission
         [Required]
         public bool IsEntry { get; set; } // true para Entrada (Check-In), false para Salida (Check-Out)
 
-        [Required]
-        public Guid GuardId { get; set; } // ID del guardia que realiza la acción
+        // Obsoleto: se ignora. El guardia se obtiene del token JWT (ICurrentUserService).
+        // Se mantiene opcional para no romper clientes que todavía lo envían.
+        public Guid? GuardId { get; set; }
     }
 
 }
-
-
-

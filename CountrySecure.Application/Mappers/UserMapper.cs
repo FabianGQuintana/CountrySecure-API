@@ -16,7 +16,9 @@ namespace CountrySecure.Application.Mappers
                 Dni = user.Dni,
                 Phone = user.Phone,
                 Email = user.Email,
-                Active = user.Active,
+                Active = !user.IsDeleted,
+                IsBlocked = user.IsBlocked,
+                BlockReason = user.BlockReason,
                 Role = user.Role.ToString()
             };
         }

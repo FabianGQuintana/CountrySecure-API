@@ -24,7 +24,7 @@ namespace CountrySecure.Application.Mappers
                 Description = entity.Description,
                 Schedules = entity.Schedules,
                 Capacity = entity.Capacity,
-                Status = entity.Status,
+                Status = entity.ToAuditStatus(),
                 CreatedAt = entity.CreatedAt,
                 LastModifiedAt = entity.LastModifiedAt,
 
@@ -73,11 +73,6 @@ namespace CountrySecure.Application.Mappers
             if (dto.Capacity.HasValue)
             {
                 existingEntity.Capacity = dto.Capacity.Value;
-            }
-            if (dto.Status != null)
-            {
-                existingEntity.Status = dto.Status;
-                
             }
 
         }

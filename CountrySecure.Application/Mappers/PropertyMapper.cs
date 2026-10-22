@@ -22,7 +22,7 @@ namespace CountrySecure.Application.Mappers
                 PropertyStatus = property.PropertyStatus,
 
                 // **Mapeo del Estado de Auditoría (El String de BaseEntity)**
-                StatusAuditoria = property.Status,
+                StatusAuditoria = property.ToAuditStatus(),
                 CreatedAt = property.CreatedAt,
 
                 LotName = property.Lot?.LotName,
@@ -81,11 +81,6 @@ namespace CountrySecure.Application.Mappers
             if (dto.LotId.HasValue)
             {
                 existingEntity.LotId = dto.LotId.Value;
-            }
-
-            if (!string.IsNullOrEmpty(dto.StatusAuditoria))
-            {
-                existingEntity.Status = dto.StatusAuditoria;
             }
 
             // Nota: La actualización del EntryPermissionState se manejará con métodos específicos (ej. SoftDelete)

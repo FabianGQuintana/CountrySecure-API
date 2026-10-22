@@ -1,158 +1,114 @@
 ﻿using CountrySecure.Application.DTOs.EntryPermission;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security;
 
 namespace CountrySecure.Application.Mappers
 {
-    // Clase estática para métodos de extensión de mapeo
     public static class EntryPermissionMapper
     {
-        // -------------------------------------------------------------------
-        // Mapeo de SALIDA (Lectura: Entidad -> Response DTO)
-        // -------------------------------------------------------------------
-
+        // Entidad -> DTO de respuesta
         public static EntryPermissionResponseDto ToResponseDto(this EntryPermission permission)
         {
-            if (permission.User == null || permission.Visit == null)
-            {
-                throw new InvalidOperationException("Cannot map EntryPermission to Response DTO. Required navigation properties (User or Visit) were not loaded from the database.");
-            }
-
             return new EntryPermissionResponseDto
             {
-                // Propiedades principales
                 Id = permission.Id,
                 QrCodeValue = permission.QrCodeValue,
                 Type = permission.PermissionType,
-
-                // El estado funcional de la entidad
                 Status = permission.EntryPermissionState,
-
+                PassType = permission.PassType,
+                CompanionsCount = permission.CompanionsCount,
+                VehicleType = permission.VehicleType,
+                VehiclePlate = permission.VehiclePlate,
+                VehicleModel = permission.VehicleModel,
                 ValidFrom = permission.ValidFrom,
                 EntryTime = permission.EntryTime,
                 DepartureTime = permission.DepartureTime,
-                ValidTo = permission.ValidTo,   
-
-                // Propiedades de Auditoría (Mapeadas de la Entidad Base)
+                ValidTo = permission.ValidTo,
                 CreatedAt = permission.CreatedAt,
                 CreatedBy = permission.CreatedBy,
+                BaseEntityStatus = permission.ToAuditStatus(),
 
-              
-                // Mapeamos BaseEntity.Status (el string "Active"/"Inactive") a la nueva propiedad del DTO
-                BaseEntityStatus = permission.Status,
-                // -------------------------
+                // User/Visit pueden ser null si fueron dados de baja (el filtro global los oculta del Include)
+                Resident = permission.User?.ToEntryPermissionUserDto() ?? DeletedResident,
+                Visitor = permission.Visit?.ToEntryPermissionVisitDto() ?? DeletedVisitor,
+                Order = permission.Order?.ToEntryPermissionOrderDto(),
 
-                // Mapeo de DTOs Anidados
-                Resident = permission.User.ToEntryPermissionUserDto(),
-                Visitor = permission.Visit.ToEntryPermissionVisitDto(),
-
-                Order = permission.Order != null
-        ? permission.Order.ToEntryPermissionOrderDto()
-        : null
+                CheckInGuard = permission.CheckInGuard?.ToGuardDto(),
+                CheckOutGuard = permission.CheckOutGuard?.ToGuardDto()
             };
         }
 
         public static IEnumerable<EntryPermissionResponseDto> ToResponseDto(this IEnumerable<EntryPermission> permissions)
-        {
-            return permissions.Select(p => p.ToResponseDto());
-        }
+            => permissions.Select(p => p.ToResponseDto());
 
-        // -------------------------------------------------------------------
-        // Mapeo de ENTRADA (Escritura: Create DTO -> Entidad)
-        // -------------------------------------------------------------------
-
+        // DTO de creación -> entidad
         public static EntryPermission ToEntity(this CreateEntryPermissionDto dto)
         {
             return new EntryPermission
             {
-                QrCodeValue = string.Empty,
+                QrCodeValue = string.Empty, // lo asigna el servicio
                 PermissionType = dto.PermissionType,
                 Description = dto.Description,
+                CompanionsCount = dto.CompanionsCount,
+                VehicleType = dto.VehicleType,
+                VehiclePlate = NormalizePlate(dto.VehicleType, dto.VehiclePlate),
+                VehicleModel = string.IsNullOrWhiteSpace(dto.VehicleModel) ? null : dto.VehicleModel.Trim(),
+                PassType = dto.PassType,
                 ValidFrom = dto.ValidFrom,
                 ValidTo = dto.ValidTo,
-                EntryPermissionState = dto.Status,
-
-                // Asignación de Claves Foráneas (FKs)
+                EntryPermissionState = PermissionStatus.Pending,
                 UserId = dto.UserId,
                 VisitId = dto.VisitId,
-                OrderId = dto.OrderId,
-
-                // **INICIALIZACIÓN CRÍTICA DE PROPIEDADES DE NAVEGACIÓN A NULL**
-                Visit = null,
-                User = null,
-                Order = null
+                OrderId = dto.OrderId
             };
         }
 
-        // -------------------------------------------------------------------
-        // Mapeo de ACTUALIZACIÓN (Actualización: Update DTO -> Entidad Existente)
-        // -------------------------------------------------------------------
-
-        public static void MapToEntity(this UpdateEntryPermissionDto dto, EntryPermission existingEntity)
+        // DTO de edición -> entidad existente (solo los campos enviados)
+        public static void MapToEntity(this UpdateEntryPermissionDto dto, EntryPermission existing)
         {
-            // Solo actualiza si el valor del DTO no es null (Para el patrón PATCH/PUT)
-            existingEntity.QrCodeValue = dto.QrCodeValue ?? existingEntity.QrCodeValue;
-            existingEntity.Description = dto.Description ?? existingEntity.Description;
-
-            // Actualización del Enum (usamos .HasValue si el enum es nulleable en el DTO)
-            if (dto.PermissionType.HasValue)
-            {
-                existingEntity.PermissionType = dto.PermissionType.Value;
-            }
-
-            // Actualización de FKs si son nulleables en el DTO (Guid?)
-            if (dto.VisitId.HasValue)
-            {
-                existingEntity.VisitId = dto.VisitId.Value;
-            }
-            if (dto.UserId.HasValue)
-            {
-                existingEntity.UserId = dto.UserId.Value;
-            }
-            if (dto.OrderId.HasValue)
-            {
-                existingEntity.OrderId = dto.OrderId.Value;
-            }
-
-            if (dto.EntryTime.HasValue)
-            {
-                existingEntity.EntryTime = dto.EntryTime.Value;
-            }
-            if (dto.DepartureTime.HasValue)
-            {
-                existingEntity.DepartureTime = dto.DepartureTime.Value;
-            }
-            if (dto.Status.HasValue)
-            {
-                existingEntity.EntryPermissionState = dto.Status.Value;
-            }
-            // NOTA: Recuerda actualizar LastModifiedAt y LastModifiedBy en el Servicio después de llamar a MapToEntity
+            if (dto.PermissionType.HasValue) existing.PermissionType = dto.PermissionType.Value;
+            if (dto.Description != null) existing.Description = dto.Description;
+            if (dto.CompanionsCount.HasValue) existing.CompanionsCount = dto.CompanionsCount.Value;
+            if (dto.PassType.HasValue) existing.PassType = dto.PassType.Value;
+            if (dto.VehicleType.HasValue) existing.VehicleType = dto.VehicleType.Value;
+            if (dto.VehiclePlate != null || dto.VehicleType.HasValue)
+                existing.VehiclePlate = NormalizePlate(existing.VehicleType, dto.VehiclePlate ?? existing.VehiclePlate);
+            if (dto.VehicleModel != null)
+                existing.VehicleModel = string.IsNullOrWhiteSpace(dto.VehicleModel) ? null : dto.VehicleModel.Trim();
+            if (dto.ValidFrom.HasValue) existing.ValidFrom = dto.ValidFrom.Value;
+            if (dto.ValidTo.HasValue) existing.ValidTo = dto.ValidTo.Value;
+            if (dto.OrderId.HasValue) existing.OrderId = dto.OrderId.Value;
         }
 
-
-        // -------------------------------------------------------------------
-        // Mapeo de Extensión 
-        // -------------------------------------------------------------------
-
+        /// <summary>La patente se guarda en mayúsculas y sin espacios; a pie no hay patente.</summary>
+        private static string? NormalizePlate(VehicleType type, string? plate)
+            => type == VehicleType.OnFoot || string.IsNullOrWhiteSpace(plate)
+                ? null
+                : plate.Replace(" ", "").Replace("-", "").ToUpperInvariant();
 
         public static EntryPermissionOrderDto ToEntryPermissionOrderDto(this Order order)
         {
             return new EntryPermissionOrderDto
             {
                 Id = order.Id,
-
                 SupplierName = order.SupplierName,
-
                 Description = order.Description,
-
-                OrderType = order.OrderType,
-
-                Status = order.Status
+                OrderType = order.Category,
+                Status = order.ToAuditStatus()
             };
         }
+
+        private static EntryPermissionResponseDto.EntryPermissionGuardDto ToGuardDto(this User guard)
+            => new() { Id = guard.Id, Name = guard.Name, Lastname = guard.Lastname, dni = guard.Dni };
+
+        private static readonly EntryPermissionUserDto DeletedResident = new()
+        {
+            Id = Guid.Empty, Name = "(residente", Lastname = "eliminado)", Dni = 0, Phone = "", Email = ""
+        };
+
+        private static readonly EntryPermissionVisitDto DeletedVisitor = new()
+        {
+            Id = Guid.Empty, NameVisit = "(visitante", LastNameVisit = "eliminado)", DniVisit = 0
+        };
     }
 }

@@ -9,6 +9,14 @@ namespace CountrySecure.Domain.Entities
         public PermissionType PermissionType { get; set; }
         public PermissionStatus EntryPermissionState { get; set; }
         public string? Description { get; set; }
+
+        // Datos de la visita
+        public int CompanionsCount { get; set; }
+        public VehicleType VehicleType { get; set; } = VehicleType.OnFoot;
+        public string? VehiclePlate { get; set; }
+        public string? VehicleModel { get; set; }
+        public PassType PassType { get; set; } = PassType.SingleEntry;
+
         public DateTime ValidFrom { get; set; }
         public DateTime? EntryTime { get; set; }
         public DateTime? DepartureTime { get; set; }

@@ -18,40 +18,32 @@ namespace CountrySecure.Application.Mappers
 
         public static TurnResponseDto ToResponseDto(this Turn turn)
         {
-            // Validar que las entidades requeridas estén cargadas (Eager Loading)
-            if (turn.User == null || turn.Amenity == null)
-            {
-                throw new InvalidOperationException("Cannot map Turn to Response DTO. Required navigation properties (User or Amenity) were not loaded from the database.");
-            }
-
+            // User/Amenity pueden ser null si fueron dados de baja (el filtro global los oculta del Include)
             return new TurnResponseDto
             {
-                // Propiedades principales
                 Id = turn.Id,
                 StartTime = turn.StartTime,
                 EndTime = turn.EndTime,
 
-                // Mapeo del Enum a String (Recomendado para APIs)
-                Status = turn.Status.ToString(),
+                // Estado de auditoría derivado de DeletedAt y estado funcional de la reserva
+                Status = turn.ToAuditStatus(),
+                TurnStatus = turn.TurnStatus.ToString(),
 
-                // Claves Foráneas
                 UserId = turn.UserId,
                 AmenityId = turn.AmenityId,
 
-                // Propiedades de Auditoría
                 CreatedAt = turn.CreatedAt,
                 CreatedBy = turn.CreatedBy,
 
-                // Mapeo de DTOs Anidados (Asumo que existen mappers para estas referencias)
-                User = new UserReferenceDto // Usamos la estructura definida previamente
+                User = turn.User == null ? null : new UserReferenceDto
                 {
                     Id = turn.User.Id,
-                    FullName = $"{turn.User.Name} {turn.User.Lastname}" // Asume que la entidad User tiene 'nombre' y 'apellido'
+                    FullName = $"{turn.User.Name} {turn.User.Lastname}"
                 },
-                Amenity = new AmenityReferenceDto // Usamos la estructura definida previamente
+                Amenity = turn.Amenity == null ? null : new AmenityReferenceDto
                 {
                     Id = turn.Amenity.Id,
-                    Name = turn.Amenity.AmenityName // Asume que la entidad Amenity tiene 'nombre'
+                    Name = turn.Amenity.AmenityName
                 }
             };
         }

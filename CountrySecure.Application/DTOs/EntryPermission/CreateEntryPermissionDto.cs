@@ -1,35 +1,37 @@
 ﻿using CountrySecure.Domain.Enums;
-using System.ComponentModel.DataAnnotations;
 
 namespace CountrySecure.Application.DTOs.EntryPermission
 {
     public class CreateEntryPermissionDto
     {
+        public PermissionType PermissionType { get; set; }
 
-        [Required]
-        public  PermissionType PermissionType { get; set; }
-
-        [StringLength(600)]
         public string? Description { get; set; }
 
-        [Required]
+        /// <summary>Cantidad de acompañantes (sin contar a la visita).</summary>
+        public int CompanionsCount { get; set; }
+
+        public VehicleType VehicleType { get; set; } = VehicleType.OnFoot;
+
+        /// <summary>Patente/matrícula. Obligatoria si la visita llega en auto o moto.</summary>
+        public string? VehiclePlate { get; set; }
+        public string? VehicleModel { get; set; }
+
+        public PassType PassType { get; set; } = PassType.SingleEntry;
+
         public DateTime ValidFrom { get; set; }
 
-        [Required]
         public DateTime ValidTo { get; set; }
-        public DateTime? EntryTime { get; set; } = null;
-        public DateTime? DepartureTime { get; set; } = null;
 
-        public PermissionStatus Status { get; set; } = PermissionStatus.Pending;
-
-        
-        [Required]
         public required Guid VisitId { get; set; }
 
-        [Required]
+        /// <summary>
+        /// Residente titular del permiso. Un residente siempre crea permisos a su nombre
+        /// (se ignora este valor); solo un Admin puede indicar otro residente.
+        /// </summary>
         public required Guid UserId { get; set; }
 
+        /// <summary>Servicio asociado; obligatorio para permisos de mantenimiento.</summary>
         public Guid? OrderId { get; set; }
-
     }
 }

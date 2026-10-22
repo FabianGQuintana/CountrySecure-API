@@ -1,60 +1,35 @@
-﻿using CountrySecure.Domain.Entities;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
 using CountrySecure.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Infrastructure.Repositories;
 
 public class OrderRepository : GenericRepository<Order>, IOrderRepository
 {
-    private readonly CountrySecureDbContext _dbContext;
+    public OrderRepository(CountrySecureDbContext dbContext) : base(dbContext) { }
 
-    public OrderRepository(CountrySecureDbContext dbContext) : base(dbContext)
+    public Task<PagedResult<Order>> GetPagedAsync(PageQuery paging, OrderCategory? type, string? search, bool includeDeleted)
     {
-        _dbContext = dbContext;
-    }
-    public async Task<IEnumerable<Order>> GetAllAsync()
-    {
-        return await _dbContext.Orders.ToListAsync();
-    }
+        var query = Set.AsNoTracking().IncludeDeleted(includeDeleted);
 
-    public async Task<IEnumerable<Order>> GetByStatusAsync(bool activo)
-    {
-        String status;
-        if (activo == true)
+        if (type.HasValue)
+            query = query.Where(o => o.Category == type.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            status = "Active";
-        }
-        else
-        {
-            status = "Inactive";
+            var term = search.Trim().ToLower();
+            query = query.Where(o => o.SupplierName.ToLower().Contains(term) || o.Description.ToLower().Contains(term));
         }
 
-        return await _dbContext.Orders
-            .Where(o => o.Status == status)
-            .ToListAsync();
+        return query.OrderBy(o => o.SupplierName).ThenBy(o => o.CreatedAt).ToPagedResultAsync(paging);
     }
 
-    public async Task<IEnumerable<Order>> GetByTypeAsync(OrderStatus tipoServicio)
-    {
-        return await _dbContext.Orders
-            .Where(o => o.OrderType == tipoServicio)
-            .ToListAsync();
-    }
-
-    public async Task<IEnumerable<Order>> GetBySupplierAsync(string nombreProveedor)
-    {
-        return await _dbContext.Orders
-            .Where(o => o.SupplierName == nombreProveedor)
-            .ToListAsync();
-    }
-
-    public async Task<IEnumerable<Order>> GetMostRequestedAsync()
-    {
-        return await _dbContext.Orders
-            .OrderByDescending(o => o.Requests.Count)
-            .Take(5)
-            .ToListAsync();
-    }
+    public async Task<IReadOnlyList<Order>> GetMostRequestedAsync(int take)
+        => await Set.AsNoTracking()
+                    .OrderByDescending(o => o.Requests!.Count)
+                    .Take(take)
+                    .ToListAsync();
 }

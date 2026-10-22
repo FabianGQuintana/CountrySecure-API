@@ -1,27 +1,15 @@
 ﻿using CountrySecure.Application.DTOs.Amenities;
-using CountrySecure.Domain.Entities; 
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using CountrySecure.Application.DTOs.Common;
 
 namespace CountrySecure.Application.Interfaces.Services
 {
     public interface IAmenityService
     {
-       
-        Task<AmenityResponseDto> AmenityCreateAsync(AmenityCreateDto dto, Guid createdById);
-        Task<AmenityResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId);
-        Task<AmenityResponseDto?> AmenityUpdateAsync(Guid id, AmenityUpdateDto dto, Guid currentUserId);
-        Task<AmenityResponseDto?> GetByIdAsync(Guid id);
-        Task<IEnumerable<AmenityResponseDto>> GetAllAsync(int page, int size);
-
-        Task<AmenityResponseDto?> GetAmenityByNameAsync(string amenityName);
-
-        Task<IEnumerable<AmenityResponseDto>> GetAllAmenitiesWithTurnsAsync(int pageNumber, int pageSize);
-
-        Task<IEnumerable<AmenityResponseDto>> GetAmenitiesByCapacityAsync(int minimumCapacity);
-
-        Task<IEnumerable<AmenityResponseDto>> GetAmenitiesByStatusAsync(string status);
-
+        Task<AmenityResponseDto> CreateAsync(AmenityCreateDto dto, Guid currentUserId);
+        Task<AmenityResponseDto> UpdateAsync(Guid id, AmenityUpdateDto dto, Guid currentUserId);
+        Task<AmenityResponseDto> DeleteAsync(Guid id, Guid currentUserId);
+        Task<AmenityResponseDto> RestoreAsync(Guid id, Guid currentUserId);
+        Task<AmenityResponseDto> GetByIdAsync(Guid id);
+        Task<PagedResult<AmenityResponseDto>> GetPagedAsync(PageQuery paging, string? search, int? minCapacity, bool includeInactive);
     }
 }

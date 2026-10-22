@@ -9,6 +9,8 @@ namespace CountrySecure.Application.DTOs.Visits
         public required string LastNameVisit { get; set; }
         public int DniVisit { get; set; }
         public required string VisitStatus { get; set; }
+        public bool IsBlocked { get; set; }
+        public string? BlockReason { get; set; }
 
     }
 }

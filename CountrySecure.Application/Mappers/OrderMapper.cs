@@ -19,8 +19,8 @@ namespace CountrySecure.Application.Mappers
                 Id = order.Id,
                 Description = order.Description,
                 SupplierName = order.SupplierName,
-                OrderType = order.OrderType,
-                Status = order.Status,
+                OrderType = order.Category,
+                Status = order.ToAuditStatus(),
                 
 
                 // Relaciones → listas de GUID
@@ -46,7 +46,7 @@ namespace CountrySecure.Application.Mappers
             {
                 Description = dto.Description,
                 SupplierName = dto.SupplierName,
-                OrderType = dto.OrderType,
+                Category = dto.OrderType,
 
                 // Relaciones se manejarán en el servicio
                 Requests = new List<Request>(),
@@ -66,14 +66,10 @@ namespace CountrySecure.Application.Mappers
 
             if (dto.OrderType.HasValue)
             {
-                existing.OrderType = dto.OrderType.Value;
+                existing.Category = dto.OrderType.Value;
             }
 
             // Si querés permitir actualizar EntryPermissionState
-            if (!string.IsNullOrWhiteSpace(dto.Status))
-            {
-                existing.Status = dto.Status;
-            }
 
             // Relaciones se manejan en el servicio
         }
