@@ -22,6 +22,8 @@ public class VisitConfiguration : IEntityTypeConfiguration<Visit>
                .IsRequired();
         // === 2. UNICIDAD (RESTRICCIÓN DE DOMINIO) ===
         // El DNI del visitante debe ser único.
+        builder.Property(v => v.BlockReason).HasMaxLength(300);
+
         builder.HasIndex(v => v.DniVisit)
                .IsUnique();
         // === 3. RELACIONES 1:N ===

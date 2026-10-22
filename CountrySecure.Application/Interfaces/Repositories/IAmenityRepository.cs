@@ -1,30 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Domain.Entities;
 
 namespace CountrySecure.Application.Interfaces.Repositories
 {
     public interface IAmenityRepository : IGenericRepository<Amenity>
     {
+        /// <summary>Amenity activo con ese nombre (para validar unicidad).</summary>
+        Task<Amenity?> GetByNameAsync(string amenityName);
 
-        Task<Amenity?> GetAmenityByNameAsync(string amenityName);
-
-        Task<Amenity?> GetAmenityWithTurnsAsync(Guid amenityId);
-
-        // serv disponibles 
-        Task<IEnumerable<Amenity>> GetAvailableAmenitiesAsync();
-
-        //las aminidades con turnos
-        Task<IEnumerable<Amenity>> GetAllAmenitiesWithTurnsAsync(int pageNumber, int pageSize);
-
-        //capacidad disponible
-        Task<bool> IsAmenityAvailableForBookingAsync(Guid amenityId, DateTime startTime,DateTime endTime);
-
-        Task<IEnumerable<Amenity>> GetAmenitiesByStatusAsync(string status);
+        Task<PagedResult<Amenity>> GetPagedAsync(PageQuery paging, string? search, int? minCapacity, bool includeDeleted);
     }
-
 }
-

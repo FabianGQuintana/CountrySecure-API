@@ -1,160 +1,142 @@
-﻿using CountrySecure.Application.DTOs.Request;
+﻿using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Application.DTOs.Request;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
-using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using CountrySecure.Domain.Exceptions;
+using RequestEntity = CountrySecure.Domain.Entities.Request;
+
 namespace CountrySecure.Application.Services.Request
 {
     public class RequestService : IRequestService
     {
         private readonly IRequestRepository _requestRepository;
+        private readonly IOrderRepository _orderRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICurrentUserService _currentUser;
 
-        public RequestService(IRequestRepository requestRepository, IUnitOfWork unitOfWork)
+        public RequestService(
+            IRequestRepository requestRepository,
+            IOrderRepository orderRepository,
+            IUnitOfWork unitOfWork,
+            ICurrentUserService currentUser)
         {
             _requestRepository = requestRepository;
+            _orderRepository = orderRepository;
             _unitOfWork = unitOfWork;
+            _currentUser = currentUser;
         }
 
-        // Crear una nueva solicitud
-        public async Task<CreateRequestDto> CreateRequestAsync(CreateRequestDto createRequestDto, Guid currentUserId)
+        public async Task<RequestResponseDto> CreateAsync(CreateRequestDto dto, Guid currentUserId)
         {
+            if (await _orderRepository.GetByIdAsync(dto.OrderId) == null)
+                throw new KeyNotFoundException("El servicio elegido no existe o está dado de baja.");
 
-            var requestEntity = createRequestDto.ToEntity();
+            var request = dto.ToEntity();
+            request.UserId = currentUserId;                 // el solicitante es siempre el usuario autenticado
+            request.RequestStatus = RequestStatus.Pending;
+            request.CreatedBy = currentUserId.ToString();
 
-
-            requestEntity.CreatedBy = currentUserId.ToString();
-            requestEntity.CreatedAt = DateTime.UtcNow; 
-            requestEntity.Status = "Active"; 
-
-            // Agregar la nueva solicitud
-            await _requestRepository.AddAsync(requestEntity);
+            await _requestRepository.AddAsync(request);
             await _unitOfWork.SaveChangesAsync();
 
-            // Mapear la entidad a DTO de respuesta para devolverla
-            return createRequestDto;
+            return await ReloadAsync(request.Id);
         }
 
-        // Obtener una solicitud por ID
-        public async Task<RequestResponseDto?> GetRequestByIdAsync(Guid requestId)
+        public async Task<RequestResponseDto> UpdateAsync(Guid id, UpdateRequestDto dto, Guid currentUserId)
         {
-            var request = await _requestRepository.GetRequestWithDetailsAsync(requestId);
+            var request = await GetOwnedOrThrowAsync(id);
 
+            // El residente puede corregir el detalle o la ubicación; resolver o rechazar es de la administración
+            if (dto.Status.HasValue && dto.Status != request.RequestStatus)
+            {
+                if (!_currentUser.IsAdmin)
+                    throw new UnauthorizedAccessException("Solo la administración puede cambiar el estado de una solicitud.");
+                if (request.RequestStatus != RequestStatus.Pending)
+                    throw new BusinessRuleException("Solo se puede cambiar el estado de una solicitud pendiente.");
+            }
 
-            if (request == null)
-                return null;
+            dto.MapToEntity(request);
+            request.Touch(currentUserId.ToString());
 
-            // Convertir explícitamente
-            return request.ToResponseDto();  
-        }
-
-        // Obtener todas las solicitudes con paginación
-        public async Task<IEnumerable<RequestResponseDto>> GetAllRequestsAsync(int pageNumber, int pageSize)
-        {
-            var requests = await _requestRepository.GetAllRequestsWithDetailsAsync(pageNumber, pageSize);
-            return requests.ToResponseDto();
-        }
-
-        // Obtener solicitudes por estado con paginación
-        public async Task<IEnumerable<RequestResponseDto>> GetRequestsByStatusAsync(RequestStatus status, int pageNumber, int pageSize)
-        {
-            var requests = await _requestRepository.GetByStatusAsync(status, pageNumber, pageSize);
-            return requests.ToResponseDto();
-        }
-
-        // Contar solicitudes por estado
-        public async Task<int> CountRequestsByStatusAsync(RequestStatus status)
-        {
-            return await _requestRepository.CountByStatusAsync(status);
-        }
-
-        // Actualizar una solicitud
-        public async Task<RequestResponseDto> UpdateRequestAsync(Guid requestId, UpdateRequestDto updateRequestDto, Guid currentUserId)
-        {
-            var requestEntity = await _requestRepository.GetByIdAsync(requestId);
-
-            if (requestEntity == null)
-                throw new KeyNotFoundException("Request not found.");
-
-            updateRequestDto.MapToEntity(requestEntity);
-
-            requestEntity.LastModifiedAt = DateTime.UtcNow;
-            requestEntity.LastModifiedBy = currentUserId.ToString();
-
+            await _requestRepository.UpdateAsync(request);
             await _unitOfWork.SaveChangesAsync();
 
-            requestEntity = await _requestRepository.GetRequestWithDetailsAsync(requestId);
-
-            if (requestEntity == null)
-            {
-                
-                throw new InvalidOperationException("Entity was updated but failed to be retrieved with details.");
-            }
-            return requestEntity.ToResponseDto();
+            return await ReloadAsync(id);
         }
 
-        // Eliminar una solicitud (soft delete)
-        //public async Task<bool> DeleteRequestAsync(Guid requestId)
-        //{
-        //    var requestEntity = await _requestRepository.GetByIdAsync(requestId);
-
-        //    if (requestEntity == null)
-        //        return false;
-
-        //    // Marcar la solicitud como eliminada
-        //    requestEntity.DeletedAt = DateTime.UtcNow;
-
-        //    // Guardar los cambios
-        //    await _unitOfWork.SaveChangesAsync();
-
-        //    return true;
-        //}
-
-        public async Task<RequestResponseDto?> SoftDeleteToggleAsync(Guid id, Guid currentUserId)
+        public async Task<RequestResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
-            // 1. Usar el repositorio genérico para alternar el estado (DeletedAt, Status)
-            // Usamos el método SoftDeleteToggleAsync, asumiendo que el repositorio RequestRepository lo hereda.
-            var request = await _requestRepository.SoftDeleteToggleAsync(id);
+            var request = await GetOwnedOrThrowAsync(id);
 
-            if (request == null)
-                return null; // Not found
+            request.SoftDelete(currentUserId.ToString());
+            request.RequestStatus = RequestStatus.Cancelled;
 
-            // 2. Aplicar Auditoría:
-            // **ESTO ES CRUCIAL Y FALTABA en la implementación de ToggleActiveAsync**
-            request.LastModifiedAt = DateTime.UtcNow;
-            request.LastModifiedBy = currentUserId.ToString();
-
-            // 3. Lógica Específica del Enum (RequestStatus)
-            if (request.Status == "Inactive")
-            {
-                // Si se desactiva, marcamos el estado funcional (Enum) como Cancelled.
-                request.RequestStatus = RequestStatus.Cancelled;
-            }
-            else
-            {
-                // Si se reactiva, marcamos el estado funcional (Enum) como Pending o el inicial.
-                request.RequestStatus = RequestStatus.Pending;
-            }
-
-            // 4. Persistencia (Guardar los cambios de Auditoría y RequestStatus)
-            // El método ToggleActiveAsync anterior olvidaba el UpdateAsync para guardar los campos de auditoría.
-            var updatedEntity = await _requestRepository.UpdateAsync(request);
+            await _requestRepository.UpdateAsync(request);
             await _unitOfWork.SaveChangesAsync();
 
-            // 5. Mapeo de Retorno
-            // NOTA: Si el DTO requiere includes (User y Order), el repositorio debería devolver la entidad con ellos.
-            // Usaremos GetRequestWithDetailsAsync para asegurar que el DTO sea completo.
-            var fullRequest = await _requestRepository.GetRequestWithDetailsAsync(updatedEntity.Id);
-
-            return fullRequest?.ToResponseDto();
+            return await ReloadAsync(id, includeDeleted: true);
         }
 
+        public async Task<RequestResponseDto> RestoreAsync(Guid id, Guid currentUserId)
+        {
+            var request = await _requestRepository.GetByIdIncludingDeletedAsync(id)
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
+
+            request.Restore(currentUserId.ToString());
+            request.RequestStatus = RequestStatus.Pending;
+
+            await _requestRepository.UpdateAsync(request);
+            await _unitOfWork.SaveChangesAsync();
+
+            return await ReloadAsync(id);
+        }
+
+        public async Task<RequestResponseDto> GetByIdAsync(Guid id)
+        {
+            var request = await _requestRepository.GetWithDetailsAsync(id)
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
+
+            EnsureCanAccess(request);
+            return request.ToResponseDto();
+        }
+
+        public async Task<PagedResult<RequestResponseDto>> GetPagedAsync(PageQuery paging, RequestStatus? status, bool onlyMine, bool includeInactive)
+        {
+            // Quien no es Admin solo ve sus propias solicitudes; las canceladas solo las ve un Admin o su dueño
+            var restrictToMe = onlyMine || !_currentUser.IsAdmin;
+            Guid? userId = restrictToMe ? _currentUser.GetRequiredUserId() : null;
+
+            var page = await _requestRepository.GetPagedAsync(paging, status, userId, includeInactive && (_currentUser.IsAdmin || restrictToMe));
+            return page.Map(r => r.ToResponseDto());
+        }
+
+        public Task<int> CountByStatusAsync(RequestStatus status) => _requestRepository.CountByStatusAsync(status);
+
+        // --- helpers ---
+
+        private async Task<RequestResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
+        {
+            var request = await _requestRepository.GetWithDetailsAsync(id, includeDeleted)
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
+            return request.ToResponseDto();
+        }
+
+        private async Task<RequestEntity> GetOwnedOrThrowAsync(Guid id)
+        {
+            var request = await _requestRepository.GetByIdAsync(id)
+                          ?? throw new KeyNotFoundException("Solicitud no encontrada.");
+
+            EnsureCanAccess(request);
+            return request;
+        }
+
+        private void EnsureCanAccess(RequestEntity request)
+        {
+            if (!_currentUser.IsAdmin && request.UserId != _currentUser.UserId)
+                throw new UnauthorizedAccessException("Solo podés ver tus propias solicitudes.");
+        }
     }
 }
-

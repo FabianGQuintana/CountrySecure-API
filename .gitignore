@@ -62,3 +62,15 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+# Builds publicados / self-contained (nunca versionar)
+self-containet-build/
+self-contained-build/
+publish/
+*.dll
+*.exe
+*.so
+*.pdb
+
+# Secretos locales
+appsettings.*.local.json
+.env

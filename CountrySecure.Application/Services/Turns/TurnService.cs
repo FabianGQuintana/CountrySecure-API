@@ -1,173 +1,175 @@
-﻿using CountrySecure.Application.DTOs.Turns;
+﻿using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Application.DTOs.Turns;
 using CountrySecure.Application.Interfaces.Persistence;
 using CountrySecure.Application.Interfaces.Repositories;
 using CountrySecure.Application.Interfaces.Services;
 using CountrySecure.Application.Mappers;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
-
+using CountrySecure.Domain.Exceptions;
 
 namespace CountrySecure.Application.Services.Turns
 {
     public class TurnService : ITurnService
     {
         private readonly ITurnRepository _turnRepository;
-
+        private readonly IAmenityRepository _amenityRepository;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly ICurrentUserService _currentUser;
 
-        public TurnService(ITurnRepository turnRepository, IUnitOfWork unitOfWork)
+        public TurnService(
+            ITurnRepository turnRepository,
+            IAmenityRepository amenityRepository,
+            IUnitOfWork unitOfWork,
+            ICurrentUserService currentUser)
         {
             _turnRepository = turnRepository;
+            _amenityRepository = amenityRepository;
             _unitOfWork = unitOfWork;
+            _currentUser = currentUser;
         }
 
-        // -------------------------------------------------------------------
-        // MÉTODOS DE ESCRITURA
-        // -------------------------------------------------------------------
-
-        public async Task<TurnResponseDto> AddNewTurnAsync(CreateTurnDto newTurnDto, Guid currentUserId)
+        public async Task<TurnResponseDto> CreateAsync(CreateTurnDto dto, Guid currentUserId)
         {
-            // 1. Mapeo DTO -> Entidad
-            var newTurnEntity = newTurnDto.ToEntity();
+            var turn = dto.ToEntity();
+            turn.UserId = currentUserId;
+            turn.CreatedBy = currentUserId.ToString();
 
-            // 2. Asignación de campos de auditoría y de negocio
-            newTurnEntity.UserId = currentUserId;
-            newTurnEntity.CreatedBy = currentUserId.ToString();
-            newTurnEntity.CreatedAt = DateTime.UtcNow;
-            newTurnEntity.Status = "Active"; // Asignar estado de BaseEntity (string)
+            // Reglas de dominio: horario válido, sin solapamiento y dentro de la capacidad
+            await EnsureTurnIsBookableAsync(turn.AmenityId, turn.UserId, turn.StartTime, turn.EndTime);
 
-
-            // 3. Persistencia inicial
-            var addedTurn = await _turnRepository.AddAsync(newTurnEntity);
+            await _turnRepository.AddAsync(turn);
             await _unitOfWork.SaveChangesAsync();
 
-            //Eager Loading de las propiedades de navegación necesarias para el DTO
-            var fullTurn = await _turnRepository.GetByIdWithIncludesAsync(addedTurn.Id);
-
-            if (fullTurn == null)
-            {
-                // Esto no debería suceder, pero es defensivo
-                throw new InvalidOperationException("Turn was created but could not be retrieved with details.");
-            }
-
-            // 5. Devolver DTO de Respuesta (usando la entidad completa)
-            return fullTurn.ToResponseDto();
+            return await ReloadAsync(turn.Id);
         }
 
-        public async Task<TurnResponseDto?> UpdateTurnAsync(Guid turnId, UpdateTurnDto updateTurnDto, Guid currentUserId)
+        public async Task<TurnResponseDto> UpdateAsync(Guid id, UpdateTurnDto dto, Guid currentUserId)
         {
-            // 1. Buscar entidad existente
-            var existingTurn = await _turnRepository.GetByIdAsync(turnId);
+            var turn = await GetOwnedOrThrowAsync(id);
 
-            if (existingTurn == null)
-            {
-                return null; // El Controller devolverá 404 Not Found
-            }
+            // Solo un Admin puede reasignar una reserva a otro usuario
+            if (dto.UserId.HasValue && dto.UserId != turn.UserId && !_currentUser.IsAdmin)
+                throw new UnauthorizedAccessException("Solo la administración puede reasignar una reserva.");
 
-            // 2. Aplicar la lógica de negocio/autorización (OK)
-            if (existingTurn.CreatedBy != currentUserId.ToString())
-            {
-                throw new UnauthorizedAccessException("User is not authorized to update this Turn.");
-            }
+            dto.MapToEntity(turn);
+            turn.Touch(currentUserId.ToString());
 
-            // 3. Mapear DTO -> Entidad Existente (DESCOMENTADO Y REQUERIDO)
-            updateTurnDto.MapToEntity(existingTurn);
+            // Revalidar reglas si la reserva sigue activa (puede haber cambiado el horario o el amenity)
+            if (turn.TurnStatus != TurnStatus.Cancelled)
+                await EnsureTurnIsBookableAsync(turn.AmenityId, turn.UserId, turn.StartTime, turn.EndTime, turn.Id);
 
-            // 4. Actualizar Auditoría (OK)
-            existingTurn.LastModifiedAt = DateTime.UtcNow;
-            existingTurn.LastModifiedBy = currentUserId.ToString();
-
-            // 5. Persistencia
-            var updatedTurn = await _turnRepository.UpdateAsync(existingTurn);
+            await _turnRepository.UpdateAsync(turn);
             await _unitOfWork.SaveChangesAsync();
 
-            var fullTurn = await _turnRepository.GetByIdWithIncludesAsync(updatedTurn.Id);
-
-            if (fullTurn == null)
-            {
-                // En caso de fallo post-inserción/update
-                throw new InvalidOperationException("Turn was updated but could not be retrieved with full relations.");
-            }
-
-            return fullTurn.ToResponseDto();
-
-
+            return await ReloadAsync(id);
         }
 
-        public async Task<TurnResponseDto?> SoftDeleteTurnAsync(Guid turnId, Guid currentUserId)
+        public async Task<TurnResponseDto> DeleteAsync(Guid id, Guid currentUserId)
         {
-            var existingTurn = await _turnRepository.SoftDeleteToggleAsync(turnId);
+            var turn = await GetOwnedOrThrowAsync(id);
 
-            if (existingTurn == null)
-            {
-                return null; // No se encontró.
-            }
+            turn.SoftDelete(currentUserId.ToString());
+            turn.TurnStatus = TurnStatus.Cancelled;
 
-            // 1. Aplicar Auditoría
-            existingTurn.LastModifiedAt = DateTime.UtcNow;
-            existingTurn.LastModifiedBy = currentUserId.ToString();
-
-            // 2. Lógica Específica de la Entidad (TurnStatus)
-            if (existingTurn.Status == "Inactive")
-            {
-                existingTurn.TurnStatus = TurnStatus.Cancelled;
-            }
-            else
-            {
-                existingTurn.TurnStatus = TurnStatus.Pending;
-            }
-
-            await _turnRepository.UpdateAsync(existingTurn); // Asegura que auditoría y TurnStatus se persistan
+            await _turnRepository.UpdateAsync(turn);
             await _unitOfWork.SaveChangesAsync();
 
-            // 3. Devolver el DTO de Respuesta
-            // Se necesita una versión con includes para el DTO. Usaré GetByIdWithIncludesAsync
-            var fullTurn = await _turnRepository.GetByIdWithIncludesAsync(existingTurn.Id);
-
-            // Si la entidad se acaba de cargar (fullTurn), significa que la operación fue exitosa.
-            return fullTurn?.ToResponseDto();
+            return await ReloadAsync(id, includeDeleted: true);
         }
-        // --- MÉTODOS DE LECTURA (R) ---
 
-        public async Task<TurnResponseDto?> GetTurnByIdAsync(Guid turnId)
+        public async Task<TurnResponseDto> RestoreAsync(Guid id, Guid currentUserId)
         {
+            var turn = await _turnRepository.GetByIdIncludingDeletedAsync(id)
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
 
-            var turn = await _turnRepository.GetByIdWithIncludesAsync(turnId);
+            if (!_currentUser.IsAdmin && turn.UserId != _currentUser.UserId)
+                throw new UnauthorizedAccessException("Solo podés reactivar tus propias reservas.");
 
-            return turn?.ToResponseDto();
+            // Al restaurar hay que volver a comprobar que el horario sigue libre
+            await EnsureTurnIsBookableAsync(turn.AmenityId, turn.UserId, turn.StartTime, turn.EndTime, turn.Id);
+
+            turn.Restore(currentUserId.ToString());
+            turn.TurnStatus = TurnStatus.Pending;
+
+            await _turnRepository.UpdateAsync(turn);
+            await _unitOfWork.SaveChangesAsync();
+
+            return await ReloadAsync(id);
         }
 
-        public async Task<IEnumerable<TurnResponseDto>> GetTurnsByUserIdAsync(Guid userId)
+        public async Task<TurnResponseDto> GetByIdAsync(Guid id)
         {
-            var turns = await _turnRepository.GetTurnsByUserId(userId);
-            return turns.ToResponseDto();
+            var turn = await _turnRepository.GetByIdWithIncludesAsync(id)
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
+
+            if (!_currentUser.IsAdmin && turn.UserId != _currentUser.UserId)
+                throw new UnauthorizedAccessException("Solo podés ver tus propias reservas.");
+
+            return turn.ToResponseDto();
         }
 
-        public async Task<IEnumerable<TurnResponseDto>> GetTurnsByAmenityIdAsync(Guid amenityId)
+        public async Task<PagedResult<TurnResponseDto>> GetPagedAsync(
+            PageQuery paging, Guid? userId, Guid? amenityId, DateTime? from, DateTime? to, TurnStatus? status, bool onlyMine, bool includeInactive)
         {
-            var turns = await _turnRepository.GetTurnsByAmenityId(amenityId);
-            return turns.ToResponseDto();
+            var admin = _currentUser.IsAdmin;
+            if (onlyMine || !admin) userId = _currentUser.GetRequiredUserId();
+
+            // Las bajas (reservas canceladas) solo las ve un Admin o su propio dueño (historial personal)
+            var ownHistory = userId == _currentUser.UserId;
+            var page = await _turnRepository.GetPagedAsync(paging, userId, amenityId, from, to, status, includeInactive && (admin || ownHistory));
+            return page.Map(t => t.ToResponseDto());
         }
 
-        public async Task<IEnumerable<TurnResponseDto>> GetTurnsByDateRangeAsync(DateTime startDate, DateTime endDate)
+        // --- helpers ---
+
+        private async Task<TurnResponseDto> ReloadAsync(Guid id, bool includeDeleted = false)
         {
-            var turns = await _turnRepository.GetTurnsByDateRange(startDate, endDate);
-            return turns.ToResponseDto();
+            var turn = await _turnRepository.GetByIdWithIncludesAsync(id, includeDeleted)
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
+            return turn.ToResponseDto();
         }
 
-        public async Task<IEnumerable<TurnResponseDto>> GetAllTurnsAsync(int pageNumber, int pageSize)
+        private async Task<Turn> GetOwnedOrThrowAsync(Guid id)
         {
-            // 1. Obtener la colección con las relaciones cargadas
-            var turns = await _turnRepository.GetAllWithIncludesAsync(pageNumber, pageSize);
+            var turn = await _turnRepository.GetByIdAsync(id)
+                       ?? throw new KeyNotFoundException($"No se encontró la reserva {id}.");
 
-            // 2. Filtrar los turnos que tienen baja lógica (IsDeleted)
-            // Usamos el filtro explícito en LINQ para excluir los soft-deleted
-            var filteredTurns = turns.Where(t => !t.IsDeleted);
+            if (!_currentUser.IsAdmin && turn.UserId != _currentUser.UserId)
+                throw new UnauthorizedAccessException("Solo podés modificar tus propias reservas.");
 
-            // 3. Mapeo a DTOs
-            return filteredTurns.ToResponseDto();
+            return turn;
         }
 
+        /// <summary>
+        /// Reglas de reserva:
+        ///  1. StartTime &lt; EndTime y el turno no puede empezar en el pasado.
+        ///  2. El amenity debe existir y estar activo.
+        ///  3. El mismo usuario no puede tener dos reservas solapadas en el mismo amenity.
+        ///  4. La cantidad de reservas simultáneas no puede superar Capacity
+        ///     (Capacity = 1 equivale a uso exclusivo: ningún solapamiento permitido).
+        /// </summary>
+        private async Task EnsureTurnIsBookableAsync(Guid amenityId, Guid userId, DateTime start, DateTime end, Guid? excludeTurnId = null)
+        {
+            if (start >= end)
+                throw new BusinessRuleException("La hora de inicio debe ser anterior a la hora de fin.");
 
+            if (excludeTurnId == null && start < DateTime.UtcNow)
+                throw new BusinessRuleException("No se puede reservar un turno en el pasado.");
+
+            var amenity = await _amenityRepository.GetByIdAsync(amenityId)
+                          ?? throw new KeyNotFoundException($"El amenity con ID {amenityId} no existe o está inactivo.");
+
+            var overlapping = await _turnRepository.GetActiveOverlappingTurnsAsync(amenityId, start, end, excludeTurnId);
+
+            if (overlapping.Any(t => t.UserId == userId))
+                throw new ConflictException("Ya tenés una reserva en este amenity que se superpone con ese horario.");
+
+            var capacity = Math.Max(amenity.Capacity, 1);
+            if (overlapping.Count >= capacity)
+                throw new ConflictException(capacity == 1
+                    ? $"'{amenity.AmenityName}' ya está reservado en ese horario."
+                    : $"'{amenity.AmenityName}' alcanzó su capacidad máxima ({capacity}) en ese horario.");
+        }
     }
 }

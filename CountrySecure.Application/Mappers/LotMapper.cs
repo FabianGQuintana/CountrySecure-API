@@ -19,7 +19,7 @@ namespace CountrySecure.Application.Mappers
                 BlockName = lot.BlockName,
                 LotState = lot.LotState,
                 // EntryPermissionState en la Entidad (BaseEntity) es string ("Active", "Inactive").
-                Status = lot.Status,
+                Status = lot.ToAuditStatus(),
 
                 CreatedAt = lot.CreatedAt,
             };

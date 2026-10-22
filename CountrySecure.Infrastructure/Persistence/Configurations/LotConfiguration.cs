@@ -28,8 +28,6 @@ namespace CountrySecure.Infrastructure.Persistence.Configurations
                    .HasMaxLength(20);
             // 4. Configuración del estado (EntryPermissionState)
             // Asumiendo que EntryPermissionState es un string en BaseEntity
-            builder.Property(l => l.Status)
-                   .HasMaxLength(20);
         }
     }
 }

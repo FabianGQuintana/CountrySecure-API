@@ -30,6 +30,8 @@ namespace CountrySecure.Infrastructure.Persistence.Configuration
                      // DNI
                      builder.Property(u => u.Dni)
                             .IsRequired();
+                     builder.Property(u => u.BlockReason).HasMaxLength(300);
+
                      builder.HasIndex(u => u.Dni)    // El dni es unico
                             .IsUnique();
 
@@ -50,10 +52,6 @@ namespace CountrySecure.Infrastructure.Persistence.Configuration
                      builder.Property(u => u.Password)
                             .IsRequired()
                             .HasColumnType("text");
-
-                     // ACTIVE
-                     builder.Property(u => u.Active)
-                            .IsRequired();
 
                      // RELACIÓN: User 1 -- * Property
                      builder.HasMany(u => u.Properties)

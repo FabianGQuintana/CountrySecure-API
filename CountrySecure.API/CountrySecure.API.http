@@ -1,6 +1,16 @@
 @CountrySecure.API_HostAddress = http://localhost:5021
 
-GET {{CountrySecure.API_HostAddress}}/weatherforecast/
-Accept: application/json
+# Swagger UI (Development): {{CountrySecure.API_HostAddress}}/swagger
 
-###
+### Login (usuarios demo del seed; las contraseñas están en user-secrets)
+POST {{CountrySecure.API_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@countrysecure.local",
+  "password": "<password>"
+}
+
+### Estadísticas del usuario autenticado
+GET {{CountrySecure.API_HostAddress}}/api/stats
+Authorization: Bearer <accessToken>

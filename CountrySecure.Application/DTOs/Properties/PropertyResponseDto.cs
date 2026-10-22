@@ -9,7 +9,7 @@ namespace CountrySecure.Application.DTOs.Properties
         public int PropertyNumber { get; set; }
         public required PropertyStatus PropertyStatus { get; set; }
         public required string StatusAuditoria { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; }
 
         public string? LotName { get; set; }
         public string? OwnerName { get; set; }

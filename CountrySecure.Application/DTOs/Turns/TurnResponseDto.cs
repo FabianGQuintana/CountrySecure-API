@@ -11,7 +11,8 @@
         // --- Propiedades de Negocio ---
         public DateTime StartTime { get; set; } // Fecha y hora de inicio
         public DateTime EndTime { get; set; }   // Fecha y hora de fin
-        public required string Status { get; set; } // El estado del turno (ej: "Pending", "Completed")
+        public required string Status { get; set; } // Estado de auditoría (Active / Inactive)
+        public string TurnStatus { get; set; } = string.Empty; // Estado funcional: Pending, Completed, Cancelled
 
         // --- Claves Foráneas (FKs) ---
         public Guid AmenityId { get; set; }

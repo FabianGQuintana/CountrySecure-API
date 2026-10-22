@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CountrySecure.Domain", "Cou
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CountrySecure.Infrastructure", "CountrySecure.Infrastructure\CountrySecure.Infrastructure.csproj", "{7173138C-6ED2-4E3C-90C2-12B1B851489D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CountrySecure.Tests", "CountrySecure.Tests\CountrySecure.Tests.csproj", "{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{7173138C-6ED2-4E3C-90C2-12B1B851489D}.Release|x64.Build.0 = Release|Any CPU
 		{7173138C-6ED2-4E3C-90C2-12B1B851489D}.Release|x86.ActiveCfg = Release|Any CPU
 		{7173138C-6ED2-4E3C-90C2-12B1B851489D}.Release|x86.Build.0 = Release|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Debug|x64.Build.0 = Debug|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Debug|x86.Build.0 = Debug|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Release|x64.ActiveCfg = Release|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Release|x64.Build.0 = Release|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Release|x86.ActiveCfg = Release|Any CPU
+		{6D3BF211-28CB-49DA-893A-977C9D7EF8F2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

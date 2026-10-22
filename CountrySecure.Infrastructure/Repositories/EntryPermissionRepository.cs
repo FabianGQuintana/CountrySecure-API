@@ -1,227 +1,134 @@
-﻿using CountrySecure.Domain.Entities;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.Interfaces.Repositories;
+using CountrySecure.Domain.Entities;
+using CountrySecure.Domain.Enums;
 using CountrySecure.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using CountrySecure.Domain.Enums;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
-
 
 namespace CountrySecure.Infrastructure.Repositories
 {
     public class EntryPermissionRepository : GenericRepository<EntryPermission>, IEntryPermissionRepository
     {
-        private readonly CountrySecureDbContext _dbContext;
+        public EntryPermissionRepository(CountrySecureDbContext dbContext) : base(dbContext) { }
 
-        public EntryPermissionRepository(CountrySecureDbContext dbContext) : base(dbContext)
-        {
-            _dbContext = dbContext;
-        }
+        private IQueryable<EntryPermission> WithDetails(bool includeDeleted = false)
+            => Set.IncludeDeleted(includeDeleted)
+                  .Include(p => p.User)
+                  .Include(p => p.Visit)
+                  .Include(p => p.Order)
+                  .Include(p => p.CheckInGuard)
+                  .Include(p => p.CheckOutGuard);
 
-        //Obtener permiso de entrada por valor de código QR.
-        public async Task<EntryPermission?> GetEntryPermissionByQrCodeValueAsync(string qrCodeValue)
-        {
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)    // El Residente/Creador
-                .Include(p => p.Visit)   // El Visitante
-                .Include(p => p.Order)
-                .FirstOrDefaultAsync(ep => ep.QrCodeValue == qrCodeValue);
-        }
+        public Task<EntryPermission?> GetWithDetailsAsync(Guid id, bool includeDeleted = false)
+            => WithDetails(includeDeleted).FirstOrDefaultAsync(p => p.Id == id);
 
-        //Obtener todos los permisos de entrada asociados a un usuario,visita,servicio específico.
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByUserIdAsync(Guid userId)
+        public async Task<Dictionary<Guid, List<string>>> GetDestinationsAsync(IReadOnlyCollection<Guid> userIds)
         {
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)    // El Residente/Creador
-                .Include(p => p.Visit)   // El Visitante
-                .Include(p => p.Order)
-                .Where(ep => ep.UserId == userId)
+            var rows = await Db.Properties.AsNoTracking()
+                .Where(p => p.UserId != null && userIds.Contains(p.UserId.Value))
+                .OrderBy(p => p.Street).ThenBy(p => p.PropertyNumber)
+                .Select(p => new { UserId = p.UserId!.Value, p.Street, p.PropertyNumber, LotName = p.Lot != null ? p.Lot.LotName : null })
                 .ToListAsync();
+
+            return rows.GroupBy(r => r.UserId).ToDictionary(g => g.Key, g => g.Select(r => FormatDestination(r.Street, r.PropertyNumber, r.LotName)).ToList());
         }
 
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByVisitIdAsync(Guid visitId)
+        private static string FormatDestination(string street, int number, string? lotName)
         {
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)    // El Residente/Creador
-                .Include(p => p.Visit)   // El Visitante
-                .Include(p => p.Order)
-                .Where(ep => ep.VisitId == visitId)
+            var address = $"{street} {number}";
+            if (string.IsNullOrWhiteSpace(lotName)) return address;
+            var lot = lotName.StartsWith("Lote", StringComparison.OrdinalIgnoreCase) ? lotName : $"Lote {lotName}";
+            return $"{address} · {lot}";
+        }
+
+        public Task<List<EntryPermission>> GetActiveForSyncAsync(DateTime from, DateTime to, int max)
+            => WithDetails()
+                .AsNoTracking()
+                .Where(p => p.EntryPermissionState != PermissionStatus.Cancelled
+                            && p.ValidFrom <= to
+                            && (p.ValidTo == null || p.ValidTo >= from)
+                            // un pase de un solo ingreso ya usado y con salida no puede volver a entrar
+                            && !(p.PassType == PassType.SingleEntry && p.EntryTime != null && p.DepartureTime != null))
+                .OrderBy(p => p.ValidFrom)
+                .Take(max)
                 .ToListAsync();
-        }
 
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByServiceIdAsync(Guid OrderId)
+        public async Task<List<string>> GetDestinationsAsync(Guid userId)
         {
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)    // El Residente/Creador
-                .Include(p => p.Visit)   // El Visitante
-                .Include(p => p.Order)
-                .Where(ep => ep.OrderId == OrderId)
+            var rows = await Db.Properties.AsNoTracking()
+                .Where(p => p.UserId == userId)
+                .OrderBy(p => p.Street).ThenBy(p => p.PropertyNumber)
+                .Select(p => new { p.Street, p.PropertyNumber, LotName = p.Lot != null ? p.Lot.LotName : null })
                 .ToListAsync();
-        }
 
-
-        //Obtener todos los permisos en base al tipo de permiso.
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsByTypeAsync(PermissionType permissionType, int pageNumber, int pageSize)
-        {
-            return await _dbContext.EntryPermissions.Include(p => p.User).Include(p => p.Visit).Include(p => p.Order)
-                .Where(ep => ((int)ep.PermissionType) == ((int)permissionType))
-                .OrderBy(ep => ep.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-        }
-
-        //Obtener todos los permisos en base al estado (1-ALTA/0-BAJA).
-        public async Task<IEnumerable<EntryPermission>> GetEntryPermissionsStatusAsync( string status, int pageNumber, int pageSize)
-        {
-            // Intentar convertir el string al enum PermissionStatus
-            if (!Enum.TryParse<PermissionStatus>(status, true, out var statusEnum))
-                throw new ArgumentException("Estado inválido", nameof(status));
-
-            return await _dbContext.EntryPermissions.Include(p => p.User).Include(p => p.Visit).Include(p => p.Order)
-                .Where(ep => ep.EntryPermissionState == statusEnum)
-                .OrderBy(ep => ep.Id)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-        }
-
-
-        // Obtener permiso de entrada por valor de código QR con entidades relacionadas.
-        public async Task<EntryPermission?> GetByQrCodeValueAsync(string qrCodeValue)
-        {
-            // Es crucial usar .Include() aquí para cargar las entidades de navegación 
-            // (User, Visit, Service) que son necesarias para el mapeo a EntryPermissionResponseDto.
-            return await _dbContext.EntryPermissions
-                                 .Include(p => p.User)    // El Residente/Creador
-                                 .Include(p => p.Visit)   // El Visitante
-                                  .Include(p => p.Order) // El Servicio (si aplica)
-                                 .FirstOrDefaultAsync(p => p.QrCodeValue == qrCodeValue);
-        }
-
-        public async Task<EntryPermission?> GetEntryPermissionWithDetailsAsync(Guid id)
-        {
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)    // Requerido por el mapeador
-                .Include(p => p.Visit)   // Requerido por el mapeador
-                .Include(p => p.Order)   // Opcional, pero bueno incluirlo si está en el DTO de respuesta
-                .FirstOrDefaultAsync(p => p.Id == id);
-        }
-
-        public async Task<EntryPermission?> GetByIdWithIncludesAsync(Guid id)
-        {
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User) // Necesario para Resident
-                .Include(p => p.Visit) // Necesario para Visitor
-                .Include(p => p.Order) // Necesario para Order (si no es null)
-                .FirstOrDefaultAsync(p => p.Id == id);
-        }
-
-        public async Task<IEnumerable<EntryPermission>> GetAllWithIncludesAsync(int pageNumber, int pageSize)
-        {
-            // Usar Queryable para aplicar la paginación y luego forzar la carga ansiosa.
-            return await _dbContext.EntryPermissions
-                .Include(p => p.User)
-                .Include(p => p.Visit)
-                .Include(p => p.Order)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-        }
-
-        public async Task<PaginatedResult<EntryPermission>> GetByDateRangeWithDetailsAsync(
-        DateTime startDate,
-        DateTime endDate, // Este parámetro se ignora en este método simplificado para "hoy"
-         int pageNumber,
-        int pageSize)
-        {
-            // NOTA: Se asume que 'startDate' viene del Controller como el inicio del día local,
-            // ya convertido a UTC (ej: 2025-12-16 00:00:00Z).
-
-            // 1. Definir el rango del día completo en UTC.
-            // Usamos el inicio del día que se pasó:
-            var startOfDayUtc = startDate;
-            // Calculamos el inicio del día siguiente (es el límite exclusivo superior <)
-            var endOfNextDayUtc = startOfDayUtc.AddDays(1);
-
-            // 1. Crear el IQueryable base
-            var query = _dbContext.EntryPermissions
-            .Include(p => p.User)
-            .Include(p => p.Visit)
-            .Include(p => p.Order)
-        // ⚠️ CAMBIO CLAVE: Usamos un rango (>= inicio del día y < inicio del día siguiente)
-        // Esto consulta el rango completo de 24 horas sin usar la función .Date() de SQL.
-                .Where(ep => ep.ValidFrom >= startOfDayUtc && ep.ValidFrom < endOfNextDayUtc);
-
-            // 2. APLICAR FILTRO DE ESTADO EN LA BASE DE DATOS (Este filtro ya era correcto)
-            var activeQuery = query.Where(e =>
-            e.EntryPermissionState == PermissionStatus.Pending ||
-            (e.EntryPermissionState == PermissionStatus.Completed && e.EntryTime.HasValue && !e.DepartureTime.HasValue)
-          );
-
-            // 3. CONTEO TOTAL
-            var totalCount = await activeQuery.CountAsync();
-
-            // 4. Aplicar ordenación y paginación
-            var skip = (pageNumber - 1) * pageSize;
-            var pagedEntities = await activeQuery
-              .OrderBy(ep => ep.ValidFrom)
-              .Skip(skip)
-              .Take(pageSize)
-              .ToListAsync();
-
-            // 5. Devolver el resultado paginado
-            return new PaginatedResult<EntryPermission>(pagedEntities, totalCount);
-        }
-
-        public async Task<IEnumerable<EntryPermission>> GetAllHistoryWithDetailsAsync(
-    int pageNumber,
-    int pageSize,
-    string? searchTerm,
-    string? type
-)
-        {
-            var query = _dbContext.EntryPermissions
-                .Include(p => p.User)
-                .Include(p => p.Visit)
-                .Include(p => p.Order)
-                .Include(p => p.CheckInGuard)
-                .Include(p => p.CheckOutGuard)
-                .Where(ep => ep.EntryTime.HasValue);
-
-            // 🔥 FILTRO POR TIPO
-            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<PermissionType>(type, true, out var parsedType))
+            // "Calle 123 · Lote A-12" (sin repetir la palabra si el lote ya se llama "Lote ...")
+            return rows.Select(r =>
             {
-                query = query.Where(ep => ep.PermissionType == parsedType);
-            }
-
-
-            // 🔍 FILTRO SEARCH
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var lower = searchTerm.ToLower();
-                query = query.Where(ep =>
-                    (ep.Visit != null &&
-                     (ep.Visit.NameVisit.ToLower().Contains(lower) ||
-                      ep.Visit.LastNameVisit.ToLower().Contains(lower))) ||
-
-                    (ep.User != null &&
-                     (ep.User.Name.ToLower().Contains(lower) ||
-                      ep.User.Lastname.ToLower().Contains(lower))) ||
-
-                    (ep.Order != null &&
-                     ep.Order.SupplierName.ToLower().Contains(lower)) ||
-
-                    (ep.Visit != null &&
-                     ep.Visit.DniVisit.ToString().Contains(lower))
-                );
-            }
-
-            return await query
-                .OrderByDescending(ep => ep.EntryTime)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+                var address = $"{r.Street} {r.PropertyNumber}";
+                if (string.IsNullOrWhiteSpace(r.LotName)) return address;
+                var lot = r.LotName.StartsWith("Lote", StringComparison.OrdinalIgnoreCase) ? r.LotName : $"Lote {r.LotName}";
+                return $"{address} · {lot}";
+            }).ToList();
         }
 
+        public Task<EntryPermission?> GetByQrCodeAsync(string qrCodeValue, bool includeDeleted = false)
+            => WithDetails(includeDeleted).FirstOrDefaultAsync(p => p.QrCodeValue == qrCodeValue);
+
+        public Task<PagedResult<EntryPermission>> GetPagedAsync(
+            PageQuery paging,
+            PermissionType? type,
+            PermissionStatus? status,
+            Guid? userId,
+            Guid? visitId,
+            Guid? orderId,
+            string? search,
+            bool includeDeleted)
+        {
+            var query = WithDetails(includeDeleted).AsNoTracking();
+
+            if (type.HasValue) query = query.Where(p => p.PermissionType == type.Value);
+            if (status.HasValue) query = query.Where(p => p.EntryPermissionState == status.Value);
+            if (userId.HasValue) query = query.Where(p => p.UserId == userId.Value);
+            if (visitId.HasValue) query = query.Where(p => p.VisitId == visitId.Value);
+            if (orderId.HasValue) query = query.Where(p => p.OrderId == orderId.Value);
+            query = ApplySearch(query, search);
+
+            return query.OrderByDescending(p => p.ValidFrom).ToPagedResultAsync(paging);
+        }
+
+        public Task<PagedResult<EntryPermission>> GetTodayAsync(PageQuery paging, DateTime dayStartUtc)
+        {
+            var dayEndUtc = dayStartUtc.AddDays(1);
+
+            var query = WithDetails().AsNoTracking()
+                .Where(p => p.ValidFrom >= dayStartUtc && p.ValidFrom < dayEndUtc)
+                .Where(p => p.EntryPermissionState == PermissionStatus.Pending
+                            || (p.EntryPermissionState == PermissionStatus.Completed && p.EntryTime.HasValue && !p.DepartureTime.HasValue));
+
+            return query.OrderBy(p => p.ValidFrom).ToPagedResultAsync(paging);
+        }
+
+        public Task<PagedResult<EntryPermission>> GetHistoryAsync(PageQuery paging, string? search, PermissionType? type)
+        {
+            var query = WithDetails().AsNoTracking().Where(p => p.EntryTime.HasValue);
+
+            if (type.HasValue) query = query.Where(p => p.PermissionType == type.Value);
+            query = ApplySearch(query, search);
+
+            return query.OrderByDescending(p => p.EntryTime).ToPagedResultAsync(paging);
+        }
+
+        // Busca por visitante (nombre, apellido, DNI), residente o proveedor
+        private static IQueryable<EntryPermission> ApplySearch(IQueryable<EntryPermission> query, string? search)
+        {
+            if (string.IsNullOrWhiteSpace(search)) return query;
+
+            var term = search.Trim().ToLower();
+            return query.Where(p =>
+                (p.Visit != null && ((p.Visit.NameVisit + " " + p.Visit.LastNameVisit).ToLower().Contains(term)
+                                     || p.Visit.DniVisit.ToString().Contains(term)))
+                || (p.User != null && (p.User.Name + " " + p.User.Lastname).ToLower().Contains(term))
+                || (p.Order != null && p.Order.SupplierName.ToLower().Contains(term)));
+        }
     }
 }

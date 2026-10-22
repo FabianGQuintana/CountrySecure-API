@@ -1,4 +1,4 @@
-﻿using System;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Domain.Entities;
 using CountrySecure.Domain.Enums;
 
@@ -6,15 +6,11 @@ namespace CountrySecure.Application.Interfaces.Repositories;
 
 public interface IPropertyRepository : IGenericRepository<Property>
 {
-	
-	Task<Property?> GetPropertyByAdressAsync(string street, int numberProperty);
+    /// <summary>Busca por dirección incluyendo propiedades dadas de baja (la dirección es única en toda la tabla).</summary>
+    Task<Property?> GetByAddressIncludingDeletedAsync(string street, int propertyNumber);
 
-	Task<IEnumerable<Property>> GetPropertyByIdUserAsync(Guid userId);
+    /// <summary>Propiedad con Lot y User cargados.</summary>
+    Task<Property?> GetByIdWithIncludesAsync(Guid id, bool includeDeleted = false);
 
-    Task<IEnumerable<Property>> GetPropertiesByLotIdAsync(Guid lotId);
-
-    Task<IEnumerable<Property>> GetPropertiesByStatusAsync(PropertyStatus status,int pageNumber,int pageSize);
-
-    Task<Property?> GetByIdWithIncludesAsync(Guid id);
-    Task<Property?> SoftDeleteAsync(Guid id);
+    Task<PagedResult<Property>> GetPagedAsync(PageQuery paging, PropertyStatus? status, Guid? lotId, Guid? ownerId, string? search, bool includeDeleted);
 }

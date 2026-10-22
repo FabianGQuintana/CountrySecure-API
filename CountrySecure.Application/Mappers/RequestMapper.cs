@@ -22,7 +22,7 @@ namespace CountrySecure.Application.Mappers
                 // Mapeo del estado funcional (Enum)
                 Status = request.RequestStatus,
 
-                BaseEntityStatus = request.Status,
+                BaseEntityStatus = request.ToAuditStatus(),
 
                 CreatedAt = request.CreatedAt,
 
@@ -47,8 +47,8 @@ namespace CountrySecure.Application.Mappers
                 Location = dto.Location,
 
                 // IDs (Guid a Guid)
-                IdUser = dto.UserId,
-                IdOrder = dto.OrderId,
+                UserId = dto.UserId ?? Guid.Empty, // el servicio lo reemplaza por el usuario autenticado
+                OrderId = dto.OrderId,
 
                 // EntryPermissionState (Se inicializa al valor del DTO o al defecto si no se requiere en DTO)
                 RequestStatus = dto.Status,
@@ -75,26 +75,27 @@ namespace CountrySecure.Application.Mappers
                 existingEntity.RequestStatus = dto.Status.Value;
             }
 
-            // Nota: IdUser e IdOrder (relaciones) generalmente NO se actualizan en un UpdateRequestDto.
+            // Nota: UserId e OrderId (relaciones) generalmente NO se actualizan en un UpdateRequestDto.
         }
 
-        public static RequestOrderDto ToRequestOrderDto(this Order order)
+        public static RequestOrderDto ToRequestOrderDto(this Order? order)
         {
-             // Si order es null, devolvemos null o manejamos excepción según preferencia
-             if (order == null) throw new ArgumentNullException(nameof(order));
+            if (order == null)
+                return new RequestOrderDto { Id = Guid.Empty, SupplierName = "(servicio eliminado)", Description = "" };
 
-             return new RequestOrderDto
-             {
-                 Id = order.Id,
-                 SupplierName = order.SupplierName,
-                 Description = order.Description,
-                 OrderType = (int)order.OrderType
-             };
+            return new RequestOrderDto
+            {
+                Id = order.Id,
+                SupplierName = order.SupplierName,
+                Description = order.Description,
+                OrderType = order.Category
+            };
         }
         
-        public static RequestUserDto ToRequestUserDto(this User user)
+        public static RequestUserDto ToRequestUserDto(this User? user)
         {
-            if (user == null) throw new ArgumentNullException(nameof(user));
+            if (user == null)
+                return new RequestUserDto { Id = Guid.Empty, Name = "(usuario", Lastname = "eliminado)", Email = "" };
 
             return new RequestUserDto
             {

@@ -1,31 +1,21 @@
-﻿using CountrySecure.Application.DTOs.Turns;
-using CountrySecure.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using CountrySecure.Application.DTOs.Common;
+using CountrySecure.Application.DTOs.Turns;
+using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Application.Interfaces.Services
 {
     public interface ITurnService
     {
-        Task<TurnResponseDto> AddNewTurnAsync(CreateTurnDto newTurnDto, Guid currentUserId);
+        Task<TurnResponseDto> CreateAsync(CreateTurnDto dto, Guid currentUserId);
+        Task<TurnResponseDto> UpdateAsync(Guid id, UpdateTurnDto dto, Guid currentUserId);
 
-        Task<TurnResponseDto?> GetTurnByIdAsync(Guid turnId);
+        /// <summary>Cancela la reserva (baja lógica). Un residente solo puede cancelar las propias.</summary>
+        Task<TurnResponseDto> DeleteAsync(Guid id, Guid currentUserId);
+        Task<TurnResponseDto> RestoreAsync(Guid id, Guid currentUserId);
+        Task<TurnResponseDto> GetByIdAsync(Guid id);
 
-        Task<IEnumerable<TurnResponseDto>> GetTurnsByUserIdAsync(Guid userId);
-
-        Task<IEnumerable<TurnResponseDto>> GetTurnsByAmenityIdAsync(Guid amenityId);
-
-        Task<TurnResponseDto?> UpdateTurnAsync(Guid turnId, UpdateTurnDto updateTurnDto, Guid currentUserId);
-
-        Task<TurnResponseDto?> SoftDeleteTurnAsync(Guid turnId, Guid currentUserId);
-
-        Task<IEnumerable<TurnResponseDto>> GetTurnsByDateRangeAsync(DateTime startDate, DateTime endDate);
-
-        Task<IEnumerable<TurnResponseDto>> GetAllTurnsAsync(int pageNumber, int pageSize);
-
-
+        /// <summary>Quien no es Admin solo ve sus propias reservas.</summary>
+        Task<PagedResult<TurnResponseDto>> GetPagedAsync(
+            PageQuery paging, Guid? userId, Guid? amenityId, DateTime? from, DateTime? to, TurnStatus? status, bool onlyMine, bool includeInactive);
     }
 }

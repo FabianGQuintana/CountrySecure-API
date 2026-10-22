@@ -1,22 +1,17 @@
-﻿using CountrySecure.Domain.Enums;
+﻿using CountrySecure.Application.DTOs.Common;
 using CountrySecure.Application.DTOs.Lots;
+using CountrySecure.Domain.Enums;
 
 namespace CountrySecure.Application.Interfaces.Services
 {
     public interface ILotService
     {
-        Task<LotResponseDto> AddNewLotAsync(CreateLotDto newLotDto,Guid currentUserId);
-
-        Task<LotResponseDto?> GetLotByIdAsync(Guid lotId);
-
-        Task<IEnumerable<LotResponseDto>> GetAllLotsAsync(int pageNumber, int pageSize);
-
-        Task<IEnumerable<string>> GetAllBlockNamesAsync();
-
-        Task<LotResponseDto> UpdateAsync(UpdateLotDto updateLot, Guid lotId, Guid currentUserId);
-
-        Task<LotResponseDto?> SoftDeleteToggleAsync(Guid lotId, Guid currentUserId);
-
-        Task<IEnumerable<LotResponseDto>> GetLotsByStatusAsync(LotStatus status, int pageNumber, int pageSize);
+        Task<LotResponseDto> CreateAsync(CreateLotDto dto, Guid currentUserId);
+        Task<LotResponseDto> UpdateAsync(Guid id, UpdateLotDto dto, Guid currentUserId);
+        Task<LotResponseDto> DeleteAsync(Guid id, Guid currentUserId);
+        Task<LotResponseDto> RestoreAsync(Guid id, Guid currentUserId);
+        Task<LotResponseDto> GetByIdAsync(Guid id);
+        Task<IReadOnlyList<string>> GetBlockNamesAsync();
+        Task<PagedResult<LotResponseDto>> GetPagedAsync(PageQuery paging, LotStatus? state, string? search, bool includeInactive);
     }
 }

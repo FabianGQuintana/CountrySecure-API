@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <!-- Version gestionada centralmente en Directory.Packages.props -->
     <PackageReference Include="FluentValidation" Version="12.1.0" />
-    <PackageReference Include="QRCoder" Version="1.7.0" />
   </ItemGroup>
 
   <ItemGroup>
