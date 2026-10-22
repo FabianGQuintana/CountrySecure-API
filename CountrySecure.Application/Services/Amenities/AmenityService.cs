@@ -77,8 +77,15 @@ namespace CountrySecure.Application.Services
             return amenity.ToResponseDto();
         }
 
-        public async Task<AmenityResponseDto> GetByIdAsync(Guid id)
-            => (await GetOrThrowAsync(id)).ToResponseDto();
+        public async Task<AmenityResponseDto> GetByIdAsync(Guid id, bool includeInactive = false)
+        {
+            // El Admin lista también los amenities dados de baja y puede abrir su detalle para reactivarlos
+            var amenity = includeInactive
+                ? await _amenityRepository.GetByIdIncludingDeletedAsync(id)
+                : await _amenityRepository.GetByIdAsync(id);
+
+            return (amenity ?? throw new KeyNotFoundException($"No se encontró el amenity {id}.")).ToResponseDto();
+        }
 
         public async Task<PagedResult<AmenityResponseDto>> GetPagedAsync(PageQuery paging, string? search, int? minCapacity, bool includeInactive)
         {

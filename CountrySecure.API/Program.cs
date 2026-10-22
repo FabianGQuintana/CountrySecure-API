@@ -183,7 +183,12 @@ if (string.IsNullOrWhiteSpace(connStr))
 
 builder.Services.AddDbContext<CountrySecureDbContext>(options =>
 {
-    options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure());
+    // Pocos reintentos y cortos: si la base está caída, la API responde 503 en segundos
+    // en vez de dejar colgada cada request (~60 s con los valores por defecto).
+    options.UseNpgsql(connStr, npgsql => npgsql.EnableRetryOnFailure(
+        maxRetryCount: 2,
+        maxRetryDelay: TimeSpan.FromSeconds(2),
+        errorCodesToAdd: null));
     options.EnableSensitiveDataLogging(false);
     options.EnableDetailedErrors(false);
 });

@@ -30,6 +30,8 @@ namespace CountrySecure.API.Middleware
         {
             var (status, title) = exception switch
             {
+                _ when IsDatabaseUnavailable(exception)
+                    => (StatusCodes.Status503ServiceUnavailable, "La base de datos no está disponible. Intentá de nuevo en unos segundos."),
                 KeyNotFoundException => (StatusCodes.Status404NotFound, "No se encontró el recurso."),
                 AuthenticationFailedException => (StatusCodes.Status401Unauthorized, "No se pudo validar la sesión."),
                 ConflictException => (StatusCodes.Status409Conflict, "Conflicto con los datos existentes."),
@@ -44,7 +46,9 @@ namespace CountrySecure.API.Middleware
                 _ => (StatusCodes.Status500InternalServerError, "Ocurrió un error inesperado. Intentá de nuevo.")
             };
 
-            if (status >= 500)
+            if (status == StatusCodes.Status503ServiceUnavailable)
+                _logger.LogError("Database unavailable on {Method} {Path}: {Message}", httpContext.Request.Method, httpContext.Request.Path, exception.GetBaseException().Message);
+            else if (status >= 500)
                 _logger.LogError(exception, "Unhandled exception on {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
             else
                 _logger.LogWarning("Handled {Exception} on {Method} {Path}: {Message}", exception.GetType().Name, httpContext.Request.Method, httpContext.Request.Path, exception.Message);
@@ -65,12 +69,27 @@ namespace CountrySecure.API.Middleware
             problem.Extensions["message"] = status >= 500 || exception is DbUpdateException ? title : detail;
 
             httpContext.Response.StatusCode = status;
+            if (status == StatusCodes.Status503ServiceUnavailable)
+                httpContext.Response.Headers.RetryAfter = "5";
             return await _problemDetailsService.TryWriteAsync(new ProblemDetailsContext
             {
                 HttpContext = httpContext,
                 ProblemDetails = problem,
                 Exception = exception
             });
+        }
+
+        /// <summary>La base no responde: conexión rechazada, reintentos agotados o timeout de Npgsql.</summary>
+        private static bool IsDatabaseUnavailable(Exception exception)
+        {
+            for (var e = exception; e is not null; e = e.InnerException)
+            {
+                if (e is Microsoft.EntityFrameworkCore.Storage.RetryLimitExceededException
+                    || e is Npgsql.NpgsqlException { IsTransient: true }
+                    || e is System.Net.Sockets.SocketException)
+                    return true;
+            }
+            return false;
         }
     }
 }

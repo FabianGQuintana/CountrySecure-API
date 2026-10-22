@@ -32,7 +32,7 @@ namespace CountrySecure.API.Controllers
 
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<AmenityResponseDto>> GetById(Guid id)
-            => Ok(await _amenityService.GetByIdAsync(id));
+            => Ok(await _amenityService.GetByIdAsync(id, includeInactive: _currentUser.IsAdmin));
 
         [HttpPost]
         [Authorize(Policy = Policies.AdminOnly)]

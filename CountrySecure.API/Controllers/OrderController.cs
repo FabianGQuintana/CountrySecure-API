@@ -38,7 +38,7 @@ namespace CountrySecure.API.Controllers
 
         [HttpGet("{id:guid}")]
         public async Task<ActionResult<OrderResponseDto>> GetById(Guid id)
-            => Ok(await _orderService.GetByIdAsync(id));
+            => Ok(await _orderService.GetByIdAsync(id, includeInactive: _currentUser.IsAdmin));
 
         [HttpPost]
         [Authorize(Policy = Policies.AdminOnly)]

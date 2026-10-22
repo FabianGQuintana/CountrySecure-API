@@ -71,8 +71,15 @@ namespace CountrySecure.Application.Services.Orders
             return order.ToResponseDto();
         }
 
-        public async Task<OrderResponseDto> GetByIdAsync(Guid id)
-            => (await GetOrThrowAsync(id)).ToResponseDto();
+        public async Task<OrderResponseDto> GetByIdAsync(Guid id, bool includeInactive = false)
+        {
+            // El Admin lista también los servicios dados de baja y puede abrir su detalle para reactivarlos
+            var order = includeInactive
+                ? await _orderRepository.GetByIdIncludingDeletedAsync(id)
+                : await _orderRepository.GetByIdAsync(id);
+
+            return (order ?? throw new KeyNotFoundException($"No se encontró el servicio {id}.")).ToResponseDto();
+        }
 
         public async Task<PagedResult<OrderResponseDto>> GetPagedAsync(PageQuery paging, OrderCategory? type, string? search, bool includeInactive)
         {
